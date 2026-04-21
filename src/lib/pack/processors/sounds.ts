@@ -11,6 +11,16 @@ const JAVA_TO_BEDROCK_EVENT_MAP: Record<string, string> = {
   "entity.experience_orb.pickup": "random.orb",
   "entity.player.levelup": "random.levelup",
   "entity.item.break": "random.break",
+  "block.end_portal_frame.fill": "block.end_portal_frame.fill",
+  "block.end_portal.spawn": "block.end_portal.spawn",
+  "entity.tnt.primed": "random.fuse",
+  "entity.genric.explode": "random.explode",
+  "entity.bobber.retrieve": "random.bowhit",
+  "entity.bobber.throw": "random.bow",
+  "entity.bobber.splash": "random.splash",
+  "entity.arrow.hit": "random.bowhit",
+  "entity.arrow.hit_player": "random.bowhit",
+  "entity.arrow.shoot": "random.bow",
 };
 
 /**

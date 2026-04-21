@@ -10,12 +10,12 @@ import { parseJavaAnimation, type FlipbookEntry } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
 
 export async function convertPack(
-  file: File,
-  options: ConversionOptions
+  input: File | JSZip,
+  options: ConversionOptions,
+  fileName?: string
 ): Promise<{ blob: Blob; report: PackReport }> {
   const { direction } = options;
-  const zip = new JSZip();
-  const sourceZip = await JSZip.loadAsync(file);
+  const sourceZip = input instanceof JSZip ? input : await JSZip.loadAsync(input);
   const targetZip = new JSZip();
   const report: PackReport = {
     totalFiles: 0,
@@ -28,7 +28,7 @@ export async function convertPack(
   const files = Object.keys(sourceZip.files);
   report.totalFiles = files.length;
 
-  let packName = file.name.replace(/\.(zip|mcpack)$/, '');
+  let packName = (fileName || (input instanceof File ? input.name : "pack")).replace(/\.(zip|mcpack)$/, '');
   let packDescription = "Converted by PackBridge";
   let headerUuid = crypto.randomUUID();
   let moduleUuid = crypto.randomUUID();
