@@ -1,0 +1,395 @@
+:root {
+  /* =========================================
+     iOS 26 CONCEPT: LIGHT MODE
+  ========================================= */
+  --color-bg: #f2f2f7;
+  --color-surface: rgba(255, 255, 255, 0.65);
+  --color-surface-hover: rgba(255, 255, 255, 1.0);
+  --color-text: #000000;
+  --color-text-muted: #8e8e93;
+
+  --color-primary: #000000;
+  --color-primary-text: #ffffff;
+  --color-primary-hover: rgba(0, 0, 0, 0.85);
+
+  --color-accent-blue: #007aff;
+  --color-border: rgba(0, 0, 0, 0.08);
+
+  --color-danger: #ff3b30;
+  --color-warning: #ffcc00;
+  --color-success: #34c759;
+  --color-info: #007aff;
+
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.08);
+
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-full: 9999px;
+
+  --font-main: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Inter", sans-serif;
+
+  /* iOS Spring Physics Curves */
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-smooth: cubic-bezier(0.25, 1, 0.5, 1);
+  --transition-normal: 0.4s var(--spring-smooth);
+}
+
+[data-theme='dark'] {
+  /* =========================================
+     iOS 26 CONCEPT: AMOLED DARK MODE
+  ========================================= */
+  --color-bg: #000000;
+  --color-surface: rgba(28, 28, 30, 0.6);
+  --color-surface-hover: rgba(44, 44, 46, 0.9);
+  --color-text: #ffffff;
+  --color-text-muted: #98989d;
+
+  --color-primary: #ffffff;
+  --color-primary-text: #000000;
+  --color-primary-hover: rgba(255, 255, 255, 0.85);
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 80px 20px 100px;
+  animation: fadeUp 0.8s var(--spring-smooth) both;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+header {
+  text-align: center;
+}
+
+h1 {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.description {
+  font-size: 17px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.top-controls {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 12px;
+  z-index: 1000;
+}
+
+/* Glassmorphism Card */
+.card {
+  background-color: var(--color-surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-weight: 600;
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+  transition: transform 0.2s var(--spring-smooth), background-color 0.2s, opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+button.secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+button.icon-btn {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Segmented Control */
+.segmented-control {
+  display: flex;
+  background: var(--color-border);
+  padding: 3px;
+  border-radius: 12px;
+  gap: 2px;
+}
+
+.segmented-control button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text-muted);
+  box-shadow: none;
+}
+
+.segmented-control button.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Select Input */
+.select-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  transition: all 0.2s var(--spring-smooth);
+}
+
+.select-input:hover {
+  border-color: var(--color-text-muted);
+  background-color: var(--color-surface-hover);
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+/* Fix for options background in some browsers */
+.select-input option {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+[data-theme='dark'] .select-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Dropzone */
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 48px 24px;
+  text-align: center;
+  transition: all 0.3s var(--spring-bounce);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dropzone.active {
+  border-color: var(--color-accent-blue);
+  background: rgba(0, 122, 255, 0.05);
+  transform: scale(1.01);
+}
+
+.dropzone-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-accent-blue);
+}
+
+/* List Style */
+.report-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-success {
+  background: rgba(52, 199, 89, 0.1);
+  color: var(--color-success);
+}
+
+.status-warning {
+  background: rgba(255, 204, 0, 0.1);
+  color: var(--color-warning);
+}
+
+.status-error {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--color-danger);
+}
+
+/* Footer */
+footer {
+  margin-top: 40px;
+  padding: 40px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 30px;
+  background: transparent;
+  transition: all 0.5s var(--spring-bounce);
+  user-select: none;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.footer-info:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.footer-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: transform 0.6s var(--spring-bounce);
+}
+
+.developed-by {
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 600;
+  opacity: 0;
+  max-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.5s var(--spring-bounce);
+}
+
+.footer-info:hover .developed-by {
+  opacity: 1;
+  max-width: 200px;
+  margin-left: 12px;
+}
+
+.footer-info:hover .footer-logo {
+  transform: scale(1.2) rotate(360deg);
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 60px 16px;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+}

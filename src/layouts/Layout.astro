@@ -1,0 +1,110 @@
+---
+import "@/styles/global.css";
+
+interface Props {
+	title: string;
+	description: string;
+	lang?: "ja" | "en" | "ko" | "zh" | "tl" | "tok";
+}
+
+const { title, description, lang = "ja" } = Astro.props;
+const siteUrl = "https://packbridge.manpuc.me";
+const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+
+const keywords =
+	"Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, マイクラ, リソースパック, 変換, 統合版";
+
+const structuredData = {
+	"@context": "https://schema.org",
+	"@type": "SoftwareApplication",
+	name: "PackBridge",
+	author: {
+		"@type": "Person",
+		name: "manpuc",
+		url: "https://www.manpuc.me",
+	},
+	applicationCategory: "UtilitiesApplication",
+	operatingSystem: "Windows, Mac, Linux, iOS, Android",
+	description: description,
+	url: siteUrl,
+	offers: { "@type": "Offer", price: "0", priceCurrency: "JPY" },
+};
+---
+
+<!doctype html>
+<html lang={lang}>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<!-- SEO -->
+		<link rel="canonical" href={canonicalURL} />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta name="keywords" content={keywords} />
+		<meta name="author" content="manpuc" />
+		<meta
+			name="theme-color"
+			content="#f2f2f7"
+			media="(prefers-color-scheme: light)"
+		/>
+		<meta
+			name="theme-color"
+			content="#000000"
+			media="(prefers-color-scheme: dark)"
+		/>
+
+		<!-- Icons -->
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+
+		<!-- OGP -->
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonicalURL} />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="PackBridge" />
+		<meta name="twitter:card" content="summary_large_image" />
+
+		<!-- Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+			rel="stylesheet"
+		/>
+
+		<!-- Structured Data -->
+		<script
+			type="application/ld+json"
+			set:html={JSON.stringify(structuredData)}
+		/>
+	</head>
+	<body>
+		<slot />
+	</body>
+</html>
+
+<script is:inline>
+	// Theme handling
+	const getTheme = () => {
+		if (
+			typeof localStorage !== "undefined" &&
+			localStorage.getItem("theme")
+		) {
+			return localStorage.getItem("theme");
+		}
+		return window.matchMedia("(prefers-color-scheme: dark)").matches
+			? "dark"
+			: "light";
+	};
+	document.documentElement.setAttribute("data-theme", getTheme());
+
+	// Initial Redirect handling (Root only)
+	if (location.pathname === '/') {
+		const savedLang = localStorage.getItem('lang');
+		if (savedLang && savedLang !== 'ja') {
+			location.href = '/' + savedLang;
+		}
+	}
+</script>

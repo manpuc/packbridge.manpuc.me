@@ -1,0 +1,56 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
+import Converter from "@/components/Converter";
+import { translations, type Language } from "@/lib/i18n";
+
+export function getStaticPaths() {
+	return [
+		{ params: { lang: "en" } },
+		{ params: { lang: "ko" } },
+		{ params: { lang: "zh" } },
+		{ params: { lang: "tl" } },
+		{ params: { lang: "tok" } },
+	];
+}
+
+const { lang } = Astro.params;
+const t = translations[lang as Language] || translations.en;
+---
+
+<Layout title={t.title} description={t.description} lang={lang as Language}>
+	<div class="top-controls">
+		<LangToggle client:load />
+		<ThemeToggle client:load />
+	</div>
+
+	<main class="container">
+		<header>
+			<h1>{t.heading}</h1>
+			<p class="description">{t.description}</p>
+		</header>
+
+		<Converter client:load />
+
+		<footer>
+			<div class="footer-credit">
+				{t.footer}
+			</div>
+
+			<a
+				href="https://www.manpuc.me"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="footer-info"
+			>
+				<img
+					src="https://www.manpuc.me/favicon.svg"
+					alt="manpuc logo"
+					class="footer-logo"
+				/>
+				<span class="developed-by">Developed by manpuc</span>
+			</a>
+		</footer>
+	</main>
+</Layout>
