@@ -119,6 +119,24 @@ const backLabel = {
 	tl: "Bumalik sa Home",
 	tok: "o tawa tomo"
 };
+
+const sourceCodeLabel = {
+	ja: "GitHub でソースコードを見る",
+	en: "View Source Code on GitHub",
+	ko: "GitHub에서 소스 코드 보기",
+	zh: "在 GitHub 上查看源代码",
+	tl: "Tingnan ang Source Code sa GitHub",
+	tok: "o lukin e pali lon ilo Kitu (GitHub)"
+};
+
+const openSourceText = {
+	ja: "本サービスはオープンソースとして公開されています。",
+	en: "This service is open source.",
+	ko: "이 서비스는 오픈 소스로 공개되어 있습니다.",
+	zh: "本服务已作为开源项目公开。",
+	tl: "Ang serbisyong ito ay open source.",
+	tok: "pali ni li open tawa jan ali."
+};
 ---
 
 <Layout title={`${t.terms} - PackBridge`} description={t.description} keywords={t.keywords} lang={lang as Language}>
@@ -144,15 +162,52 @@ const backLabel = {
 			}
 		</div>
 
-		<footer>
-			<a href={lang === 'ja' ? '/' : `/${lang}`} class="footer-link">
-				{backLabel[lang as Language] || backLabel.en}
-			</a>
+		<footer class="terms-footer">
+			<p class="os-text">
+				{openSourceText[lang as Language] || openSourceText.en}
+			</p>
+			<div class="footer-buttons">
+				<a href="https://github.com/manpuc/packbridge.manpuc.me" target="_blank" rel="noopener noreferrer" class="footer-link source-link">
+					{sourceCodeLabel[lang as Language] || sourceCodeLabel.en}
+				</a>
+				<a href={lang === 'ja' ? '/' : `/${lang}`} class="footer-link">
+					{backLabel[lang as Language] || backLabel.en}
+				</a>
+			</div>
 		</footer>
 	</main>
 </Layout>
 
 <style>
+	.terms-footer {
+		margin-top: 60px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 20px;
+		padding-top: 40px;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.os-text {
+		font-size: 13px;
+		color: var(--color-text-muted);
+		text-align: center;
+	}
+
+	.footer-buttons {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		gap: 24px;
+		flex-wrap: wrap;
+	}
+
+	.footer-buttons .footer-link {
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
 	.terms-grid {
 		display: flex;
 		flex-direction: column;

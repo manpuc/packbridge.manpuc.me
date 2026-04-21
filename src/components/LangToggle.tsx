@@ -40,13 +40,22 @@ export default function LangToggle() {
     setIsOpen(false);
     if (lang === currentLang) return;
 
-    // Save choice
-    localStorage.setItem('lang', lang);
+    // Supported language prefixes
+    const langPrefixes = ['en', 'ko', 'zh', 'tl', 'tok'].join('|');
+    const langRegex = new RegExp(`^/(${langPrefixes})(/|$)`);
 
-    // Build new URL
-    const baseUrl = window.location.origin;
-    const newPath = lang === 'ja' ? '/' : `/${lang}`;
-    window.location.href = baseUrl + newPath;
+    // Extract path without language prefix
+    const currentPathname = window.location.pathname;
+    const basePath = currentPathname.replace(langRegex, '/').replace(/\/+$/, '') || '/';
+
+    // Construct new path preserving current subpage
+    const newPath = lang === 'ja'
+      ? (basePath === '/' ? '/' : basePath)
+      : `/${lang}${basePath === '/' ? '' : basePath}`;
+
+    // Save choice and redirect
+    localStorage.setItem('lang', lang);
+    window.location.href = window.location.origin + newPath;
   };
 
   return (
