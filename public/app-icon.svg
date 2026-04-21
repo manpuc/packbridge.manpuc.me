@@ -11,7 +11,7 @@
       }
     </style>
   </defs>
-  <rect class="b" width="128" height="128" rx="25.6" ry="25.6"/>
+  <rect class="b" width="128" height="128"/>
   <rect class="c" x="41.6699169" y="41.6699169" width="44.6601661" height="44.6601661" rx="3.5325126" ry="3.5325126"/>
   <rect class="c" x="39.0652179" y="39.0652179" width="49.8695642" height="49.8695642" rx="4.9360991" ry="4.9360991" transform="translate(64 -26.509668) rotate(45)"/>
 </svg>

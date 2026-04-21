@@ -1,3 +1,18 @@
+// Basic mapping for common sound event names between Java and Bedrock
+const JAVA_TO_BEDROCK_EVENT_MAP: Record<string, string> = {
+  "block.anvil.land": "random.anvil_land",
+  "block.anvil.use": "random.anvil_use",
+  "block.anvil.break": "random.anvil_break",
+  "block.chest.open": "random.chestopen",
+  "block.chest.close": "random.chestclosed",
+  "ui.button.click": "random.click",
+  "entity.generic.eat": "random.eat",
+  "entity.generic.drink": "random.drink",
+  "entity.experience_orb.pickup": "random.orb",
+  "entity.player.levelup": "random.levelup",
+  "entity.item.break": "random.break",
+};
+
 /**
  * Converts Java Edition sounds.json to Bedrock Edition sound_definitions.json
  */
@@ -16,7 +31,10 @@ export function javaToBedrockSounds(jsonContent: string): string {
         return name.startsWith('sounds/') ? name : `sounds/${name}`;
       });
 
-      bedrockData.sound_definitions[soundEvent] = {
+      // Map the event name if a mapping exists, otherwise use the original
+      const mappedEvent = JAVA_TO_BEDROCK_EVENT_MAP[soundEvent] || soundEvent.replace(/\./g, '.');
+
+      bedrockData.sound_definitions[mappedEvent] = {
         category: data.category || "neutral",
         sounds: bSounds
       };

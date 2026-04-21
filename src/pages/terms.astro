@@ -1,0 +1,94 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
+import { translations } from "@/lib/i18n";
+
+const lang = "ja";
+const t = translations.ja;
+
+const terms = [
+	{
+		title: "1. サービスの利用について",
+		content: "本サービスは、MinecraftのレソースパックをJava版と統合版（Bedrock）の間で変換するためのツールです。全ての処理はユーザーのブラウザ内で行われ、ファイルが外部サーバーに送信されることはありません。",
+	},
+	{
+		title: "2. 免責事項（自己責任）",
+		content: "本サービス、および公開されているソースコードの利用は、全てユーザー自身の責任において行われるものとします。本サービスはすべてのファイルの完全な変換を保証するものではなく、変換後のデータに不具合が生じる可能性があります。本サービスの使用、またはソースコードの二次利用によって生じたいかなる損害についても、開発者は一切の責任を負いません。",
+	},
+	{
+		title: "3. 著作権とライセンス",
+		content: `本サービスのソースコードおよびデザインの著作権は manpuc に帰属します。
+ソースコードの使用については自由ですが、利用の際は必ず manpuc（https://www.manpuc.me）による制作である旨を明記してください。
+また、本サービスの完全な複製、および微細な変更のみを加えた状態での再配布・公開は固く禁止します。派生品を作成する場合は、独自のデザインや機能の追加を行ってください。`,
+	},
+	{
+		title: "4. 禁止事項",
+		content: "ネットワークへの過度な負荷をかける行為、当サイトの運営を妨げる行為、および法令または公序良俗に反する行為を禁止します。",
+	},
+	{
+		title: "5. 規約の変更",
+		content: "本規約は、開発者の判断により予告なく変更される場合があります。継続して利用される場合は、最新の規約に同意したものとみなします。",
+	},
+];
+---
+
+<Layout title={`${t.terms} - PackBridge`} description={t.description} keywords={t.keywords} lang={lang}>
+	<div class="top-controls">
+		<LangToggle client:load />
+		<ThemeToggle client:load />
+	</div>
+
+	<main class="container">
+		<header>
+			<h1>{t.terms}</h1>
+			<p class="description">最終更新: 2024年4月21日</p>
+		</header>
+
+		<div class="terms-grid">
+			{
+				terms.map((item) => (
+					<section class="card terms-section">
+						<h2>{item.title}</h2>
+						<p>{item.content}</p>
+					</section>
+				))
+			}
+		</div>
+
+		<footer>
+			<a href="/" class="footer-link">トップページへ戻る</a>
+		</footer>
+	</main>
+</Layout>
+
+<style>
+	.terms-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.terms-section h2 {
+		font-size: 18px;
+		font-weight: 700;
+		margin-bottom: 12px;
+		color: var(--color-text);
+	}
+
+	.terms-section p {
+		font-size: 15px;
+		line-height: 1.6;
+		color: var(--color-text-muted);
+		white-space: pre-wrap;
+	}
+
+	header .description {
+		margin-top: 8px;
+		font-size: 14px;
+	}
+
+	footer {
+		margin-top: 40px;
+	}
+</style>

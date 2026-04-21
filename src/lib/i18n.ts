@@ -33,8 +33,13 @@ export const translations = {
     errorNoFile: "ファイルを選択してください。",
     errorInvalidFile: "無効なファイル形式です。.zip または .mcpack を選択してください。",
     errorConversion: "変換中にエラーが発生しました。",
+    warnPossibleBedrock: "選択されたファイル (.mcpack) は、すでに統合版用のリソースパックである可能性があります。Java版から変換する場合は、通常 Java版の .zip ファイルを選択します。",
+    warnPossibleJava: "選択されたファイルは、すでにJava版用のリソースパックである可能性があります。統合版から変換する場合は、統合版用の .mcpack または .zip ファイルを選択してください。",
 
-    footer: "PackBridge | Minecraft Pack Converter"
+    footer: "PackBridge | Minecraft Resource Pack Converter",
+    terms: "利用規約",
+    keywords: "Minecraft, リソースパック, テクスチャパック, 変換, Java, Bedrock, 統合版, PackBridge, マイクラ, 変換シミュレーター, ポルティング",
+    disclaimerPerfect: "※すべてのファイルの完全な変換を保証するものではありません。変換後に手動での修正が必要になる場合があります。"
   },
   en: {
     title: "PackBridge - Minecraft Resource Pack Converter",
@@ -70,8 +75,13 @@ export const translations = {
     errorNoFile: "Please select a file.",
     errorInvalidFile: "Invalid file format. Please select a .zip or .mcpack file.",
     errorConversion: "An error occurred during conversion.",
+    warnPossibleBedrock: "The selected file (.mcpack) may already be a Bedrock Edition resource pack. When converting from Java, you usually select a Java Edition .zip file.",
+    warnPossibleJava: "The selected file may already be a Java Edition resource pack. When converting from Bedrock, please ensure you select a Bedrock Edition .mcpack or .zip file.",
 
-    footer: "PackBridge | Minecraft Pack Converter"
+    footer: "PackBridge | Minecraft Resource Pack Converter",
+    terms: "Terms of Service",
+    keywords: "Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, Porting, Assets",
+    disclaimerPerfect: "*Note: Perfect conversion of all files is not guaranteed. Manual adjustments may be required after conversion."
   },
   ko: {
     title: "PackBridge - 마인크래프트 리소스 팩 변환기",
@@ -107,8 +117,13 @@ export const translations = {
     errorNoFile: "파일을 선택해 주세요.",
     errorInvalidFile: "유효하지 않은 파일 형식입니다. .zip 또는 .mcpack을 선택해 주세요.",
     errorConversion: "변환 중 오류가 발생했습니다.",
+    warnPossibleBedrock: "선택된 파일(.mcpack)은 이미 베드락 에디션용 리소스 팩일 가능성이 있습니다. 자바 에디션에서 변환하려면 일반적으로 자바 에디션용 .zip 파일을 선택합니다.",
+    warnPossibleJava: "선택된 파일은 이미 자바 에디션용 리소스 팩일 가능성이 있습니다. 베드락 에디션에서 변환하려면 베드락 에디션용 .mcpack 또는 .zip 파일을 선택해 주세요.",
 
-    footer: "PackBridge | Minecraft Pack Converter"
+    footer: "PackBridge | Minecraft Resource Pack Converter",
+    terms: "이용약관",
+    keywords: "마인크래프트, 리소스 팩, 텍스처 팩, 변환기, 자바, 베드락, PackBridge, 포팅",
+    disclaimerPerfect: "*주의: 모든 파일의 완벽한 변환을 보장하지 않습니다. 변환 후 수동 수정이 필요할 수 있습니다."
   },
   zh: {
     title: "PackBridge - 我的世界资源包转换器",
@@ -144,8 +159,13 @@ export const translations = {
     errorNoFile: "请选择一个文件。",
     errorInvalidFile: "无效的文件格式。请选择 .zip 或 .mcpack 文件。",
     errorConversion: "转换过程中发生错误。",
+    warnPossibleBedrock: "所选文件 (.mcpack) 可能已经是基岩版资源包识别。从 Java 版转换时，通常应选择 Java 版的 .zip 文件。",
+    warnPossibleJava: "所选文件可能已经是 Java 版资源包。从基岩版转换时，请确保选择基岩版的 .mcpack 或 .zip 文件。",
 
-    footer: "PackBridge | Minecraft Pack Converter"
+    footer: "PackBridge | Minecraft Resource Pack Converter",
+    terms: "服务条款",
+    keywords: "我的世界, 资源包, 材质包, 转换器, Java, 基岩版, PackBridge, 移植",
+    disclaimerPerfect: "*注意：不保证所有文件的完美转换。转换后可能需要手动调整。"
   },
   tl: {
     title: "PackBridge - Minecraft Resource Pack Converter",
@@ -181,8 +201,13 @@ export const translations = {
     errorNoFile: "Mangyaring pumili ng file.",
     errorInvalidFile: "Maling format ng file. Pumili ng .zip o .mcpack na file.",
     errorConversion: "Nagkaroon ng error habang nagko-convert.",
+    warnPossibleBedrock: "Maaaring ang napiling file (.mcpack) ay isa nang Bedrock Edition resource pack. Kapag nag-convert mula sa Java, karaniwan kang pumipili ng Java Edition .zip file.",
+    warnPossibleJava: "Maaaring ang napiling file ay isa nang Java Edition resource pack. Kapag nag-convert mula sa Bedrock, siguraduhing pumili ng Bedrock Edition na .mcpack o .zip file.",
 
-    footer: "PackBridge | Minecraft Pack Converter"
+    footer: "PackBridge | Minecraft Resource Pack Converter",
+    terms: "Kasunduan sa Serbisyo",
+    keywords: "Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge",
+    disclaimerPerfect: "*Tandaan: Hindi garantisado ang perpektong conversion ng lahat ng file. Maaaring kailanganin ang manual na pagsasaayos pagkatapos ng conversion."
   },
   tok: {
     title: "PackBridge - ilo ante pi kulupu sitelen pi musi Manka",
@@ -218,9 +243,16 @@ export const translations = {
     errorNoFile: "o pana e lipu.",
     errorInvalidFile: "lipu ni li ike. o pana e poki .zip anu poki .mcpack.",
     errorConversion: "pali li pakala.",
+    warnPossibleBedrock: "lipu .mcpack ni li ken kulupu Pesaka lon tenpo ni. sina ante tan Java la, o pana e poki .zip pi kulupu Java.",
+    warnPossibleJava: "lipu ni li ken kulupu Java lon tenpo ni. sina ante tan Pesaka la, o pana e poki .mcpack anu poki .zip pi kulupu Pesaka.",
 
-    footer: "PackBridge | ilo ante pi kulupu sitelen"
+    footer: "PackBridge | ilo ante pi kulupu sitelen",
+    terms: "lipu pi ken pali",
+    keywords: "musi Manka, kulupu sitelen, ilo ante, PackBridge",
+    disclaimerPerfect: "※ilo ni li ken ala ante e ali pona. sina o pali e ijo lili sin lon tenpo pini."
   }
+
+
 };
 
 export type Language = keyof typeof translations;

@@ -1,0 +1,184 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
+import { translations, type Language } from "@/lib/i18n";
+
+export function getStaticPaths() {
+	return [
+		{ params: { lang: "en" } },
+		{ params: { lang: "ko" } },
+		{ params: { lang: "zh" } },
+		{ params: { lang: "tl" } },
+		{ params: { lang: "tok" } },
+	];
+}
+
+const { lang } = Astro.params;
+const t = translations[lang as Language] || translations.en;
+
+const termsContent = {
+	en: [
+		{
+			title: "1. Service Usage",
+			content: "This service is a tool for converting Minecraft resource packs between Java and Bedrock editions. All processing occurs locally within the browser; no files are sent to external servers.",
+		},
+		{
+			title: "2. Disclaimer (Self-Responsibility)",
+			content: "Use of this service and its source code is strictly at your own risk. Perfect conversion of all files is not guaranteed, and issues may occur in the converted data. The developer shall not be held liable for any damages, data loss, or issues arising from the use of this service or derived code.",
+		},
+		{
+			title: "3. Copyright and License",
+			content: "Copyright for this service's source code and design belongs to manpuc. Use of the code is permitted provided that clear attribution to manpuc (https://www.manpuc.me) is included. Complete replication or minimal-modification clones for redistribution are strictly prohibited.",
+		},
+		{
+			title: "4. Prohibited Actions",
+			content: "Excessive load on the network, interference with site operation, and illegal or immoral activities are prohibited.",
+		},
+	],
+	ko: [
+		{
+			title: "1. 서비스 이용",
+			content: "마인크래프트 리소스 팩을 자바 에디션과 베드락 에디션 간에 변환하는 도구입니다. 모든 처리는 브라우저 내에서 이루어지며 파일은 서버로 전송되지 않습니다.",
+		},
+		{
+			title: "2. 면책 사항 (자기 책임)",
+			content: "본 서비스 및 소스 코드 이용에 따른 모든 결과는 사용자 본인의 책임입니다. 개발자(manpuc)는 어떠한 손해나 문제에 대해서도 책임을 지지 않습니다.",
+		},
+		{
+			title: "3. 저작권 및 라이선스",
+			content: "소스 코드 및 디자인 저작권은 manpuc에 있습니다. 출처 명시(https://www.manpuc.me) 시 자유로운 이용이 가능하나, 완전한 복제나 단순 변경 후 재배포는 엄격히 금지됩니다.",
+		},
+		{
+			title: "4. 금지 사항",
+			content: "네트워크 과부하 유발, 사이트 운영 방해 및 법령 위반 행위를 금지합니다.",
+		},
+	],
+	zh: [
+		{
+			title: "1. 服务使用",
+			content: "本服务是用于在 Java 版和基岩版之间转换我的世界资源包的工具。所有处理均在浏览器中进行，文件不会上传。 ",
+		},
+		{
+			title: "2. 免责声明 (责任自负)",
+			content: "使用本服务及其源代码的风险由您自行承担。开发者 (manpuc) 对由此产生的任何损害或问题不承担任何责任。 ",
+		},
+		{
+			title: "3. 版权与许可",
+			content: "源代码及设计版权归 manpuc 所有。在使用时必须标明出处 (https://www.manpuc.me)。严禁完全复制或仅作微小改动后重新发布。 ",
+		},
+		{
+			title: "4. 禁止行为",
+			content: "禁止任何导致网络负荷过重、干扰运行或违反法律法规的行为。 ",
+		},
+	],
+	tl: [
+		{
+			title: "1. Paggamit ng Serbisyo",
+			content: "Ang serbisyong ito ay isang tool para sa conversion ng Minecraft resource packs sa pagitan ng Java at Bedrock. Ang lahat ng processing ay ginagawa sa browser; walang files na ina-upload.",
+		},
+		{
+			title: "2. Disclaimer (Sariling Pananagutan)",
+			content: "Ang paggamit ng serbisyong ito ay nasa sarili ninyong panganib. Ang developer (manpuc) ay hindi mananagot sa anumang pinsala o problema.",
+		},
+		{
+			title: "3. Copyright at Lisensya",
+			content: "Ang copyright sa source code at disenyo ay pag-aari ni manpuc. Malaya itong gamitin basta may tamang attribution (https://www.manpuc.me). Bawal ang pag-clone o pagkopya ng buo nang walang malaking pagbabago.",
+		},
+		{
+			title: "4. Mga Pinagbabawal",
+			content: "Ipinagbabawal ang anumang gawain na makakasira sa operasyon ng site o labag sa batas.",
+		},
+	],
+	tok: [
+		{
+			title: "1. pali musi",
+			content: "ilo ni li ante e kulupu sitelen pi musi Manka. pali li lon ilo lukin sina. musi sina li tawa ala.",
+		},
+		{
+			title: "2. pali ni li tan sina",
+			content: "pali ni li tan sina taso. jan manpuc li pali e ilo ike ala tawa sina. sina pakala la ni li tan sina.",
+		},
+		{
+			title: "3. lipu wawa pi jan manpuc",
+			content: "pali ni li tan jan manpuc. sina ken pali lon ona taso sina o pana e nimi jan manpuc (https://www.manpuc.me). sina ken ala pana e pali ali jan manpuc tawa jan ante.",
+		},
+		{
+			title: "4. pali ike",
+			content: "sina ken ala pakala e ilo pi jan ali.",
+		},
+	]
+};
+
+const terms = termsContent[lang as keyof typeof termsContent] || termsContent.en;
+const backLabel = {
+	ja: "トップページへ戻る",
+	en: "Back to Home",
+	ko: "홈으로 돌아가기",
+	zh: "回到首页",
+	tl: "Bumalik sa Home",
+	tok: "o tawa tomo"
+};
+---
+
+<Layout title={`${t.terms} - PackBridge`} description={t.description} keywords={t.keywords} lang={lang as Language}>
+	<div class="top-controls">
+		<LangToggle client:load />
+		<ThemeToggle client:load />
+	</div>
+
+	<main class="container">
+		<header>
+			<h1>{t.terms}</h1>
+			<p class="description">Last Updated: April 21, 2024</p>
+		</header>
+
+		<div class="terms-grid">
+			{
+				terms.map((item) => (
+					<section class="card terms-section">
+						<h2>{item.title}</h2>
+						<p>{item.content}</p>
+					</section>
+				))
+			}
+		</div>
+
+		<footer>
+			<a href={lang === 'ja' ? '/' : `/${lang}`} class="footer-link">
+				{backLabel[lang as Language] || backLabel.en}
+			</a>
+		</footer>
+	</main>
+</Layout>
+
+<style>
+	.terms-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.terms-section h2 {
+		font-size: 18px;
+		font-weight: 700;
+		margin-bottom: 12px;
+		color: var(--color-text);
+	}
+
+	.terms-section p {
+		font-size: 15px;
+		line-height: 1.6;
+		color: var(--color-text-muted);
+		white-space: pre-wrap;
+	}
+
+	header .description {
+		margin-top: 8px;
+		font-size: 14px;
+	}
+
+	footer {
+		margin-top: 40px;
+	}
+</style>

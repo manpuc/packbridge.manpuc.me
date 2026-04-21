@@ -19,7 +19,7 @@ const { lang } = Astro.params;
 const t = translations[lang as Language] || translations.en;
 ---
 
-<Layout title={t.title} description={t.description} lang={lang as Language}>
+<Layout title={t.title} description={t.description} keywords={t.keywords} lang={lang as Language}>
 	<div class="top-controls">
 		<LangToggle client:load />
 		<ThemeToggle client:load />
@@ -34,8 +34,14 @@ const t = translations[lang as Language] || translations.en;
 		<Converter client:load />
 
 		<footer>
-			<div class="footer-credit">
-				{t.footer}
+			<div class="footer-main">
+				<div class="footer-credit">
+					{t.footer}
+				</div>
+
+				<div class="footer-links">
+					<a href={`/${lang}/terms`} class="footer-link">{t.terms}</a>
+				</div>
 			</div>
 
 			<a
@@ -48,6 +54,9 @@ const t = translations[lang as Language] || translations.en;
 					src="https://www.manpuc.me/favicon.svg"
 					alt="manpuc logo"
 					class="footer-logo"
+					width="24"
+					height="24"
+					loading="lazy"
 				/>
 				<span class="developed-by">Developed by manpuc</span>
 			</a>

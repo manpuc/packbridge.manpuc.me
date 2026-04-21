@@ -172,11 +172,21 @@ export async function convertPack(
           report.convertedCount++;
           report.details.push({ filename: path, status: 'converted', outputPath: iconName });
         } else {
+          // Provide more specific reasons for common skips
+          let reason = 'Unsupported or unmapped file';
+          if (relativePath.includes('blockstates/') || relativePath.includes('models/')) {
+            reason = 'Custom models/blockstates are currently not supported';
+          } else if (relativePath.includes('mcpatcher/') || relativePath.includes('optifine/')) {
+            reason = 'OptiFine/MCPatcher assets are not supported by vanilla Bedrock';
+          } else if (relativePath.includes('font/') && relativePath.endsWith('.bin')) {
+            reason = 'Custom font glyph data is incompatible';
+          }
+
           report.skippedCount++;
           report.details.push({
             filename: path,
             status: 'skipped',
-            reason: 'Unsupported or unmapped file'
+            reason: reason
           });
         }
       }
@@ -234,10 +244,14 @@ function generateManifest(
   moduleUuid: string,
   minEngineVersion: [number, number, number]
 ) {
+  // Append credit to Bedrock description
+  const credit = "\nConverted by PackBridge (packbridge.manpuc.me)";
+  const finalDescription = description + credit;
+
   const manifest = {
     format_version: 2,
     header: {
-      description: description,
+      description: finalDescription,
       name: name,
       uuid: headerUuid,
       version: [1, 0, 0],
@@ -245,7 +259,7 @@ function generateManifest(
     },
     modules: [
       {
-        description: description,
+        description: finalDescription,
         type: "resources",
         uuid: moduleUuid,
         version: [1, 0, 0]
@@ -263,10 +277,49 @@ function generateManifest(
 }
 
 function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: string, description: string, packFormat: number) {
+  // For Java, support clickable link if possible by using Text Components
+  let finalDescription: any = description;
+  
+  try {
+    const creditText = "\nConverted with ";
+    const linkText = "PackBridge";
+    const url = "https://packbridge.manpuc.me";
+
+    // If description is already JSON-like string, parse it, otherwise wrap it
+    let baseComp: any;
+    try {
+      baseComp = JSON.parse(description);
+    } catch {
+      baseComp = { text: description };
+    }
+
+    // Ensure it's a component object
+    if (typeof baseComp === 'string') {
+      baseComp = { text: baseComp };
+    } else if (Array.isArray(baseComp)) {
+      baseComp = { text: "", extra: baseComp };
+    }
+
+    // Append our credit
+    if (!baseComp.extra) baseComp.extra = [];
+    baseComp.extra.push({ text: creditText, color: "gray" });
+    baseComp.extra.push({ 
+      text: linkText, 
+      color: "blue", 
+      underlined: true,
+      clickEvent: { action: "open_url", value: url }
+    });
+
+    finalDescription = baseComp;
+  } catch (e) {
+    // Fallback to plain string if something goes wrong
+    finalDescription = description + "\nConverted with PackBridge (https://packbridge.manpuc.me)";
+  }
+
   const mcmeta = {
     pack: {
       pack_format: packFormat,
-      description: description
+      description: finalDescription
     }
   };
 

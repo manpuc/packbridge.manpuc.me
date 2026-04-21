@@ -4,17 +4,41 @@ import "@/styles/global.css";
 interface Props {
 	title: string;
 	description: string;
+	keywords?: string;
 	lang?: "ja" | "en" | "ko" | "zh" | "tl" | "tok";
 }
 
-const { title, description, lang = "ja" } = Astro.props;
+const { title, description, keywords: propKeywords, lang = "ja" } = Astro.props;
 const siteUrl = "https://packbridge.manpuc.me";
-const canonicalURL = new URL(Astro.url.pathname, siteUrl);
 
-const keywords =
+// Handle canonical and alternate links
+const pathname = Astro.url.pathname.replace(/\/$/, "");
+const canonicalURL = new URL(pathname || "/", siteUrl);
+
+const currentPath = pathname.replace(/^\/(en|ko|zh|tl|tok)/, "");
+const languages = ["ja", "en", "ko", "zh", "tl", "tok"] as const;
+const alternateLinks = languages.map((l) => {
+	const prefix = l === "ja" ? "" : `/${l}`;
+	return {
+		href: new URL(`${prefix}${currentPath}` || "/", siteUrl).href,
+		lang: l === "tok" ? "x-toki" : l,
+	};
+});
+
+// Locale mapping for OGP
+const localeMap: Record<string, string> = {
+	ja: "ja_JP",
+	en: "en_US",
+	ko: "ko_KR",
+	zh: "zh_CN",
+	tl: "tl_PH",
+	tok: "mis_TOKI",
+};
+
+const keywords = propKeywords ||
 	"Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, マイクラ, リソースパック, 変換, 統合版";
 
-const structuredData = {
+const softwareAppStructuredData = {
 	"@context": "https://schema.org",
 	"@type": "SoftwareApplication",
 	name: "PackBridge",
@@ -29,6 +53,38 @@ const structuredData = {
 	url: siteUrl,
 	offers: { "@type": "Offer", price: "0", priceCurrency: "JPY" },
 };
+
+const breadcrumbStructuredData = {
+	"@context": "https://schema.org",
+	"@type": "BreadcrumbList",
+	itemListElement: [
+		{
+			"@type": "ListItem",
+			position: 1,
+			name: "Home",
+			item: siteUrl,
+		},
+		...(lang !== "ja"
+			? [
+					{
+						"@type": "ListItem",
+						position: 2,
+						name: lang.toUpperCase(),
+						item: `${siteUrl}/${lang}`,
+					},
+			  ]
+			: []),
+	],
+};
+
+const webSiteStructuredData = {
+	"@context": "https://schema.org",
+	"@type": "WebSite",
+	name: "PackBridge",
+	url: siteUrl,
+	description: description,
+	inLanguage: languages,
+};
 ---
 
 <!doctype html>
@@ -39,10 +95,16 @@ const structuredData = {
 
 		<!-- SEO -->
 		<link rel="canonical" href={canonicalURL} />
+		{alternateLinks.map(({ href, lang }) => (
+			<link rel="alternate" hreflang={lang} href={href} />
+		))}
+		<link rel="alternate" hreflang="x-default" href={new URL(currentPath || "/", siteUrl).href} />
+
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		<meta name="keywords" content={keywords} />
 		<meta name="author" content="manpuc" />
+		<meta name="content-language" content={lang} />
 		<meta
 			name="theme-color"
 			content="#f2f2f7"
@@ -56,6 +118,10 @@ const structuredData = {
 
 		<!-- Icons -->
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/png" sizes="144x144" href="/favicon-144.png" />
+		<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png" />
+		<link rel="manifest" href="/manifest.json" />
 		<meta name="generator" content={Astro.generator} />
 
 		<!-- OGP -->
@@ -63,8 +129,11 @@ const structuredData = {
 		<meta property="og:description" content={description} />
 		<meta property="og:url" content={canonicalURL} />
 		<meta property="og:type" content="website" />
+		<meta property="og:locale" content={localeMap[lang] || "ja_JP"} />
 		<meta property="og:site_name" content="PackBridge" />
+		<meta property="og:image" content={`${siteUrl}/og-image.png`} />
 		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@manpuc" />
 
 		<!-- Fonts -->
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -72,13 +141,28 @@ const structuredData = {
 		<link
 			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
 			rel="stylesheet"
+			media="print"
+			onload="this.media='all'"
 		/>
+		<noscript>
+			<link
+				href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+				rel="stylesheet"
+			/>
+		</noscript>
 
 		<!-- Structured Data -->
 		<script
 			type="application/ld+json"
-			set:html={JSON.stringify(structuredData)}
+			set:html={JSON.stringify([
+				softwareAppStructuredData,
+				breadcrumbStructuredData,
+				webSiteStructuredData,
+			])}
 		/>
+		<!-- Cloudflare Web Analytics -->
+		<script is:inline defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "6b934b828287452bae52d2ea1befff6b"}'></script>
+		<!-- End Cloudflare Web Analytics -->
 	</head>
 	<body>
 		<slot />

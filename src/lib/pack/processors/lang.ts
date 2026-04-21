@@ -6,7 +6,9 @@ export function javaToBedrockLang(jsonContent: string): string {
     const data = JSON.parse(jsonContent);
     let output = "";
     for (const [key, value] of Object.entries(data)) {
-      output += `${key}=${value}\n`;
+      // Replace actual newlines with literal \n for Bedrock .lang
+      const safeValue = String(value).replace(/\r?\n/g, "\\n");
+      output += `${key}=${safeValue}\n`;
     }
     return output;
   } catch (e) {
@@ -18,7 +20,7 @@ export function javaToBedrockLang(jsonContent: string): string {
  * Converts Bedrock Edition .lang format to Java Edition language JSON
  */
 export function bedrockToJavaLang(langContent: string): string {
-  const lines = langContent.split('\n');
+  const lines = langContent.split(/\r?\n/);
   const output: Record<string, string> = {};
 
   for (const line of lines) {
@@ -29,6 +31,8 @@ export function bedrockToJavaLang(langContent: string): string {
     if (firstEquals !== -1) {
       const key = trimLine.substring(0, firstEquals).trim();
       const value = trimLine.substring(firstEquals + 1).trim();
+      // In JSON, we want actual newlines if the .lang used literal \n
+      // Actually, Minecraft Java JSON also uses literal \n, so we keep it as is.
       output[key] = value;
     }
   }

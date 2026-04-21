@@ -12,10 +12,12 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
   { match: /^assets\/minecraft\/textures\/items?\/(.*)$/, replace: 'textures/items/$1' },
   { match: /^assets\/minecraft\/textures\/models\/armor\/(.*)_layer_([12])\.png$/, replace: 'textures/models/armor/$1_$2.png' },
   { match: /^assets\/minecraft\/textures\/entity\/(.*)$/, replace: 'textures/entity/$1' },
+  { match: /^assets\/minecraft\/textures\/(.*)\.mcmeta$/, replace: 'textures/$1.mcmeta' },
   { match: /^assets\/minecraft\/textures\/(.*)$/, replace: 'textures/$1' },
   { match: /^assets\/minecraft\/sounds\/(.*)$/, replace: 'sounds/$1' },
   { match: /^assets\/(minecraft|realms)\/lang\/(.*)\.json$/, replace: 'texts/$2.lang' },
   { match: /^assets\/realms\/textures\/(.*)$/, replace: 'textures/gui/realms/$1' },
+  { match: /^assets\/minecraft\/texts\/splashes\.txt$/, replace: 'texts/splashes.json' },
   { match: /^pack\.png$/, replace: 'pack_icon.png' },
 ];
 

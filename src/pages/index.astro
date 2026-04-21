@@ -8,7 +8,7 @@ import { translations } from "@/lib/i18n";
 const t = translations.ja;
 ---
 
-<Layout title={t.title} description={t.description} lang="ja">
+<Layout title={t.title} description={t.description} keywords={t.keywords} lang="ja">
 	<div class="top-controls">
 		<LangToggle client:load />
 		<ThemeToggle client:load />
@@ -23,8 +23,14 @@ const t = translations.ja;
 		<Converter client:load />
 
 		<footer>
-			<div class="footer-credit">
-				{t.footer}
+			<div class="footer-main">
+				<div class="footer-credit">
+					{t.footer}
+				</div>
+
+				<div class="footer-links">
+					<a href="/terms" class="footer-link">{t.terms}</a>
+				</div>
 			</div>
 
 			<a
@@ -37,6 +43,9 @@ const t = translations.ja;
 					src="https://www.manpuc.me/favicon.svg"
 					alt="manpuc logo"
 					class="footer-logo"
+					width="24"
+					height="24"
+					loading="lazy"
 				/>
 				<span class="developed-by">Developed by manpuc</span>
 			</a>
