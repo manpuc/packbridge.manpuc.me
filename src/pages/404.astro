@@ -1,0 +1,87 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getTranslation } from "@/lib/i18n";
+
+// 404 is root level, we use Japanese or English as a default
+const lang = "ja"; 
+const t = getTranslation(lang);
+---
+
+<Layout title={`404 ${t.error404Title} - PackBridge`} description={t.description} lang={lang}>
+	<main class="container error-page">
+		<div class="error-content">
+			<span class="error-code">404</span>
+			<h1>{t.error404Title}</h1>
+			<p class="description">
+				{t.error404Description}
+			</p>
+			
+			<div class="button-group">
+				<a href="/" class="btn btn-primary">
+					{t.backToHome}
+				</a>
+			</div>
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.error-page {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 70vh;
+		text-align: center;
+	}
+
+	.error-code {
+		font-size: 80px;
+		font-weight: 800;
+		background: var(--color-text-gradient);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		line-height: 1;
+		margin-bottom: 24px;
+		display: block;
+	}
+
+	.error-content h1 {
+		font-size: 32px;
+		font-weight: 700;
+		margin-bottom: 16px;
+	}
+
+	.error-content .description {
+		font-size: 16px;
+		color: var(--color-text-muted);
+		margin-bottom: 40px;
+		line-height: 1.8;
+	}
+
+	.button-group {
+		display: flex;
+		justify-content: center;
+		gap: 16px;
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		padding: 12px 32px;
+		border-radius: 12px;
+		font-weight: 600;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		text-decoration: none;
+	}
+
+	.btn-primary {
+		background: var(--color-text);
+		color: var(--color-surface);
+	}
+
+	.btn-primary:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-lg);
+		opacity: 0.9;
+	}
+</style>

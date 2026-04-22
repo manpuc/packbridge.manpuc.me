@@ -34,6 +34,8 @@
   --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --spring-smooth: cubic-bezier(0.25, 1, 0.5, 1);
   --transition-normal: 0.4s var(--spring-smooth);
+
+  --color-text-gradient: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
 }
 
 [data-theme='dark'] {
@@ -53,6 +55,7 @@
   --color-border: rgba(255, 255, 255, 0.1);
   --color-warning: #ffcc00; /* Original bright yellow for dark bg */
   --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --color-text-gradient: linear-gradient(135deg, #ffffff 0%, #98989d 100%);
 }
 
 * {

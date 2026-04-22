@@ -8,7 +8,7 @@ export default defineConfig({
   site: 'https://packbridge.manpuc.me',
   i18n: {
     defaultLocale: 'ja',
-    locales: ['ja', 'en', 'ko', 'zh', 'tl', 'tok'],
+    locales: ['ja', 'en', 'ko', 'zh', 'tl', 'tok', 'es', 'fr', 'de'],
     routing: {
       prefixDefaultLocale: false
     }

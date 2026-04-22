@@ -5,7 +5,7 @@ import { Upload } from 'lucide-react';
 import JSZip from 'jszip';
 import { convertPack } from '@/lib/pack/converter';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
-import { translations, type Language } from '@/lib/i18n';
+import type { Translation, Language } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from '@/lib/pack/versions';
 import { useFileDrop } from '@/hooks/useFileDrop';
 
@@ -14,8 +14,12 @@ import { DirectionSettings } from './converter/DirectionSettings';
 import { DropZone } from './converter/DropZone';
 import { ConversionReport } from './converter/ConversionReport';
 
-export default function Converter() {
-  const [lang, setLang] = useState<Language>('ja');
+interface ConverterProps {
+  t: Translation;
+  lang: Language;
+}
+
+export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [direction, setDirection] = useState<ConversionDirection>('java-to-bedrock');
   const [file, setFile] = useState<File | null>(null);
   const [zipInstance, setZipInstance] = useState<JSZip | null>(null);
@@ -28,8 +32,6 @@ export default function Converter() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
-  const t = translations[lang as keyof typeof translations];
-
   // Window-wide drag and drop hook
   const { isDragging } = useFileDrop({
     onDrop: (files) => {
@@ -37,10 +39,6 @@ export default function Converter() {
       if (droppedFile) handleFile(droppedFile);
     }
   });
-
-  useEffect(() => {
-    setLang(document.documentElement.lang as Language || 'ja');
-  }, []);
 
   const handleFile = useCallback((selectedFile: File) => {
     if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
@@ -80,9 +78,9 @@ export default function Converter() {
         const hasPackMcmeta = zip.file('pack.mcmeta') || zip.file(/pack\.mcmeta$/).length > 0;
 
         if (direction === 'java-to-bedrock' && (hasManifest || file.name.endsWith('.mcpack'))) {
-          setWarning((t as any).warnPossibleBedrock);
+          setWarning(t.warnPossibleBedrock);
         } else if (direction === 'bedrock-to-java' && hasPackMcmeta) {
-          setWarning((t as any).warnPossibleJava);
+          setWarning(t.warnPossibleJava);
         } else {
           setWarning(null);
         }

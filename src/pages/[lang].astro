@@ -3,20 +3,18 @@ import Layout from "@/layouts/Layout.astro";
 import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
 import Converter from "@/components/Converter";
-import { translations, type Language } from "@/lib/i18n";
+import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
 export function getStaticPaths() {
-	return [
-		{ params: { lang: "en" } },
-		{ params: { lang: "ko" } },
-		{ params: { lang: "zh" } },
-		{ params: { lang: "tl" } },
-		{ params: { lang: "tok" } },
-	];
+	return SUPPORTED_LANGUAGES
+		.filter((lang) => lang !== "ja")
+		.map((lang) => ({
+			params: { lang },
+		}));
 }
 
 const { lang } = Astro.params;
-const t = translations[lang as Language] || translations.en;
+const t = getTranslation(lang as Language);
 ---
 
 <Layout title={t.title} description={t.description} keywords={t.keywords} lang={lang as Language}>
@@ -31,7 +29,7 @@ const t = translations[lang as Language] || translations.en;
 			<p class="description">{t.description}</p>
 		</header>
 
-		<Converter client:load />
+		<Converter client:load t={t} lang={lang as Language} />
 
 		<footer>
 			<div class="footer-main">

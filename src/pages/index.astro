@@ -3,9 +3,10 @@ import Layout from "@/layouts/Layout.astro";
 import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
 import Converter from "@/components/Converter";
-import { translations } from "@/lib/i18n";
+import { getTranslation } from "@/lib/i18n";
 
-const t = translations.ja;
+const lang = "ja";
+const t = getTranslation(lang);
 ---
 
 <Layout title={t.title} description={t.description} keywords={t.keywords} lang="ja">
@@ -20,7 +21,7 @@ const t = translations.ja;
 			<p class="description">{t.description}</p>
 		</header>
 
-		<Converter client:load />
+		<Converter client:load t={t} lang={lang} />
 
 		<footer>
 			<div class="footer-main">

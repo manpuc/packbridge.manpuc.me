@@ -1,15 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Languages, Check } from 'lucide-react';
-import { translations, type Language } from '../lib/i18n';
-
-const LANG_NAMES: Record<Language, string> = {
-  ja: '日本語',
-  en: 'English',
-  ko: '한국어',
-  zh: '中文',
-  tl: 'Tagalog',
-  tok: 'toki pona'
-};
+import { LANG_NAMES, SUPPORTED_LANGUAGES, type Language } from '../lib/i18n/config';
 
 export default function LangToggle() {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,8 +10,9 @@ export default function LangToggle() {
   useEffect(() => {
     // Detect lang from URL or HTML tag
     const path = window.location.pathname;
-    const pathLang = path.split('/')[1] as Language;
-    const detectedLang = Object.keys(translations).includes(pathLang) ? pathLang : 'ja';
+    const segments = path.split('/');
+    const pathLang = segments[1] as Language;
+    const detectedLang = SUPPORTED_LANGUAGES.includes(pathLang) ? pathLang : 'ja';
     setCurrentLang(detectedLang);
 
     // Sync localStorage with current URL language
@@ -41,7 +33,7 @@ export default function LangToggle() {
     if (lang === currentLang) return;
 
     // Supported language prefixes
-    const langPrefixes = ['en', 'ko', 'zh', 'tl', 'tok'].join('|');
+    const langPrefixes = SUPPORTED_LANGUAGES.filter(l => l !== 'ja').join('|');
     const langRegex = new RegExp(`^/(${langPrefixes})(/|$)`);
 
     // Extract path without language prefix
@@ -72,7 +64,7 @@ export default function LangToggle() {
         <div className="lang-dropdown fade-in">
           <div className="dropdown-header">Select Language</div>
           <div className="dropdown-list">
-            {(Object.keys(LANG_NAMES) as Language[]).map((l) => (
+            {SUPPORTED_LANGUAGES.map((l) => (
               <button
                 key={l}
                 onClick={() => selectLang(l)}
