@@ -7,6 +7,16 @@ export interface Translation {
 	title: string;
 	heading: string;
 	description: string;
+	metaDescription: string;
+	h1Title: string;
+
+	// SEO Content
+	introTitle: string;
+	introDescription: string;
+	introFeaturesTitle: string;
+	introFeature1: string;
+	introFeature2: string;
+	introFeature3: string;
 
 	directionJavaToBedrock: string;
 	directionBedrockToJava: string;

@@ -1,9 +1,19 @@
 import type { Translation } from "./types";
 
 const ko: Translation = {
-	title: "PackBridge - 마인크래프트 리소스 팩 변환기",
+	title: "마인크래프트 리소스 팩 변환기 | PackBridge",
 	heading: "PackBridge",
 	description: "마인크래프트 리소스 팩을 자바 에디션과 베드락 에디션 간에 상호 변환합니다. 모든 변환은 브라우저 내에서 이루어지며, 파일이 서버로 전송되지 않습니다.",
+	metaDescription: "무료 온라인 마인크래프트(Minecraft) 리소스 팩 변환기. 자바와 베드락 에디션 간에 간편하게 변환하세요. 브라우저 로컬 처리로 안전하고 빠릅니다.",
+	h1Title: "마인크래프트 리소스 팩 변환기",
+
+	// SEO Content
+	introTitle: "PackBridge란?",
+	introDescription: "PackBridge는 마인크래프트의 서로 다른 에디션(자바 에디션 ⇄ 베드락 에디션) 간에 리소스 팩을 변환하기 위한 강력한 도구입니다. 복잡한 파일 구조의 변환을 자동화하여 원하는 텍스처를 어떤 기기에서든 즐길 수 있게 해줍니다.",
+	introFeaturesTitle: "주요 특징",
+	introFeature1: "브라우저 내 처리: 파일은 서버로 전송되지 않으며 사용자의 브라우저 내에서 안전하게 처리됩니다.",
+	introFeature2: "상호 변환 지원: 자바에서 베드락으로, 베드락에서 자바로의 양방향 변환을 완벽하게 지원합니다.",
+	introFeature3: "빠르고 가벼움: 최적화된 알고리즘을 통해 대용량 팩도 몇 초 만에 변환 가능합니다.",
 
 	directionJavaToBedrock: "자바 → 베드락",
 	directionBedrockToJava: "베드락 → 자바",

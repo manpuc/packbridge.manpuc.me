@@ -8,7 +8,12 @@ const lang = "ja";
 const t = getTranslation(lang);
 ---
 
-<Layout title={`${t.terms} - PackBridge`} description={t.description} keywords={t.keywords} lang={lang}>
+<Layout
+	title={`${t.terms} - PackBridge`}
+	description={t.description}
+	keywords={t.keywords}
+	lang={lang}
+>
 	<div class="top-controls">
 		<LangToggle client:load />
 		<ThemeToggle client:load />
@@ -36,7 +41,12 @@ const t = getTranslation(lang);
 				{t.openSourceText}
 			</p>
 			<div class="footer-buttons">
-				<a href="https://github.com/manpuc/packbridge.manpuc.me" target="_blank" rel="noopener noreferrer" class="footer-link source-link">
+				<a
+					href="https://github.com/manpuc/packbridge.manpuc.me"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="footer-link source-link"
+				>
 					{t.viewSourceCode}
 				</a>
 				<a href="/" class="footer-link">

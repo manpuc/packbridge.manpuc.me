@@ -1,9 +1,19 @@
 import type { Translation } from "./types";
 
 const tok: Translation = {
-	title: "PackBridge - ilo ante pi kulupu sitelen pi musi Manka",
+	title: "ilo ante pi kulupu sitelen pi musi Manka | PackBridge",
 	heading: "PackBridge",
 	description: "ilo ni li ante e kulupu sitelen pi musi Manka lon poki Java en poki Pesaka. ilo li pali lon ilo lukin sina. musi sina li tawa ala ilo suli ante.",
+	metaDescription: "ilo ni li ante e kulupu sitelen pi musi Manka lon poki Java en poki Pesaka. ona li pali lon ilo lukin sina. pali ni li wawa li pona.",
+	h1Title: "ilo ante pi kulupu sitelen pi musi Manka",
+
+	// SEO Content
+	introTitle: "PackBridge li seme?",
+	introDescription: "PackBridge li ilo wawa pi ante jo musi. ona li ante e jo pi musi Minecraft lon nasin ilo ante (Java ⇄ Bedrock). o jo e kule pona sina lon ilo musi ale.",
+	introFeaturesTitle: "pali suli ona",
+	introFeature1: "pali lon ni: ilo ni li pana ala e lipu sina tawa ma suli ante. ona li pali lon ilo lipu sina.",
+	introFeature2: "ante mute: ona li ken ante e ilo Java tawa ilo Bedrock e ilo Bedrock tawa ilo Java.",
+	introFeature3: "pali wawa: ona li pali wawa e lipu suli lon tenpo lili.",
 
 	directionJavaToBedrock: "Java → Pesaka",
 	directionBedrockToJava: "Pesaka → Java",

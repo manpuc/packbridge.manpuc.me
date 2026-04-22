@@ -6,30 +6,100 @@ import Converter from "@/components/Converter";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
 export function getStaticPaths() {
-	return SUPPORTED_LANGUAGES
-		.filter((lang) => lang !== "ja")
-		.map((lang) => ({
-			params: { lang },
-		}));
+	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
+		params: { lang },
+	}));
 }
 
 const { lang } = Astro.params;
 const t = getTranslation(lang as Language);
 ---
 
-<Layout title={t.title} description={t.description} keywords={t.keywords} lang={lang as Language}>
+<Layout
+	title={t.title}
+	description={t.metaDescription}
+	keywords={t.keywords}
+	lang={lang as Language}
+>
 	<div class="top-controls">
+		<button
+			id="show-intro"
+			class="icon-btn show-intro-btn"
+			title="Show Info"
+			aria-label="Show help and information"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"
+				></path><path d="M12 8h.01"></path></svg
+			>
+		</button>
 		<LangToggle client:load />
 		<ThemeToggle client:load />
 	</div>
 
 	<main class="container">
 		<header>
-			<h1>{t.heading}</h1>
+			<div class="brand-name">{t.heading}</div>
+			<h1>{t.h1Title}</h1>
 			<p class="description">{t.description}</p>
 		</header>
 
 		<Converter client:load t={t} lang={lang as Language} />
+
+		<div class="intro-section" id="intro-section">
+			<section class="intro-card">
+				<div class="intro-header">
+					<h2>{t.introTitle}</h2>
+					<p>{t.introDescription}</p>
+					<button
+						id="hide-intro"
+						class="dismiss-btn"
+						title="Hide Info"
+						aria-label="Hide help and information"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><path d="M18 6 6 18"></path><path d="m6 6 12 12"
+							></path></svg
+						>
+					</button>
+				</div>
+
+				<div class="intro-divider"></div>
+
+				<div class="features-section">
+					<h3 class="features-title">{t.introFeaturesTitle}</h3>
+					<div class="features-grid">
+						<div class="feature-item">
+							<p>{t.introFeature1}</p>
+						</div>
+						<div class="feature-item">
+							<p>{t.introFeature2}</p>
+						</div>
+						<div class="feature-item">
+							<p>{t.introFeature3}</p>
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
 
 		<footer>
 			<div class="footer-main">
@@ -50,7 +120,7 @@ const t = getTranslation(lang as Language);
 			>
 				<img
 					src="https://www.manpuc.me/favicon.svg"
-					alt="manpuc logo"
+					alt="manpuc official developer logo"
 					class="footer-logo"
 					width="24"
 					height="24"
@@ -61,3 +131,34 @@ const t = getTranslation(lang as Language);
 		</footer>
 	</main>
 </Layout>
+
+<script is:inline>
+	// Intro section visibility handling
+	const introSection = document.getElementById("intro-section");
+	const hideBtn = document.getElementById("hide-intro");
+	const showBtn = document.getElementById("show-intro");
+
+	const updateVisibility = (isHidden) => {
+		if (isHidden) {
+			introSection.classList.add("hidden");
+			showBtn.classList.add("active");
+		} else {
+			introSection.classList.remove("hidden");
+			showBtn.classList.remove("active");
+		}
+	};
+
+	// Initialize
+	const isIntroHidden = localStorage.getItem("hide_intro") === "true";
+	updateVisibility(isIntroHidden);
+
+	hideBtn?.addEventListener("click", () => {
+		localStorage.setItem("hide_intro", "true");
+		updateVisibility(true);
+	});
+
+	showBtn?.addEventListener("click", () => {
+		localStorage.removeItem("hide_intro");
+		updateVisibility(false);
+	});
+</script>

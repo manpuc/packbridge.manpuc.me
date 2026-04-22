@@ -1,9 +1,19 @@
 import type { Translation } from "./types";
 
 const ja: Translation = {
-	title: "PackBridge - Minecraft リソースパック変換",
+	title: "マイクラ リソースパック 変換ツール | PackBridge",
 	heading: "PackBridge",
 	description: "Minecraft のリソースパックを Java Edition と Bedrock Edition の間で相互に変換します。変換はすべてブラウザ内で行われ、ファイルがサーバーに送信されることはありません。",
+	metaDescription: "マイクラ（Minecraft）のJava版と統合版（Bedrock）の間でリソースパックを相互変換できる無料オンラインツールです。ブラウザ上で安全に、素早く変換できます。",
+	h1Title: "Minecraft リソースパック変換ツール",
+
+	// SEO Content
+	introTitle: "PackBridge とは？",
+	introDescription: "PackBridgeは、Minecraftの異なるエディション間（Java版 ⇄ 統合版）でリソースパックを変換するための強力なツールです。複雑なファイル構造の変換を自動化し、あなたの好みのテクスチャをどのデバイスでも楽しめるようにします。",
+	introFeaturesTitle: "主な特徴",
+	introFeature1: "ブラウザ完結：ファイルはサーバーに送信されず、手元のブラウザで安全に処理されます。",
+	introFeature2: "相互変換：Java版から統合版へ、また統合版からJava版への双方向の変換をサポート。",
+	introFeature3: "高速・軽量：独自の最適化アルゴリズムにより、大容量のパックもスムーズに変換可能です。",
 
 	directionJavaToBedrock: "Java → Bedrock",
 	directionBedrockToJava: "Bedrock → Java",

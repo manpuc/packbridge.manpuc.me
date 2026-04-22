@@ -279,7 +279,7 @@ function generateManifest(
 function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: string, description: string, packFormat: number) {
   // For Java, support clickable link if possible by using Text Components
   let finalDescription: any = description;
-  
+
   try {
     const creditText = "\nConverted with ";
     const linkText = "PackBridge";
@@ -303,9 +303,9 @@ function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: stri
     // Append our credit
     if (!baseComp.extra) baseComp.extra = [];
     baseComp.extra.push({ text: creditText, color: "gray" });
-    baseComp.extra.push({ 
-      text: linkText, 
-      color: "blue", 
+    baseComp.extra.push({
+      text: linkText,
+      color: "blue",
       underlined: true,
       clickEvent: { action: "open_url", value: url }
     });

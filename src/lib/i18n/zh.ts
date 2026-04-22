@@ -1,9 +1,19 @@
 import type { Translation } from "./types";
 
 const zh: Translation = {
-	title: "PackBridge - 我的世界资源包转换器",
+	title: "我的世界资源包转换器 | PackBridge",
 	heading: "PackBridge",
 	description: "在 Java 版和基岩版之间转换我的世界资源包。所有操作都在您的浏览器中完成；您的文件绝不会上传到服务器。",
+	metaDescription: "免费在线我的世界（Minecraft）资源包转换器。在 Java 版和基岩版（Bedrock）之间轻松转换，在浏览器本地处理，安全且快速。",
+	h1Title: "我的世界资源包转换器",
+
+	// SEO Content
+	introTitle: "什么是 PackBridge？",
+	introDescription: "PackBridge 是一款功能强大的工具，旨在不同版本的我的世界（Java ⇄ 基岩版）之间转换资源包。我们自动化了复杂的资源映射过程，让您可以在任何设备上享受喜爱的材质。",
+	introFeaturesTitle: "主要功能",
+	introFeature1: "本地处理：您的文件绝不会离开您的计算机。转换完全在您的网络浏览器中进行。",
+	introFeature2: "双向转换：在 Java 版到基岩版以及基岩版到 Java 版之间无缝转换。",
+	introFeature3: "快速轻量：针对速度进行了优化，让您在几秒钟内完成大容量资源包的转换。",
 
 	directionJavaToBedrock: "Java → 基岩",
 	directionBedrockToJava: "基岩 → Java",

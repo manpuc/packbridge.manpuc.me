@@ -1,9 +1,19 @@
 import type { Translation } from "./types";
 
 const de: Translation = {
-	title: "PackBridge - Minecraft Ressourcenpaket-Konverter",
+	title: "Minecraft Resource Pack Konverter | PackBridge",
 	heading: "PackBridge",
 	description: "Konvertieren Sie Minecraft Ressourcenpakete zwischen Java und Bedrock Edition. Alles passiert in Ihrem Browser; Ihre Dateien werden nie auf einen Server hochgeladen.",
+	metaDescription: "Kostenloses Online-Tool zum Konvertieren von Minecraft Resource Packs zwischen Java Edition und Bedrock Edition. Verarbeiten Sie Dateien lokal in Ihrem Browser.",
+	h1Title: "Minecraft Resource Pack Konverter",
+
+	// SEO Content
+	introTitle: "Was ist PackBridge?",
+	introDescription: "PackBridge ist ein leistungsstarkes Tool zum Konvertieren von Minecraft Resource Packs zwischen verschiedenen Editionen (Java ⇄ Bedrock). Wir automatisieren den komplexen Prozess der Neuordnung von Assets.",
+	introFeaturesTitle: "Hauptmerkmale",
+	introFeature1: "Lokale Verarbeitung: Ihre Dateien verlassen nie Ihren Computer. Die Konvertierung findet vollständig in Ihrem Browser statt.",
+	introFeature2: "Bidirektional: Konvertieren Sie nahtlos zwischen Java zu Bedrock und Bedrock zu Java Editionen.",
+	introFeature3: "Schnell & Leichtgewicht: Auf Geschwindigkeit optimiert, sodass Sie große Packs in Sekundenschnelle konvertieren können.",
 
 	directionJavaToBedrock: "Java → Bedrock",
 	directionBedrockToJava: "Bedrock → Java",

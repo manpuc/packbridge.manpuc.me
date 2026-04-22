@@ -5,18 +5,21 @@ import LangToggle from "@/components/LangToggle";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
 export function getStaticPaths() {
-	return SUPPORTED_LANGUAGES
-		.filter((lang) => lang !== "ja")
-		.map((lang) => ({
-			params: { lang },
-		}));
+	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
+		params: { lang },
+	}));
 }
 
 const { lang } = Astro.params;
 const t = getTranslation(lang as Language);
 ---
 
-<Layout title={`${t.terms} - PackBridge`} description={t.description} keywords={t.keywords} lang={lang as Language}>
+<Layout
+	title={`${t.terms} - PackBridge`}
+	description={t.description}
+	keywords={t.keywords}
+	lang={lang as Language}
+>
 	<div class="top-controls">
 		<LangToggle client:load />
 		<ThemeToggle client:load />
@@ -44,7 +47,12 @@ const t = getTranslation(lang as Language);
 				{t.openSourceText}
 			</p>
 			<div class="footer-buttons">
-				<a href="https://github.com/manpuc/packbridge.manpuc.me" target="_blank" rel="noopener noreferrer" class="footer-link source-link">
+				<a
+					href="https://github.com/manpuc/packbridge.manpuc.me"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="footer-link source-link"
+				>
 					{t.viewSourceCode}
 				</a>
 				<a href={`/${lang}`} class="footer-link">

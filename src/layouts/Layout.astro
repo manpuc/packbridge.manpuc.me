@@ -16,7 +16,7 @@ const siteUrl = "https://packbridge.manpuc.me";
 const pathname = Astro.url.pathname.replace(/\/$/, "");
 const canonicalURL = new URL(pathname || "/", siteUrl);
 
-const langPrefixes = SUPPORTED_LANGUAGES.filter(l => l !== 'ja').join('|');
+const langPrefixes = SUPPORTED_LANGUAGES.filter((l) => l !== "ja").join("|");
 const langRegex = new RegExp(`^/(${langPrefixes})`);
 const currentPath = pathname.replace(langRegex, "");
 
@@ -24,7 +24,7 @@ const alternateLinks = SUPPORTED_LANGUAGES.map((l) => {
 	const prefix = l === "ja" ? "" : `/${l}`;
 	return {
 		href: new URL(`${prefix}${currentPath}` || "/", siteUrl).href,
-		lang: l === "tok" ? "x-toki" : l,
+		lang: l === "tok" ? "tok" : l,
 	};
 });
 
@@ -41,7 +41,8 @@ const localeMap: Record<string, string> = {
 	de: "de_DE",
 };
 
-const keywords = propKeywords ||
+const keywords =
+	propKeywords ||
 	"Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, マイクラ, リソースパック, 変換, 統合版";
 
 const softwareAppStructuredData = {
@@ -54,17 +55,57 @@ const softwareAppStructuredData = {
 		url: "https://www.manpuc.me",
 	},
 	applicationCategory: "UtilitiesApplication",
-	operatingSystem: "Windows, Mac, Linux, iOS, Android",
+	operatingSystem: "Windows, macOS, Linux, Android, iOS",
 	description: description,
 	url: siteUrl,
-	offers: { "@type": "Offer", price: "0", priceCurrency: "JPY" },
+	screenshot: `${siteUrl}/og-image-ja.png`,
+	offers: {
+		"@type": "Offer",
+		price: "0",
+		priceCurrency: "JPY",
+	},
 	featureList: [
 		"Java to Bedrock Conversion",
 		"Bedrock to Java Conversion",
 		"Local Processing",
 		"Fast Conversion",
-		"No File Size Limit"
-	]
+		"No File Size Limit",
+	],
+};
+
+const faqStructuredData = {
+	"@context": "https://schema.org",
+	"@type": "FAQPage",
+	mainEntity: [
+		{
+			"@type": "Question",
+			name:
+				lang === "ja"
+					? "ファイルはサーバーにアップロードされますか？"
+					: "Are files uploaded to a server?",
+			acceptedAnswer: {
+				"@type": "Answer",
+				text:
+					lang === "ja"
+						? "いいえ、すべての変換処理はブラウザ内（ローカル）で完結します。ファイルが外部に送信されることはありません。"
+						: "No, all conversion processes are completed within your browser (locally). Files are never sent to external servers.",
+			},
+		},
+		{
+			"@type": "Question",
+			name:
+				lang === "ja"
+					? "どのエディションに対応していますか？"
+					: "Which editions are supported?",
+			acceptedAnswer: {
+				"@type": "Answer",
+				text:
+					lang === "ja"
+						? "Java Edition と Bedrock Edition（統合版）の相互変換に対応しています。"
+						: "It supports bidirectional conversion between Java Edition and Bedrock Edition.",
+			},
+		},
+	],
 };
 
 const breadcrumbStructuredData = {
@@ -85,9 +126,9 @@ const breadcrumbStructuredData = {
 						name: lang.toUpperCase(),
 						item: `${siteUrl}/${lang}`,
 					},
-			  ]
+				]
 			: []),
-		...(pathname.includes('/terms')
+		...(pathname.includes("/terms")
 			? [
 					{
 						"@type": "ListItem",
@@ -95,7 +136,7 @@ const breadcrumbStructuredData = {
 						name: "Terms",
 						item: `${siteUrl}${lang === "ja" ? "" : "/" + lang}/terms`,
 					},
-			  ]
+				]
 			: []),
 	],
 };
@@ -118,15 +159,22 @@ const webSiteStructuredData = {
 
 		<!-- SEO -->
 		<link rel="canonical" href={canonicalURL} />
-		{alternateLinks.map(({ href, lang }) => (
-			<link rel="alternate" hreflang={lang} href={href} />
-		))}
-		<link rel="alternate" hreflang="x-default" href={new URL(currentPath || "/", siteUrl).href} />
+		{
+			alternateLinks.map(({ href, lang }) => (
+				<link rel="alternate" hreflang={lang} href={href} />
+			))
+		}
+		<link
+			rel="alternate"
+			hreflang="x-default"
+			href={new URL(currentPath || "/", siteUrl).href}
+		/>
 
 		<title>{title}</title>
 		<meta name="description" content={description} />
-		<meta name="keywords" content={keywords} />
 		<meta name="author" content="manpuc" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<meta name="content-language" content={lang} />
 		<meta
 			name="theme-color"
@@ -141,8 +189,18 @@ const webSiteStructuredData = {
 
 		<!-- Icons -->
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" type="image/png" sizes="144x144" href="/favicon-144.png" />
-		<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="144x144"
+			href="/favicon-144.png"
+		/>
+		<link
+			rel="icon"
+			type="image/png"
+			sizes="192x192"
+			href="/favicon-192.png"
+		/>
 		<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png" />
 		<link rel="manifest" href="/manifest.json" />
 		<meta name="generator" content={Astro.generator} />
@@ -158,9 +216,6 @@ const webSiteStructuredData = {
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:site" content="@manpuc" />
 
-		<!-- Fonts -->
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
 			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
 			rel="stylesheet"
@@ -181,10 +236,16 @@ const webSiteStructuredData = {
 				softwareAppStructuredData,
 				breadcrumbStructuredData,
 				webSiteStructuredData,
+				faqStructuredData,
 			])}
 		/>
 		<!-- Cloudflare Web Analytics -->
-		<script is:inline defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "6b934b828287452bae52d2ea1befff6b"}'></script>
+		<script
+			is:inline
+			defer
+			src="https://static.cloudflareinsights.com/beacon.min.js"
+			data-cf-beacon='{"token": "6b934b828287452bae52d2ea1befff6b"}'
+		></script>
 		<!-- End Cloudflare Web Analytics -->
 	</head>
 	<body>
@@ -208,25 +269,27 @@ const webSiteStructuredData = {
 	document.documentElement.setAttribute("data-theme", getTheme());
 
 	// Initial Redirect handling (Root only)
-	if (location.pathname === '/') {
-		const savedLang = localStorage.getItem('lang');
-		if (savedLang && savedLang !== 'ja') {
-			location.href = '/' + savedLang;
+	if (location.pathname === "/") {
+		const savedLang = localStorage.getItem("lang");
+		if (savedLang && savedLang !== "ja") {
+			location.href = "/" + savedLang;
 		}
 	}
 
 	// Footer Logo Touch Handling
-	document.addEventListener('click', (e) => {
-		const footerInfo = e.target.closest('.footer-info');
+	document.addEventListener("click", (e) => {
+		const footerInfo = e.target.closest(".footer-info");
 		if (footerInfo && window.matchMedia("(pointer: coarse)").matches) {
-			if (!footerInfo.classList.contains('touch-active')) {
+			if (!footerInfo.classList.contains("touch-active")) {
 				e.preventDefault();
-				footerInfo.classList.add('touch-active');
+				footerInfo.classList.add("touch-active");
 			}
 		} else {
-			const activeFooter = document.querySelector('.footer-info.touch-active');
+			const activeFooter = document.querySelector(
+				".footer-info.touch-active",
+			);
 			if (activeFooter && (!footerInfo || activeFooter !== footerInfo)) {
-				activeFooter.classList.remove('touch-active');
+				activeFooter.classList.remove("touch-active");
 			}
 		}
 	});
