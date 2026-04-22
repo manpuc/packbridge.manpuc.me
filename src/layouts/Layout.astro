@@ -191,4 +191,20 @@ const webSiteStructuredData = {
 			location.href = '/' + savedLang;
 		}
 	}
+
+	// Footer Logo Touch Handling
+	document.addEventListener('click', (e) => {
+		const footerInfo = e.target.closest('.footer-info');
+		if (footerInfo && window.matchMedia("(pointer: coarse)").matches) {
+			if (!footerInfo.classList.contains('touch-active')) {
+				e.preventDefault();
+				footerInfo.classList.add('touch-active');
+			}
+		} else {
+			const activeFooter = document.querySelector('.footer-info.touch-active');
+			if (activeFooter && (!footerInfo || activeFooter !== footerInfo)) {
+				activeFooter.classList.remove('touch-active');
+			}
+		}
+	});
 </script>

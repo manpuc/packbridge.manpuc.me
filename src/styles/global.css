@@ -375,13 +375,15 @@ footer {
   transition: all 0.5s var(--spring-bounce);
 }
 
-.footer-info:hover .developed-by {
+.footer-info:hover .developed-by,
+.footer-info.touch-active .developed-by {
   opacity: 1;
   max-width: 200px;
   margin-left: 12px;
 }
 
-.footer-info:hover .footer-logo {
+.footer-info:hover .footer-logo,
+.footer-info.touch-active .footer-logo {
   transform: scale(1.2) rotate(360deg);
 }
 

@@ -35,6 +35,7 @@ Thumbs.db
 # dev
 devfile/
 scratch/
+DESIGN.md
 
 # Python
 *.py
