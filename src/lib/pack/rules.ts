@@ -33,11 +33,18 @@ export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
   { match: /^pack_icon\.png$/, replace: 'pack.png' },
 ];
 
+interface MappingsData {
+  java_to_bedrock: Record<string, string>;
+  bedrock_to_java: Record<string, string>;
+}
+
+const typedMappings = mappings as MappingsData;
+
 export function getTargetContext(path: string, direction: ConversionDirection): string | null {
   // 1. Try exact mapping from the generated database
-  const map: Record<string, string> = direction === 'java-to-bedrock'
-    ? (mappings as any).java_to_bedrock
-    : (mappings as any).bedrock_to_java;
+  const map = direction === 'java-to-bedrock'
+    ? typedMappings.java_to_bedrock
+    : typedMappings.bedrock_to_java;
 
   if (map[path]) {
     return map[path];

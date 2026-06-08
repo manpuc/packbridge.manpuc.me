@@ -86,11 +86,15 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         }
 
         // Icon extraction
-        const iconEntry = zip.file('pack.png') || zip.file('pack_icon.png') || zip.file(/\/(pack\.png|pack_icon\.png)$/)[0];
-        if (iconEntry) {
-          const blob = await iconEntry.async('blob');
-          currentIconUrl = URL.createObjectURL(blob);
-          setIconUrl(currentIconUrl);
+        try {
+          const iconEntry = zip.file('pack.png') || zip.file('pack_icon.png') || zip.file(/\/(pack\.png|pack_icon\.png)$/)[0];
+          if (iconEntry) {
+            const blob = await iconEntry.async('blob');
+            currentIconUrl = URL.createObjectURL(blob);
+            setIconUrl(currentIconUrl);
+          }
+        } catch (iconError) {
+          console.warn("Failed to extract pack icon", iconError);
         }
       } catch (e) {
         console.error("Failed to process file", e);
