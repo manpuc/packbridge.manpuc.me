@@ -58,7 +58,7 @@ const tok: Translation = {
 	error404Description: "pakala. lipu ni li lon ala. sina o tawa tomo.",
 
 	// Terms of Use
-	termsLastUpdated: "tenpo pi suno 22, pi mun 4, pi tenpo suli 2024",
+	termsLastUpdated: "tenpo pi suno 17, pi mun 6, pi tenpo suli 2026",
 	termsSections: [
 		{
 			title: "1. pali musi",

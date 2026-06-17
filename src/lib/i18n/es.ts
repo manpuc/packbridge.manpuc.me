@@ -58,7 +58,7 @@ const es: Translation = {
 	error404Description: "Lo sentimos, la página que buscas no existe o ha sido movida.",
 
 	// Terms of Use
-	termsLastUpdated: "22 de abril de 2024",
+	termsLastUpdated: "17 de junio de 2026",
 	termsSections: [
 		{
 			title: "1. Uso del servicio",

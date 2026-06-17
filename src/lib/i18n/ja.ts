@@ -58,7 +58,7 @@ const ja: Translation = {
 	error404Description: "申し訳ありません。お探しのページは存在しないか、移動した可能性があります。",
 
 	// Terms of Use
-	termsLastUpdated: "2024年4月22日",
+	termsLastUpdated: "2026年6月17日",
 	termsSections: [
 		{
 			title: "1. サービスの利用について",

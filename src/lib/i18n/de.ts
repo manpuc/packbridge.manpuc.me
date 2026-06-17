@@ -58,7 +58,7 @@ const de: Translation = {
 	error404Description: "Entschuldigung, die gesuchte Seite existiert nicht oder wurde verschoben.",
 
 	// Terms of Use
-	termsLastUpdated: "22. April 2024",
+	termsLastUpdated: "17. Juni 2026",
 	termsSections: [
 		{
 			title: "1. Dienstnutzung",

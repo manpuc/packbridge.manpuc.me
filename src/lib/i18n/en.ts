@@ -58,7 +58,7 @@ const en: Translation = {
 	error404Description: "We're sorry, the page you're looking for doesn't exist or has been moved.",
 
 	// Terms of Use
-	termsLastUpdated: "April 22, 2024",
+	termsLastUpdated: "June 17, 2026",
 	termsSections: [
 		{
 			title: "1. Service Usage",

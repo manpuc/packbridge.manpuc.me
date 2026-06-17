@@ -58,7 +58,7 @@ const zh: Translation = {
 	error404Description: "抱歉，您访问的页面不存在或已被移动。",
 
 	// Terms of Use
-	termsLastUpdated: "2024年4月22日",
+	termsLastUpdated: "2026年6月17日",
 	termsSections: [
 		{
 			title: "1. 服务使用",

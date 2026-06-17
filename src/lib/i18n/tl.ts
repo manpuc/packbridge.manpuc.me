@@ -58,7 +58,7 @@ const tl: Translation = {
 	error404Description: "Paumanhin, ang pahinang hinahanap mo ay hindi umiiral o nailipat na.",
 
 	// Terms of Use
-	termsLastUpdated: "Abril 22, 2024",
+	termsLastUpdated: "Hunyo 17, 2026",
 	termsSections: [
 		{
 			title: "1. Paggamit ng Serbisyo",

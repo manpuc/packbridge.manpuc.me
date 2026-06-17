@@ -58,7 +58,7 @@ const ko: Translation = {
 	error404Description: "죄송합니다. 찾으시는 페이지가 존재하지 않거나 이동되었을 수 있습니다.",
 
 	// Terms of Use
-	termsLastUpdated: "2024년 4월 22일",
+	termsLastUpdated: "2026년 6월 17일",
 	termsSections: [
 		{
 			title: "1. 서비스 이용",

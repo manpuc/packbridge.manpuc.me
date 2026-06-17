@@ -58,7 +58,7 @@ const fr: Translation = {
 	error404Description: "Désolé, la page que vous recherchez n'existe pas ou a été déplacée.",
 
 	// Terms of Use
-	termsLastUpdated: "22 avril 2024",
+	termsLastUpdated: "17 juin 2026",
 	termsSections: [
 		{
 			title: "1. Utilisation du service",
