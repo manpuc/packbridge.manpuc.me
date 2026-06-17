@@ -8,6 +8,7 @@ import { generateBlocksJson, generateTerrainTexture } from './processors/blocks'
 import { generateItemTexture } from './processors/items';
 import { parseJavaAnimation, type FlipbookEntry } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
+import { normalizeLegacyPath } from './legacy';
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -100,7 +101,15 @@ export async function convertPack(
       continue;
     }
 
-    const relativePath = path.substring(packRoot.length);
+    let relativePath = path.substring(packRoot.length);
+
+    // Normalize legacy paths
+    if (direction === 'java-to-bedrock') {
+      const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId);
+      if (jVersion) {
+        relativePath = normalizeLegacyPath(relativePath, jVersion.packFormat);
+      }
+    }
 
     try {
       let targetPath = getTargetContext(relativePath, direction);
