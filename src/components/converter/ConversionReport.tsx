@@ -25,14 +25,14 @@ export function ConversionReport({
   const [showDetails, setShowDetails] = useState(false);
 
   return (
-    <motion.div 
+    <motion.div
       key="report"
       layout
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={springTransition}
-      className="report-container" 
+      className="report-container"
       style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
       <motion.div layout className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -58,10 +58,10 @@ export function ConversionReport({
               {t.btnDownload}
             </motion.a>
           )}
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="secondary" 
+            className="secondary"
             onClick={onReset}
           >
             <RefreshCw size={18} />
@@ -70,54 +70,56 @@ export function ConversionReport({
         </div>
       </motion.div>
 
-      <motion.div layout className="card">
-        <button
-          className="secondary"
-          style={{ width: '100%', justifyContent: 'space-between', border: 'none', background: 'transparent' }}
-          onClick={() => setShowDetails(!showDetails)}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertCircle size={18} />
-            {t.unsupportedTitle} ({report.skippedCount + report.errorCount})
-          </span>
-          <motion.div animate={{ rotate: showDetails ? 180 : 0 }}>
-            <ChevronDown size={18} />
-          </motion.div>
-        </button>
-
-        <AnimatePresence>
-          {showDetails && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="report-list" 
-              style={{ marginTop: '16px', maxHeight: '300px', overflowY: 'auto' }}
-            >
-              {report.details
-                .filter((d: ConversionResult) => d.status !== 'converted')
-                .map((detail: ConversionResult, idx: number) => (
-                  <div key={idx} className="report-item">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontWeight: 600, wordBreak: 'break-all' }}>{detail.filename}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{detail.reason}</span>
-                    </div>
-                    <span className={`status-badge status-${detail.status}`}>
-                      {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
-                    </span>
-                  </div>
-                ))}
+      {(report.skippedCount > 0 || report.errorCount > 0) && (
+        <motion.div layout className="card">
+          <button
+            className="secondary"
+            style={{ width: '100%', justifyContent: 'space-between', border: 'none', background: 'transparent' }}
+            onClick={() => setShowDetails(!showDetails)}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={18} />
+              {t.unsupportedTitle} ({report.skippedCount + report.errorCount})
+            </span>
+            <motion.div animate={{ rotate: showDetails ? 180 : 0 }}>
+              <ChevronDown size={18} />
             </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+          </button>
+
+          <AnimatePresence>
+            {showDetails && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="report-list"
+                style={{ marginTop: '16px', maxHeight: '300px', overflowY: 'auto' }}
+              >
+                {report.details
+                  .filter((d: ConversionResult) => d.status !== 'converted')
+                  .map((detail: ConversionResult, idx: number) => (
+                    <div key={idx} className="report-item">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontWeight: 600, wordBreak: 'break-all' }}>{detail.filename}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{detail.reason}</span>
+                      </div>
+                      <span className={`status-badge status-${detail.status}`}>
+                        {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
+                      </span>
+                    </div>
+                  ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
 
 function SummaryItem({ label, value, color, index }: { label: string, value: number, color?: string, index: number }) {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.2 + index * 0.1 }}

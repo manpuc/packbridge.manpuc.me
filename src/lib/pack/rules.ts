@@ -39,15 +39,49 @@ interface MappingsData {
 }
 
 const typedMappings = mappings as MappingsData;
+let activeMappings: MappingsData = { java_to_bedrock: {}, bedrock_to_java: {} };
+let fallbackMappings: MappingsData = typedMappings; // The global mappings.json as fallback
+export async function loadMappings(javaVersionId?: string, bedrockVersionId?: string) {
+  if (!javaVersionId || !bedrockVersionId) {
+    activeMappings = fallbackMappings;
+    return;
+  }
+  
+  // Clean versions for the filename format used by the script
+  const jClean = javaVersionId; // e.g. '1.20.4' or '1.21.0'
+  const bClean = bedrockVersionId; // e.g. '1.20.80'
+  
+  try {
+    // Attempt to load the specific mapping file dynamically
+    // In a browser/vite context, we can fetch it from public dir, or use dynamic import.
+    // For now, if we assume they are bundled or available via dynamic import:
+    // This requires Vite to bundle them, which we can do using an explicit import or fetch.
+    const mapModule = await import(`./mappings/${jClean}_to_${bClean}.json`);
+    activeMappings = mapModule.default;
+  } catch (e) {
+    console.warn(`Could not load specific mapping for ${jClean} <-> ${bClean}. Falling back to default mappings.`);
+    activeMappings = fallbackMappings;
+  }
+}
 
 export function getTargetContext(path: string, direction: ConversionDirection): string | null {
+  // Normalize path for mappings.json lookup since mappings.json incorrectly uses 'assets/textures/...' instead of 'assets/minecraft/textures/...'
+  const lookupPath = direction === 'java-to-bedrock' 
+    ? path.replace(/^assets\/minecraft\//, 'assets/') 
+    : path;
+
   // 1. Try exact mapping from the generated database
   const map = direction === 'java-to-bedrock'
-    ? typedMappings.java_to_bedrock
-    : typedMappings.bedrock_to_java;
+    ? activeMappings.java_to_bedrock
+    : activeMappings.bedrock_to_java;
 
-  if (map[path]) {
-    return map[path];
+  const exactMatch = map[lookupPath] || (direction === 'java-to-bedrock' ? fallbackMappings.java_to_bedrock[lookupPath] : fallbackMappings.bedrock_to_java[lookupPath]);
+  if (exactMatch) {
+    if (direction === 'bedrock-to-java') {
+      // Map returns 'assets/textures/...', needs to be 'assets/minecraft/textures/...'
+      return exactMatch.replace(/^assets\//, 'assets/minecraft/');
+    }
+    return exactMatch;
   }
 
   // 2. Fallback to regex rules for patterns

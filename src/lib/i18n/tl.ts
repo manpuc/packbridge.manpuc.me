@@ -21,7 +21,10 @@ const tl: Translation = {
 	dropzoneTitle: "I-drop ang iyong pack dito o i-click para mag-browse",
 	dropzoneSubtitle: "Sinusuportahan ang mga .zip o .mcpack na file",
 	dropzoneProcessing: "Pinoproseso...",
+	sourceVersion: "Source Version",
 	targetVersion: "Target na Bersyon",
+	autoDetected: "Auto-detected",
+	uploadToAutoDetect: "Mag-upload ng file para ma-auto-detect",
 
 	btnConvert: "Simulan ang Pag-convert",
 	btnDownload: "I-download ang Na-convert na Pack",
@@ -79,7 +82,7 @@ const tl: Translation = {
 		},
 		{
 			title: "6. Privacy Policy",
-			content: "• Pagproseso ng Data: Ang lahat ng data na kino-convert gamit ang serbisyong ito ay pinoproseso nang lokal sa browser ng user. Ang mga content ay hindi kailanman ipinapadala o kinokolekta ng mga server.\n• Analytics: Ang site na ito ay gumagamit ng Cloudflare Web Analytics upang maunawaan ang paggamit ng site. Ito ay nangongolekta ng statistical data at hindi tumutukoy sa mga indibidwal na user.\n• Local Storage: Ginagamit namin ang browser localStorage upang i-save ang iyong mga kagustuhan sa wika at theme (dark mode).",
+			content: "• Pagproseso ng Data: Ang lahat ng data na kino-convert gamit ang serbisyong ito ay pinoproseso nang lokal sa browser ng user. Ang mga content ay hindi kailanman ipinapadala o kinokolekta ng mga server.\n• Analytics: Ang site na ito ay gumagamit ng Cloudflare Web Analytics at Umami upang maunawaan ang paggamit ng site. Ang mga ito ay nangongolekta ng statistical data at hindi tumutukoy sa mga indibidwal na user.\n• Local Storage: Ginagamit namin ang browser localStorage upang i-save ang iyong mga kagustuhan sa wika at theme (dark mode).",
 		},
 	],
 	backToHome: "Bumalik sa Home",

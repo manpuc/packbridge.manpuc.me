@@ -20,8 +20,11 @@ const de: Translation = {
 
 	dropzoneTitle: "Datei hier ablegen oder zum Durchsuchen klicken",
 	dropzoneSubtitle: "Unterstützt .zip oder .mcpack Dateien",
-	dropzoneProcessing: "Verarbeitung...",
+	dropzoneProcessing: "Wird bearbeitet...",
+	sourceVersion: "Quellversion",
 	targetVersion: "Zielversion",
+	autoDetected: "Automatisch erkannt",
+	uploadToAutoDetect: "Datei hochladen zur automatischen Erkennung",
 
 	btnConvert: "Konvertierung starten",
 	btnDownload: "Konvertiertes Paket herunterladen",
@@ -79,7 +82,7 @@ const de: Translation = {
 		},
 		{
 			title: "6. Datenschutzrichtlinie",
-			content: "• Datenverarbeitung: Alle Daten werden lokal im Browser verarbeitet. Inhalte werden niemals an Server gesendet oder dort gespeichert.\n• Analyse: Diese Website nutzt Cloudflare Web Analytics, um Nutzungsmuster zu verstehen. Die gesammelten Daten sind statistisch und anonym.\n• Lokale Speicherung: Wir verwenden den localStorage des Browsers, um Ihre Sprach- und Designeinstellungen zu speichern.",
+			content: "• Datenverarbeitung: Alle Daten werden lokal im Browser verarbeitet. Inhalte werden niemals an Server gesendet oder dort gespeichert.\n• Analyse: Diese Website nutzt Cloudflare Web Analytics und Umami, um Nutzungsmuster zu verstehen. Die gesammelten Daten sind statistisch und anonym.\n• Lokale Speicherung: Wir verwenden den localStorage des Browsers, um Ihre Sprach- und Designeinstellungen zu speichern.",
 		},
 	],
 	backToHome: "Zurück zur Startseite",

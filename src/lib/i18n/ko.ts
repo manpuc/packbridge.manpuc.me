@@ -21,7 +21,10 @@ const ko: Translation = {
 	dropzoneTitle: "파일을 드롭하거나 클릭하여 선택",
 	dropzoneSubtitle: ".zip 또는 .mcpack 형식 지원",
 	dropzoneProcessing: "처리 중...",
+	sourceVersion: "원본 버전",
 	targetVersion: "대상 버전",
+	autoDetected: "자동 감지됨",
+	uploadToAutoDetect: "자동 감지를 위해 파일 업로드",
 
 	btnConvert: "변환 시작",
 	btnDownload: "변환된 팩 다운로드",
@@ -79,7 +82,7 @@ const ko: Translation = {
 		},
 		{
 			title: "6. 개인정보 처리방침",
-			content: "• 데이터 처리: 이 서비스를 통해 변환되는 모든 데이터는 사용자의 브라우저 내에서 로컬로 처리됩니다. 파일 내용은 서버로 전송되거나 수집되지 않습니다.\n• 분석: 이 사이트는 이용 현황 파악을 위해 Cloudflare Web Analytics를 사용합니다. 이는 통계적 정보를 수집하며 개인을 식별하는 정보는 수집하지 않습니다.\n• 로컬 스토리지: 언어 설정 및 테마(다크 모드) 저장을 위해 브라우저의 localStorage를 사용합니다.",
+			content: "• 데이터 처리: 이 서비스를 통해 변환되는 모든 데이터는 사용자의 브라우저 내에서 로컬로 처리됩니다. 파일 내용은 서버로 전송되거나 수집되지 않습니다。\n• 분석: 이 사이트는 이용 현황 파악을 위해 Cloudflare Web Analytics 및 Umami를 사용합니다. 이들은 통계적 정보를 수집하며 개인을 식별하는 정보는 수집하지 않습니다。\n• 로컬 스토리지: 언어 설정 및 테마(다크 모드) 저장을 위해 브라우저의 localStorage를 사용합니다.",
 		},
 	],
 	backToHome: "홈으로 돌아가기",

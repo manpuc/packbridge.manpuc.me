@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import { convertPack } from '@/lib/pack/converter';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
 import type { Translation, Language } from '@/lib/i18n';
-import { JAVA_VERSIONS, BEDROCK_VERSIONS } from '@/lib/pack/versions';
+import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion } from '@/lib/pack/versions';
 import { useFileDrop } from '@/hooks/useFileDrop';
 
 // Sub-components
@@ -31,6 +31,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [isAutoDetected, setIsAutoDetected] = useState(false);
 
   // Window-wide drag and drop hook
   const { isDragging } = useFileDrop({
@@ -48,6 +49,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       setDownloadUrl(null);
       setError(null);
       setWarning(null);
+      setIsAutoDetected(false);
     } else {
       setError(t.errorInvalidFile);
       setWarning(null);
@@ -59,12 +61,13 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     if (!file) {
       setIconUrl(null);
       setZipInstance(null);
+      setIsAutoDetected(false);
       return;
     }
 
     let isMounted = true;
     let currentIconUrl: string | null = null;
-    
+
     const analyzeFile = async () => {
       try {
         const jszip = new JSZip();
@@ -72,17 +75,44 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         if (!isMounted) return;
 
         setZipInstance(zip);
-        
-        // Logic-based warning
-        const hasManifest = zip.file('manifest.json') || zip.file(/manifest\.json$/).length > 0;
-        const hasPackMcmeta = zip.file('pack.mcmeta') || zip.file(/pack\.mcmeta$/).length > 0;
 
-        if (direction === 'java-to-bedrock' && (hasManifest || file.name.endsWith('.mcpack'))) {
+        // Logic-based warning
+        const packMcmetaEntry = zip.file('pack.mcmeta') || zip.file(/pack\.mcmeta$/)[0];
+        const manifestEntry = zip.file('manifest.json') || zip.file(/manifest\.json$/)[0];
+
+        if (direction === 'java-to-bedrock' && (manifestEntry || file.name.endsWith('.mcpack'))) {
           setWarning(t.warnPossibleBedrock);
-        } else if (direction === 'bedrock-to-java' && hasPackMcmeta) {
+        } else if (direction === 'bedrock-to-java' && packMcmetaEntry) {
           setWarning(t.warnPossibleJava);
         } else {
           setWarning(null);
+        }
+
+        // Version Extraction
+        try {
+          if (direction === 'java-to-bedrock' && packMcmetaEntry) {
+            const content = await packMcmetaEntry.async('string');
+            const json = JSON.parse(content);
+            if (json?.pack?.pack_format) {
+              const detected = getJavaVersionByPackFormat(json.pack.pack_format);
+              if (detected) {
+                setSelectedJavaVersion(detected);
+                setIsAutoDetected(true);
+              }
+            }
+          } else if (direction === 'bedrock-to-java' && manifestEntry) {
+            const content = await manifestEntry.async('string');
+            const json = JSON.parse(content);
+            if (json?.header?.min_engine_version) {
+              const detected = getBedrockVersionByEngineVersion(json.header.min_engine_version);
+              if (detected) {
+                setSelectedBedrockVersion(detected);
+                setIsAutoDetected(true);
+              }
+            }
+          }
+        } catch (verError) {
+          console.warn("Failed to detect version from file", verError);
         }
 
         // Icon extraction
@@ -141,21 +171,21 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   };
 
   return (
-    <motion.div 
+    <motion.div
       layout
-      className="converter-root" 
+      className="converter-root"
       style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
       <AnimatePresence>
         {isDragging && typeof document !== 'undefined' && createPortal(
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="drag-overlay"
             style={{ zIndex: 99999 }}
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -170,19 +200,21 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         )}
       </AnimatePresence>
 
-      <DirectionSettings 
+      <DirectionSettings
         direction={direction}
         setDirection={setDirection}
         selectedJavaVersion={selectedJavaVersion}
         setSelectedJavaVersion={setSelectedJavaVersion}
         selectedBedrockVersion={selectedBedrockVersion}
         setSelectedBedrockVersion={setSelectedBedrockVersion}
+        isAutoDetected={isAutoDetected}
+        hasFile={!!file}
         t={t}
       />
 
       <AnimatePresence mode="wait">
         {!report ? (
-          <DropZone 
+          <DropZone
             file={file}
             iconUrl={iconUrl}
             error={error}
@@ -194,7 +226,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             t={t}
           />
         ) : (
-          <ConversionReport 
+          <ConversionReport
             report={report}
             downloadUrl={downloadUrl}
             fileName={file?.name || 'pack'}
@@ -205,17 +237,17 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         )}
       </AnimatePresence>
 
-      <motion.div 
-        layout 
+      <motion.div
+        layout
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        style={{ 
-          fontSize: '12px', 
-          color: 'var(--color-text-muted)', 
-          textAlign: 'center', 
+        style={{
+          fontSize: '12px',
+          color: 'var(--color-text-muted)',
+          textAlign: 'center',
           lineHeight: '1.5',
           maxWidth: '500px',
-          margin: '0 auto' 
+          margin: '0 auto'
         }}
       >
         {t.disclaimerPerfect}

@@ -21,7 +21,10 @@ const es: Translation = {
 	dropzoneTitle: "Suelta tu paquete aquí o haz clic para buscar",
 	dropzoneSubtitle: "Soporta archivos .zip o .mcpack",
 	dropzoneProcessing: "Procesando...",
+	sourceVersion: "Versión de origen",
 	targetVersion: "Versión de destino",
+	autoDetected: "Autodetectado",
+	uploadToAutoDetect: "Sube un archivo para autodetectar",
 
 	btnConvert: "Iniciar conversión",
 	btnDownload: "Descargar paquete convertido",
@@ -79,7 +82,7 @@ const es: Translation = {
 		},
 		{
 			title: "6. Política de privacidad",
-			content: "• Procesamiento de datos: Todos los datos convertidos a través de este servicio se procesan localmente en el navegador del usuario. El contenido nunca se envía ni se recopila en servidores.\n• Análisis: Este sitio utiliza Cloudflare Web Analytics para comprender los patrones de uso. Esto recopila datos estadísticos y no identifica a usuarios individuales.\n• Almacenamiento local: Utilizamos el localStorage del navegador para guardar sus preferencias de idioma y tema (modo oscuro).",
+			content: "• Procesamiento de datos: Todos los datos convertidos a través de este servicio se procesan localmente en el navegador del usuario. El contenido nunca se envía ni se recopila en servidores.\n• Análisis: Este sitio utiliza Cloudflare Web Analytics y Umami para comprender los patrones de uso. Estos recopilan datos estadísticos y no identifican a usuarios individuales.\n• Almacenamiento local: Utilizamos el localStorage del navegador para guardar sus preferencias de idioma y tema (modo oscuro).",
 		},
 	],
 	backToHome: "Volver al inicio",

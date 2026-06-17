@@ -36,6 +36,7 @@ Thumbs.db
 devfile/
 scratch/
 DESIGN.md
+fetch_test.js
 
 # Python
 *.py

@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { ConversionDirection, PackReport, ConversionResult, ConversionOptions } from './types';
-import { getTargetContext } from './rules';
+import { getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import { javaToBedrockLang, bedrockToJavaLang } from './processors/lang';
 import { javaToBedrockSounds } from './processors/sounds';
@@ -31,6 +31,10 @@ export async function convertPack(
   fileName?: string
 ): Promise<{ blob: Blob; report: PackReport }> {
   const { direction } = options;
+  
+  // Load version specific mapping before processing
+  await loadMappings(options.javaVersionId, options.bedrockVersionId);
+
   const sourceZip = input instanceof JSZip ? input : await JSZip.loadAsync(input);
   const targetZip = new JSZip();
   const report: PackReport = {

@@ -21,7 +21,10 @@ const zh: Translation = {
 	dropzoneTitle: "拖放文件或点击浏览",
 	dropzoneSubtitle: "支持 .zip 或 .mcpack 文件",
 	dropzoneProcessing: "处理中...",
+	sourceVersion: "源版本",
 	targetVersion: "目标版本",
+	autoDetected: "已自动检测",
+	uploadToAutoDetect: "上传文件以自动检测",
 
 	btnConvert: "开始转换",
 	btnDownload: "下载转换后的包",
@@ -79,7 +82,7 @@ const zh: Translation = {
 		},
 		{
 			title: "6. 隐私政策",
-			content: "• 数据处理：通过本服务转换的所有数据均在用户的浏览器本地处理。文件内容绝不会发送到服务器或被服务器收集。\n• 网站分析：本网站使用 Cloudflare Web Analytics 来了解使用情况。这仅收集统计数据，不会识别个人身份。\n• 本地存储：我们使用浏览器的 localStorage 来保存您的语言和主题（深色模式）首选项。",
+			content: "• 数据处理：通过本服务转换的所有数据均在用户的浏览器本地处理。文件内容绝不会发送到服务器或被服务器收集。\n• 网站分析：本网站使用 Cloudflare Web Analytics 和 Umami 来了解使用情况。这些工具仅收集统计数据，不会识别个人身份。\n• 本地存储：我们使用浏览器的 localStorage 来保存您的语言和主题（深色模式）首选项。",
 		},
 	],
 	backToHome: "回到首页",

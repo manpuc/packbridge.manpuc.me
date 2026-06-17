@@ -24,7 +24,10 @@ export interface Translation {
 	dropzoneTitle: string;
 	dropzoneSubtitle: string;
 	dropzoneProcessing: string;
+	sourceVersion: string;
 	targetVersion: string;
+	autoDetected: string;
+	uploadToAutoDetect: string;
 
 	btnConvert: string;
 	btnDownload: string;

@@ -21,7 +21,10 @@ const tok: Translation = {
 	dropzoneTitle: "o pana e poki musi lon ni",
 	dropzoneSubtitle: "ilo li ken e poki .zip en poki .mcpack",
 	dropzoneProcessing: "ilo li pali...",
-	targetVersion: "ilo ante nanpa",
+	sourceVersion: "nanpa pi open",
+	targetVersion: "nanpa pi pini",
+	autoDetected: "ilo li sona",
+	uploadToAutoDetect: "o pana e lipu tawa ni: ilo li sona",
 
 	btnConvert: "o open ante",
 	btnDownload: "o kama jo e poki ante",
@@ -79,7 +82,7 @@ const tok: Translation = {
 		},
 		{
 			title: "6. lipu pi kon lili",
-			content: "• pali musi: musi sina li tawa pi ilo lukin sina taso. musi sina li tawa ala ilo suli.\n• lukin: ilo Cloudflare Web Analytics li lukin e ni: jan ali li pali e seme. ilo ni li lukin ala e nimi sina.\n• poki lili: ilo li pana e nimi lon poki localStorage pi ilo lukin sina tawa ni: ilo li sona e toki sina e pimeja anu suno.",
+			content: "• pali musi: musi sina li tawa pi ilo lukin sina taso. musi sina li tawa ala ilo suli.\n• lukin: ilo Cloudflare Web Analytics en ilo Umami li lukin e ni: jan ali li pali e seme. ilo ni li lukin ala e nimi sina.\n• poki lili: ilo li pana e nimi lon poki localStorage pi ilo lukin sina tawa ni: ilo li sona e toki sina e pimeja anu suno.",
 		},
 	],
 	backToHome: "o tawa tomo",
