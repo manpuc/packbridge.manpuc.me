@@ -1,0 +1,55 @@
+---
+interface Props {
+	t: Record<string, string>;
+	lang?: string;
+}
+
+const { t, lang = "ja" } = Astro.props;
+const termsHref = lang === "ja" ? "/terms" : `/${lang}/terms`;
+---
+
+<footer>
+	<div class="footer-main">
+		<div class="footer-credit">
+			{t.footer}
+		</div>
+
+		<div class="footer-links">
+			<a href={termsHref} class="footer-link">{t.terms}</a>
+		</div>
+	</div>
+
+	<div class="footer-bottom">
+		<a
+			href="https://www.manpuc.me"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="footer-info"
+		>
+			<img
+				src="https://www.manpuc.me/favicon.svg"
+				alt="manpuc official developer logo"
+				class="footer-logo"
+				width="24"
+				height="24"
+				loading="lazy"
+			/>
+			<span class="developed-by">Developed by manpuc</span>
+		</a>
+		<span class="app-version">v1.1.0</span>
+	</div>
+</footer>
+
+<style>
+	.footer-bottom {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+	}
+	.app-version {
+		font-size: 13px;
+		color: var(--color-text-muted);
+	}
+</style>

@@ -2,6 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
+import Footer from "@/components/Footer.astro";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
 export function getStaticPaths() {
@@ -42,7 +43,7 @@ const t = getTranslation(lang as Language);
 			}
 		</div>
 
-		<footer class="terms-footer">
+		<div class="terms-footer">
 			<p class="os-text">
 				{t.openSourceText}
 			</p>
@@ -59,7 +60,9 @@ const t = getTranslation(lang as Language);
 					{t.backToHome}
 				</a>
 			</div>
-		</footer>
+		</div>
+
+		<Footer t={t} lang={lang as string} />
 	</main>
 </Layout>
 

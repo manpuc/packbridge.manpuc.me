@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
 import Converter from "@/components/Converter";
+import Footer from "@/components/Footer.astro";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
 export function getStaticPaths() {
@@ -101,34 +102,7 @@ const t = getTranslation(lang as Language);
 			</section>
 		</div>
 
-		<footer>
-			<div class="footer-main">
-				<div class="footer-credit">
-					{t.footer}
-				</div>
-
-				<div class="footer-links">
-					<a href={`/${lang}/terms`} class="footer-link">{t.terms}</a>
-				</div>
-			</div>
-
-			<a
-				href="https://www.manpuc.me"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="footer-info"
-			>
-				<img
-					src="https://www.manpuc.me/favicon.svg"
-					alt="manpuc official developer logo"
-					class="footer-logo"
-					width="24"
-					height="24"
-					loading="lazy"
-				/>
-				<span class="developed-by">Developed by manpuc</span>
-			</a>
-		</footer>
+		<Footer t={t} lang={lang as string} />
 	</main>
 </Layout>
 

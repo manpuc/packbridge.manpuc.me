@@ -12,10 +12,6 @@ export interface BedrockVersion {
 
 export const JAVA_VERSIONS: JavaVersion[] = [
   { id: '1.26.0', name: '1.26.x', packFormat: 64 },
-  { id: '1.25.0', name: '1.25.x', packFormat: 58 },
-  { id: '1.24.0', name: '1.24.x', packFormat: 54 },
-  { id: '1.23.0', name: '1.23.x', packFormat: 52 },
-  { id: '1.22.0', name: '1.22.x', packFormat: 50 },
   { id: '1.21.4', name: '1.21.4+', packFormat: 48 },
   { id: '1.21.2', name: '1.21.2 - 1.21.3', packFormat: 46 },
   { id: '1.21.0', name: '1.21.0 - 1.21.1', packFormat: 34 },
@@ -41,11 +37,7 @@ export const JAVA_VERSIONS: JavaVersion[] = [
 ];
 
 export const BEDROCK_VERSIONS: BedrockVersion[] = [
-  { id: '1.26.0', name: '1.26.0+', minEngineVersion: [1, 26, 0] },
-  { id: '1.25.0', name: '1.25.0+', minEngineVersion: [1, 25, 0] },
-  { id: '1.24.0', name: '1.24.0+', minEngineVersion: [1, 24, 0] },
-  { id: '1.23.0', name: '1.23.0+', minEngineVersion: [1, 23, 0] },
-  { id: '1.22.0', name: '1.22.0+', minEngineVersion: [1, 22, 0] },
+  { id: '1.26.0', name: '1.26.x', minEngineVersion: [1, 26, 0] },
   { id: '1.21.50', name: '1.21.50+', minEngineVersion: [1, 21, 50] },
   { id: '1.21.0', name: '1.21.0', minEngineVersion: [1, 21, 0] },
   { id: '1.20.80', name: '1.20.80', minEngineVersion: [1, 20, 80] },
@@ -60,12 +52,20 @@ export const BEDROCK_VERSIONS: BedrockVersion[] = [
 ];
 
 export function getJavaVersionByPackFormat(format: number): string | null {
-  const match = JAVA_VERSIONS.find(v => v.packFormat === format);
-  return match ? match.id : null;
+  // JAVA_VERSIONS は降順（新しい順）に並んでいるため、
+  // 指定された format 以下の最初のフォーマットを見つける
+  return JAVA_VERSIONS.find(v => v.packFormat <= format)?.id ?? null;
 }
 
 export function getBedrockVersionByEngineVersion(version: number[]): string | null {
   if (!version || version.length < 3) return null;
-  const match = BEDROCK_VERSIONS.find(v => v.minEngineVersion[0] === version[0] && v.minEngineVersion[1] === version[1] && v.minEngineVersion[2] === version[2]);
-  return match ? match.id : null;
+  // BEDROCK_VERSIONS も降順に並んでいるため、
+  // 指定された version 以下の最初のバージョン（最も近い過去バージョンまたは完全一致）を見つける
+  return BEDROCK_VERSIONS.find(v => {
+    for (let i = 0; i < 3; i++) {
+      if (version[i] > v.minEngineVersion[i]) return true;
+      if (version[i] < v.minEngineVersion[i]) return false;
+    }
+    return true; // 完全に一致する場合
+  })?.id ?? null;
 }
