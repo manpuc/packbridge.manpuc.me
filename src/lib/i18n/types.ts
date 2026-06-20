@@ -67,4 +67,11 @@ export interface Translation {
 	backToHome: string;
 	viewSourceCode: string;
 	openSourceText: string;
+
+	// Beta Features
+	betaFeatures: string;
+	enableGuiConversion: string;
+	enableAnimationConversion: string;
+	enableLanguageConversion: string;
+	enableSoundConversion: string;
 }

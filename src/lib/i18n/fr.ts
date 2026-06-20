@@ -88,6 +88,11 @@ const fr: Translation = {
 	backToHome: "Retour à l'accueil",
 	viewSourceCode: "Voir le code source sur GitHub",
 	openSourceText: "Ce service est open source.",
+  betaFeatures: "Beta Features",
+  enableGuiConversion: "Enable GUI Conversion",
+  enableAnimationConversion: "Enable Animation Conversion",
+  enableLanguageConversion: 'Enable Language Conversion',
+  enableSoundConversion: 'Enable Sound Conversion',
 };
 
 export default fr;

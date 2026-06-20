@@ -88,6 +88,11 @@ const ja: Translation = {
 	backToHome: "トップページへ戻る",
 	viewSourceCode: "GitHub でソースコードを見る",
 	openSourceText: "本サービスはオープンソースとして公開されています。",
+  betaFeatures: "ベータ機能 (Beta)",
+  enableGuiConversion: "GUI変換を有効にする",
+  enableAnimationConversion: "アニメーション変換を有効にする",
+  enableLanguageConversion: '言語・翻訳変換を有効にする',
+  enableSoundConversion: 'サウンド変換を有効にする',
 };
 
 export default ja;

@@ -88,6 +88,11 @@ const tok: Translation = {
 	backToHome: "o tawa tomo",
 	viewSourceCode: "o lukin e pali lon ilo Kitu (GitHub)",
 	openSourceText: "pali ni li open tawa jan ali.",
+  betaFeatures: "Beta Features",
+  enableGuiConversion: "Enable GUI Conversion",
+  enableAnimationConversion: "Enable Animation Conversion",
+  enableLanguageConversion: 'Enable Language Conversion',
+  enableSoundConversion: 'Enable Sound Conversion',
 };
 
 export default tok;

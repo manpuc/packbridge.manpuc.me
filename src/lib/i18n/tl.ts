@@ -88,6 +88,11 @@ const tl: Translation = {
 	backToHome: "Bumalik sa Home",
 	viewSourceCode: "Tingnan ang Source Code sa GitHub",
 	openSourceText: "Ang serbisyong ito ay open source.",
+  betaFeatures: "Beta Features",
+  enableGuiConversion: "Enable GUI Conversion",
+  enableAnimationConversion: "Enable Animation Conversion",
+  enableLanguageConversion: 'Enable Language Conversion',
+  enableSoundConversion: 'Enable Sound Conversion',
 };
 
 export default tl;

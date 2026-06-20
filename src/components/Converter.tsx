@@ -32,6 +32,36 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [isAutoDetected, setIsAutoDetected] = useState(false);
+  const [enableGuiConversion, setEnableGuiConversion] = useState(false);
+  const [enableAnimationConversion, setEnableAnimationConversion] = useState(false);
+  const [enableLanguageConversion, setEnableLanguageConversion] = useState(false);
+
+  // Load saved beta preferences on mount
+  useEffect(() => {
+    try {
+      const savedGui = localStorage.getItem('pb_beta_gui');
+      if (savedGui) setEnableGuiConversion(savedGui === 'true');
+
+      const savedAnim = localStorage.getItem('pb_beta_anim');
+      if (savedAnim) setEnableAnimationConversion(savedAnim === 'true');
+
+      const savedLang = localStorage.getItem('pb_beta_lang');
+      if (savedLang) setEnableLanguageConversion(savedLang === 'true');
+    } catch (e) {
+      // Ignore localStorage errors (e.g., in incognito mode)
+    }
+  }, []);
+
+  // Save beta preferences when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('pb_beta_gui', String(enableGuiConversion));
+      localStorage.setItem('pb_beta_anim', String(enableAnimationConversion));
+      localStorage.setItem('pb_beta_lang', String(enableLanguageConversion));
+    } catch (e) {
+      // Ignore
+    }
+  }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion]);
 
   // Window-wide drag and drop hook
   const { isDragging } = useFileDrop({
@@ -146,7 +176,10 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       const options: ConversionOptions = {
         direction,
         javaVersionId: selectedJavaVersion,
-        bedrockVersionId: selectedBedrockVersion
+        bedrockVersionId: selectedBedrockVersion,
+        enableGuiConversion,
+        enableAnimationConversion,
+        enableLanguageConversion
       };
       // Reuse zipInstance if available to save memory/time
       const result = await convertPack(zipInstance || file, options, file.name);
@@ -209,6 +242,12 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         setSelectedBedrockVersion={setSelectedBedrockVersion}
         isAutoDetected={isAutoDetected}
         hasFile={!!file}
+        enableGuiConversion={enableGuiConversion}
+        setEnableGuiConversion={setEnableGuiConversion}
+        enableAnimationConversion={enableAnimationConversion}
+        setEnableAnimationConversion={setEnableAnimationConversion}
+        enableLanguageConversion={enableLanguageConversion}
+        setEnableLanguageConversion={setEnableLanguageConversion}
         t={t}
       />
 

@@ -55,3 +55,39 @@ export function javaToBedrockSounds(jsonContent: string): string {
     return jsonContent;
   }
 }
+
+/**
+ * Converts Bedrock Edition sound_definitions.json to Java Edition sounds.json
+ */
+export function bedrockToJavaSounds(jsonContent: string): string {
+  try {
+    const bedrockData = JSON.parse(jsonContent);
+    const javaData: any = {};
+    const definitions = bedrockData.sound_definitions || {};
+
+    const BEDROCK_TO_JAVA_EVENT_MAP: Record<string, string> = Object.entries(JAVA_TO_BEDROCK_EVENT_MAP).reduce((acc, [j, b]) => {
+      // Keep only the first mapping found if there are duplicates
+      if (!acc[b]) acc[b] = j;
+      return acc;
+    }, {} as Record<string, string>);
+
+    for (const [soundEvent, data] of Object.entries(definitions) as [string, any][]) {
+      const jSounds = (data.sounds || []).map((s: any) => {
+        const name = typeof s === 'string' ? s : s.name;
+        // Remove sounds/ prefix if present
+        return name.replace(/^sounds\//, '');
+      });
+
+      const mappedEvent = BEDROCK_TO_JAVA_EVENT_MAP[soundEvent] || soundEvent.replace(/\./g, '.');
+
+      javaData[mappedEvent] = {
+        category: data.category || "neutral",
+        sounds: jSounds
+      };
+    }
+
+    return JSON.stringify(javaData, null, 2);
+  } catch (e) {
+    return jsonContent;
+  }
+}

@@ -88,6 +88,11 @@ const ko: Translation = {
 	backToHome: "홈으로 돌아가기",
 	viewSourceCode: "GitHub에서 소스 코드 보기",
 	openSourceText: "이 서비스는 오픈 소스로 공개되어 있습니다.",
+  betaFeatures: "Beta Features",
+  enableGuiConversion: "Enable GUI Conversion",
+  enableAnimationConversion: "Enable Animation Conversion",
+  enableLanguageConversion: '언어 변환 활성화',
+  enableSoundConversion: '사운드 변환 활성화',
 };
 
 export default ko;

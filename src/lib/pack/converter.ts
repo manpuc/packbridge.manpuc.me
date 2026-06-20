@@ -3,10 +3,10 @@ import type { ConversionDirection, PackReport, ConversionResult, ConversionOptio
 import { getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import { javaToBedrockLang, bedrockToJavaLang } from './processors/lang';
-import { javaToBedrockSounds } from './processors/sounds';
+import { javaToBedrockSounds, bedrockToJavaSounds } from './processors/sounds';
 import { generateBlocksJson, generateTerrainTexture } from './processors/blocks';
 import { generateItemTexture } from './processors/items';
-import { parseJavaAnimation, type FlipbookEntry } from './processors/animation';
+import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
 import { normalizeLegacyPath } from './legacy';
 
@@ -86,7 +86,13 @@ export async function convertPack(
     }
   }
 
+  let processedFiles = 0;
   for (const path of files) {
+    processedFiles++;
+    if (processedFiles % 50 === 0) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+
     const fileEntry = sourceZip.files[path];
     if (fileEntry.dir) continue;
 
@@ -131,11 +137,23 @@ export async function convertPack(
         } else if (direction === 'bedrock-to-java') {
           if (relativePath.endsWith('.lang') && targetPath.endsWith('.json')) {
             needsProcessing = true;
+          } else if (relativePath === 'textures/flipbook_textures.json') {
+            needsProcessing = true;
+          } else if (relativePath === 'sounds/sound_definitions.json') {
+            needsProcessing = true;
           }
         }
       }
 
       if (targetPath) {
+        if (!options.enableGuiConversion) {
+          if (relativePath.includes('/gui/') || targetPath.includes('/gui/')) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'GUI conversion disabled' });
+            continue;
+          }
+        }
+
         // Special Content Processing
         let finalContent: Uint8Array | string | Promise<Uint8Array> = fileEntry.async('uint8array');
 
@@ -145,6 +163,11 @@ export async function convertPack(
 
           if (direction === 'java-to-bedrock') {
             if (relativePath.endsWith('.json') && targetPath.startsWith('texts/')) {
+              if (!options.enableLanguageConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
+                continue;
+              }
               const converted = javaToBedrockLang(decoder.decode(content));
               const current = mergedLangs.get(targetPath) || "";
               mergedLangs.set(targetPath, current + converted);
@@ -166,8 +189,13 @@ export async function convertPack(
 
             // Animation detection for Java -> Bedrock
             if (relativePath.endsWith('.png.mcmeta')) {
-              const pngPath = relativePath.replace('.mcmeta', '');
-              const flipbook = parseJavaAnimation(decoder.decode(content), pngPath);
+              if (!options.enableAnimationConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Animation conversion disabled' });
+                continue;
+              }
+              const bedrockPngPath = targetPath.replace(/\.mcmeta$/, '');
+              const flipbook = parseJavaAnimation(decoder.decode(content), bedrockPngPath);
               if (flipbook) {
                 flipbookEntries.push(flipbook);
               }
@@ -188,7 +216,47 @@ export async function convertPack(
                 finalContent = content;
               }
             } else if (relativePath.endsWith('.lang') && targetPath.endsWith('.json')) {
+              if (!options.enableLanguageConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
+                continue;
+              }
               finalContent = bedrockToJavaLang(decoder.decode(content));
+            } else if (relativePath === 'textures/flipbook_textures.json') {
+              if (!options.enableAnimationConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Animation conversion disabled' });
+                continue;
+              }
+              try {
+                const flipbooks = JSON.parse(decoder.decode(content));
+                if (Array.isArray(flipbooks)) {
+                  for (const entry of flipbooks) {
+                    // Bedrock usually omits 'textures/' and '.png' in flipbook_texture path sometimes?
+                    // According to animation.ts logic, flipbook_texture is usually e.g., 'blocks/stone' or 'items/apple'.
+                    // So Bedrock path is usually 'textures/' + entry.flipbook_texture + '.png'
+                    const bPath = entry.flipbook_texture.startsWith('textures/') 
+                      ? entry.flipbook_texture + '.png' 
+                      : 'textures/' + entry.flipbook_texture + '.png';
+                    const jPath = getTargetContext(bPath, 'bedrock-to-java');
+                    if (jPath) {
+                      const mcmetaPath = jPath + '.mcmeta';
+                      const mcmetaContent = generateJavaAnimation(entry);
+                      targetZip.file(mcmetaPath, mcmetaContent);
+                      report.convertedCount++;
+                      report.details.push({ filename: path, status: 'converted', outputPath: mcmetaPath });
+                    }
+                  }
+                }
+              } catch (e) {
+                // Ignore parse errors, just skip it
+              }
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
+              continue;
+            } else if (relativePath === 'sounds/sound_definitions.json') {
+              finalContent = bedrockToJavaSounds(decoder.decode(content));
+              targetPath = 'assets/minecraft/sounds.json';
             } else {
               finalContent = content;
             }
@@ -290,7 +358,13 @@ export async function convertPack(
     }
   }
 
-  const outputBlob = await targetZip.generateAsync({ type: 'blob' });
+  const outputBlob = await targetZip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: {
+      level: 6
+    }
+  });
   return { blob: outputBlob, report };
 }
 

@@ -88,6 +88,11 @@ const zh: Translation = {
 	backToHome: "回到首页",
 	viewSourceCode: "在 GitHub 上查看源代码",
 	openSourceText: "本服务已作为开源项目公开。",
+  betaFeatures: "Beta Features",
+  enableGuiConversion: "Enable GUI Conversion",
+  enableAnimationConversion: "Enable Animation Conversion",
+  enableLanguageConversion: '启用语言转换',
+  enableSoundConversion: '启用声音转换',
 };
 
 export default zh;
