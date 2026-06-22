@@ -41,7 +41,7 @@ export function DropZone({
   };
 
   return (
-    <motion.div 
+    <motion.div
       key="input"
       layout
       initial={{ opacity: 0, scale: 0.95 }}
@@ -66,19 +66,19 @@ export function DropZone({
         />
         <motion.div layout>
           {iconUrl ? (
-            <motion.img 
+            <motion.img
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              src={iconUrl} 
-              alt="Pack Icon" 
-              style={{ 
-                width: '80px', 
-                height: '80px', 
-                borderRadius: '16px', 
+              src={iconUrl}
+              alt="Pack Icon"
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '16px',
                 objectFit: 'cover',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 border: '2px solid var(--color-surface)'
-              }} 
+              }}
             />
           ) : (
             <Upload className="dropzone-icon" />
@@ -98,10 +98,10 @@ export function DropZone({
             )}
           </p>
         </motion.div>
-        
+
         <AnimatePresence>
           {file && !isProcessing && (
-            <motion.div 
+            <motion.div
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -109,9 +109,9 @@ export function DropZone({
               style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center' }}
             >
               <motion.button
-                whileHover={{ 
-                  backgroundColor: 'var(--color-danger)', 
-                  color: 'white', 
+                whileHover={{
+                  backgroundColor: 'var(--color-danger)',
+                  color: 'white',
                   scale: 1.05,
                   transition: { duration: 0.05, ease: "linear" }
                 }}
@@ -134,7 +134,7 @@ export function DropZone({
             </motion.div>
           )}
           {isProcessing && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}

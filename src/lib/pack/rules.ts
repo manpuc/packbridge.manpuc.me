@@ -48,11 +48,11 @@ export async function loadMappings(javaVersionId?: string, bedrockVersionId?: st
     activeMappings = fallbackMappings;
     return;
   }
-  
+
   // Clean versions for the filename format used by the script
   const jClean = javaVersionId; // e.g. '1.20.4' or '1.21.0'
   const bClean = bedrockVersionId; // e.g. '1.20.80'
-  
+
   try {
     // Attempt to load the specific mapping file dynamically
     // In a browser/vite context, we can fetch it from public dir, or use dynamic import.
@@ -68,8 +68,8 @@ export async function loadMappings(javaVersionId?: string, bedrockVersionId?: st
 
 export function getTargetContext(path: string, direction: ConversionDirection): string | null {
   // Normalize path for mappings.json lookup since mappings.json incorrectly uses 'assets/textures/...' instead of 'assets/minecraft/textures/...'
-  const lookupPath = direction === 'java-to-bedrock' 
-    ? path.replace(/^assets\/minecraft\//, 'assets/') 
+  const lookupPath = direction === 'java-to-bedrock'
+    ? path.replace(/^assets\/minecraft\//, 'assets/')
     : path;
 
   // 1. Try exact mapping from the generated database

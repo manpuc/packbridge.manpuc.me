@@ -32,7 +32,7 @@ export async function convertPack(
   fileName?: string
 ): Promise<{ blob: Blob; report: PackReport }> {
   const { direction } = options;
-  
+
   // Load version specific mapping before processing
   await loadMappings(options.javaVersionId, options.bedrockVersionId);
 
@@ -235,8 +235,8 @@ export async function convertPack(
                     // Bedrock usually omits 'textures/' and '.png' in flipbook_texture path sometimes?
                     // According to animation.ts logic, flipbook_texture is usually e.g., 'blocks/stone' or 'items/apple'.
                     // So Bedrock path is usually 'textures/' + entry.flipbook_texture + '.png'
-                    const bPath = entry.flipbook_texture.startsWith('textures/') 
-                      ? entry.flipbook_texture + '.png' 
+                    const bPath = entry.flipbook_texture.startsWith('textures/')
+                      ? entry.flipbook_texture + '.png'
                       : 'textures/' + entry.flipbook_texture + '.png';
                     const jPath = getTargetContext(bPath, 'bedrock-to-java');
                     if (jPath) {

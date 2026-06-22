@@ -144,11 +144,11 @@ export function DirectionSettings({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-          <button 
+          <button
             type="button"
             onClick={() => setIsBetaExpanded(!isBetaExpanded)}
-            style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '4px', 
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '4px',
               fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)',
               background: 'none', border: 'none', padding: 0, cursor: 'pointer',
               fontFamily: 'inherit', textAlign: 'left', width: '100%',
@@ -158,10 +158,10 @@ export function DirectionSettings({
             {isBetaExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             {t.betaFeatures || 'Beta Features'}
           </button>
-          
+
           <AnimatePresence initial={false}>
             {isBetaExpanded && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
