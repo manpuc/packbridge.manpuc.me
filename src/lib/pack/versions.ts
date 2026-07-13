@@ -11,7 +11,7 @@ export interface BedrockVersion {
 }
 
 export const JAVA_VERSIONS: JavaVersion[] = [
-  { id: '1.26.0', name: '1.26.x', packFormat: 64 },
+  { id: '26.0.0', name: '26.x', packFormat: 64 },
   { id: '1.21.4', name: '1.21.4+', packFormat: 48 },
   { id: '1.21.2', name: '1.21.2 - 1.21.3', packFormat: 46 },
   { id: '1.21.0', name: '1.21.0 - 1.21.1', packFormat: 34 },
@@ -69,3 +69,4 @@ export function getBedrockVersionByEngineVersion(version: number[]): string | nu
     return true; // 完全に一致する場合
   })?.id ?? null;
 }
+
