@@ -181,6 +181,7 @@ export async function convertPack(
               continue;
             } else if (relativePath.endsWith('sounds.json')) {
               finalContent = javaToBedrockSounds(decoder.decode(content));
+              targetPath = 'sounds/sound_definitions.json';
             } else if (relativePath === 'assets/minecraft/texts/splashes.txt') {
               const lines = decoder.decode(content).split(/\r?\n/).filter(l => l.trim().length > 0);
               finalContent = JSON.stringify({ splashes: lines }, null, 2);

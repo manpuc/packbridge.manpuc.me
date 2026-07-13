@@ -14,7 +14,7 @@ const JAVA_TO_BEDROCK_EVENT_MAP: Record<string, string> = {
   "block.end_portal_frame.fill": "block.end_portal_frame.fill",
   "block.end_portal.spawn": "block.end_portal.spawn",
   "entity.tnt.primed": "random.fuse",
-  "entity.genric.explode": "random.explode",
+  "entity.generic.explode": "random.explode",
   "entity.bobber.retrieve": "random.bowhit",
   "entity.bobber.throw": "random.bow",
   "entity.bobber.splash": "random.splash",
@@ -42,7 +42,7 @@ export function javaToBedrockSounds(jsonContent: string): string {
       });
 
       // Map the event name if a mapping exists, otherwise use the original
-      const mappedEvent = JAVA_TO_BEDROCK_EVENT_MAP[soundEvent] || soundEvent.replace(/\./g, '.');
+      const mappedEvent = JAVA_TO_BEDROCK_EVENT_MAP[soundEvent] || soundEvent;
 
       bedrockData.sound_definitions[mappedEvent] = {
         category: data.category || "neutral",
@@ -78,7 +78,7 @@ export function bedrockToJavaSounds(jsonContent: string): string {
         return name.replace(/^sounds\//, '');
       });
 
-      const mappedEvent = BEDROCK_TO_JAVA_EVENT_MAP[soundEvent] || soundEvent.replace(/\./g, '.');
+      const mappedEvent = BEDROCK_TO_JAVA_EVENT_MAP[soundEvent] || soundEvent;
 
       javaData[mappedEvent] = {
         category: data.category || "neutral",

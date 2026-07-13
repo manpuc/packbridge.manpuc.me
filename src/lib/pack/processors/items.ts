@@ -1,4 +1,4 @@
-import mappings from '../mappings.json';
+import { getActiveMappings, getFallbackMappings } from '../rules';
 
 /**
  * Generates Bedrock Edition item_texture.json content
@@ -11,8 +11,13 @@ export function generateItemTexture(convertedItems: Set<string>): string {
     texture_data: {}
   };
 
+  const active = getActiveMappings();
+  const fallback = getFallbackMappings();
+
   for (const javaPath of convertedItems) {
-    const bedrockPath = (mappings as any).java_to_bedrock[javaPath];
+    // Normalize path for mappings lookup (assets/minecraft/ -> assets/)
+    const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
+    const bedrockPath = active.java_to_bedrock[lookupPath] || fallback.java_to_bedrock[lookupPath];
     if (bedrockPath && bedrockPath.startsWith('textures/items/')) {
       // Remove textures/items/ prefix and .png extension for the short name
       // e.g. textures/items/apple.png -> apple

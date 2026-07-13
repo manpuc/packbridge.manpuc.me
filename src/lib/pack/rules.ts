@@ -42,7 +42,15 @@ interface MappingsData {
 
 const typedMappings = mappings as MappingsData;
 let activeMappings: MappingsData = { java_to_bedrock: {}, bedrock_to_java: {} };
-let fallbackMappings: MappingsData = typedMappings; // The global mappings.json as fallback
+const fallbackMappings: MappingsData = typedMappings; // The global mappings.json as fallback
+
+export function getActiveMappings(): MappingsData {
+  return activeMappings;
+}
+
+export function getFallbackMappings(): MappingsData {
+  return fallbackMappings;
+}
 export async function loadMappings(javaVersionId?: string, bedrockVersionId?: string) {
   if (!javaVersionId || !bedrockVersionId) {
     activeMappings = fallbackMappings;

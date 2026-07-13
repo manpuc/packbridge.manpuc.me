@@ -1,4 +1,4 @@
-import mappings from '../mappings.json';
+import { getActiveMappings, getFallbackMappings } from '../rules';
 
 /**
  * Generates Bedrock Edition terrain_texture.json content
@@ -13,8 +13,13 @@ export function generateTerrainTexture(convertedBlocks: Set<string>): string {
     texture_data: {}
   };
 
+  const active = getActiveMappings();
+  const fallback = getFallbackMappings();
+
   for (const javaPath of convertedBlocks) {
-    const bedrockPath = (mappings as any).java_to_bedrock[javaPath];
+    // Normalize path for mappings lookup (assets/minecraft/ -> assets/)
+    const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
+    const bedrockPath = active.java_to_bedrock[lookupPath] || fallback.java_to_bedrock[lookupPath];
     if (bedrockPath && bedrockPath.startsWith('textures/blocks/')) {
       // Remove textures/ prefix and .png extension for the short name
       const shortName = bedrockPath.replace('textures/blocks/', '').replace('.png', '');
@@ -38,18 +43,18 @@ export function generateBlocksJson(convertedBlocks: Set<string>): string {
     format_version: [1, 1, 0]
   };
 
+  const active = getActiveMappings();
+  const fallback = getFallbackMappings();
+
   for (const javaPath of convertedBlocks) {
-    const bedrockPath = (mappings as any).java_to_bedrock[javaPath];
+    // Normalize path for mappings lookup (assets/minecraft/ -> assets/)
+    const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
+    const bedrockPath = active.java_to_bedrock[lookupPath] || fallback.java_to_bedrock[lookupPath];
     if (bedrockPath && bedrockPath.startsWith('textures/blocks/')) {
       const shortName = bedrockPath.replace('textures/blocks/', '').replace('.png', '');
 
-      // Try to guess block ID from texture name
-      // e.g. planks_oak -> oak_planks
-      const blockId = shortName.includes('_')
-        ? shortName.split('_').reverse().join('_')
-        : shortName;
-
-      blocksJson[blockId] = {
+      // Use texture short name directly as block ID
+      blocksJson[shortName] = {
         textures: shortName,
         sound: "stone" // Default sound
       };

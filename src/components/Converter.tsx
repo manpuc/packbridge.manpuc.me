@@ -63,14 +63,6 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     }
   }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion]);
 
-  // Window-wide drag and drop hook
-  const { isDragging } = useFileDrop({
-    onDrop: (files) => {
-      const droppedFile = files[0];
-      if (droppedFile) handleFile(droppedFile);
-    }
-  });
-
   const handleFile = useCallback((selectedFile: File) => {
     if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
       setFile(selectedFile);
@@ -85,6 +77,16 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       setWarning(null);
     }
   }, [t]);
+
+  // Window-wide drag and drop hook
+  const onFileDrop = useCallback((files: FileList) => {
+    const droppedFile = files[0];
+    if (droppedFile) handleFile(droppedFile);
+  }, [handleFile]);
+
+  const { isDragging } = useFileDrop({
+    onDrop: onFileDrop
+  });
 
   // Preview and Content Analysis
   useEffect(() => {
@@ -184,6 +186,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       // Reuse zipInstance if available to save memory/time
       const result = await convertPack(zipInstance || file, options, file.name);
       setReport(result.report);
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       const url = URL.createObjectURL(result.blob);
       setDownloadUrl(url);
     } catch (err) {
@@ -195,6 +198,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   };
 
   const reset = () => {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     setFile(null);
     setZipInstance(null);
     setReport(null);
