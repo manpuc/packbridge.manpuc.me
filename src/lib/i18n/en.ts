@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const en: Translation = {
-	title: "Minecraft Resource Pack Converter | PackBridge",
+	title: "Minecraft Resource Pack & Texture Pack Converter | PackBridge",
 	heading: "PackBridge",
-	description: "Convert Minecraft resource packs between Java Edition and Bedrock Edition. Everything happens in your browser; your files are never uploaded to a server.",
-	metaDescription: "Free online tool to convert Minecraft resource packs between Java Edition and Bedrock Edition. Process files locally in your browser for maximum speed and privacy.",
-	h1Title: "Minecraft Resource Pack Converter",
+	description: "Convert Minecraft resource packs and texture packs between Java Edition and Bedrock Edition. Everything happens in your browser; your files are never uploaded to a server.",
+	metaDescription: "Free online tool to convert Minecraft resource packs and texture packs between Java Edition and Bedrock Edition. Process files locally in your browser for maximum speed and privacy.",
+	h1Title: "Minecraft Resource Pack & Texture Pack Converter",
 
 	// SEO Content
 	introTitle: "What is PackBridge?",
-	introDescription: "PackBridge is a powerful tool designed to convert Minecraft resource packs between different editions (Java ⇄ Bedrock). We automate the complex process of remapping assets so you can enjoy your favorite textures on any device.",
+	introDescription: "PackBridge is a powerful tool designed to convert Minecraft resource packs and texture packs between different editions (Java ⇄ Bedrock). We automate the complex process of remapping assets so you can enjoy your favorite textures on any device.",
 	introFeaturesTitle: "Key Features",
 	introFeature1: "Local Processing: Your files never leave your computer. Conversion happens entirely within your web browser.",
-	introFeature2: "Bidirectional: Seamlessly convert from Java to Bedrock and Bedrock to Java editions.",
+	introFeature2: "Bidirectional: Seamlessly convert resource packs and texture packs between Java and Bedrock editions.",
 	introFeature3: "Fast & Lightweight: Optimized for speed, allowing you to convert large packs in seconds.",
 
 	directionJavaToBedrock: "Java → Bedrock",
@@ -50,9 +50,9 @@ const en: Translation = {
 	warnPossibleBedrock: "The selected file (.mcpack) may already be a Bedrock Edition resource pack. When converting from Java, you usually select a Java Edition .zip file.",
 	warnPossibleJava: "The selected file may already be a Java Edition resource pack. When converting from Bedrock, please ensure you select a Bedrock Edition .mcpack or .zip file.",
 
-	footer: "PackBridge | Minecraft Resource Pack Converter",
+	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Terms of Service",
-	keywords: "Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, Porting, Assets",
+	keywords: "Minecraft, Resource Pack, Texture Pack, Texture, Converter, Texture Pack Converter, Java to Bedrock, Bedrock to Java, PackBridge, Porting, Assets",
 	disclaimerPerfect: "*Note: Perfect conversion of all files is not guaranteed. Manual adjustments may be required after conversion.",
 	error404Title: "Page Not Found",
 	error404Description: "We're sorry, the page you're looking for doesn't exist or has been moved.",
@@ -62,7 +62,7 @@ const en: Translation = {
 	termsSections: [
 		{
 			title: "1. Service Usage",
-			content: "This service is a tool for converting Minecraft resource packs between Java and Bedrock editions. All processing occurs locally within the browser; no files are sent to external servers.",
+			content: "This service is a tool for converting Minecraft resource packs and texture packs between Java and Bedrock editions. All processing occurs locally within the browser; no files are sent to external servers.",
 		},
 		{
 			title: "2. Disclaimer (Self-Responsibility)",

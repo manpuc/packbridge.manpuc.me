@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const fr: Translation = {
-	title: "Convertisseur de packs de ressources Minecraft | PackBridge",
+	title: "Convertisseur de packs de ressources et packs de textures Minecraft | PackBridge",
 	heading: "PackBridge",
-	description: "Convertissez vos packs de ressources Minecraft entre les versions Java et Bedrock. Tout se passe dans votre navigateur ; vos fichiers ne sont jamais envoyés sur un serveur.",
-	metaDescription: "Outil en ligne gratuit pour convertir les packs de ressources Minecraft entre Java Edition et Bedrock Edition. Traitez vos fichiers localement dans votre navigateur.",
-	h1Title: "Convertisseur de packs de ressources Minecraft",
+	description: "Convertissez vos packs de ressources et packs de textures Minecraft entre les versions Java et Bedrock. Tout se passe dans votre navigateur ; vos fichiers ne sont jamais envoyés sur un serveur.",
+	metaDescription: "Outil en ligne gratuit pour convertir les packs de ressources et packs de textures Minecraft entre Java Edition et Bedrock Edition. Traitez vos fichiers localement dans votre navigateur.",
+	h1Title: "Convertisseur de packs de ressources et de textures Minecraft",
 
 	// SEO Content
 	introTitle: "Qu'est-ce que PackBridge ?",
-	introDescription: "PackBridge est un outil puissant conçu pour convertir les packs de ressources Minecraft entre différentes éditions (Java ⇄ Bedrock). Nous automatisons le processus complexe de remappage des actifs pour que vous puissiez profiter de vos textures préférées sur n'importe quel appareil.",
+	introDescription: "PackBridge est un outil puissant conçu pour convertir les packs de ressources et packs de textures Minecraft entre différentes éditions (Java ⇄ Bedrock). Nous automatisons le processus complexe de remappage des actifs pour que vous puissiez profiter de vos textures préférées sur n'importe quel appareil.",
 	introFeaturesTitle: "Caractéristiques principales",
 	introFeature1: "Traitement local : Vos fichiers ne quittent jamais votre ordinateur. La conversion se fait entièrement dans votre navigateur.",
-	introFeature2: "Bidirectionnel : Convertissez facilement entre les éditions Java vers Bedrock et Bedrock vers Java.",
+	introFeature2: "Bidirectionnel : Convertissez facilement vos packs de ressources et de textures entre les éditions Java et Bedrock.",
 	introFeature3: "Rapide et léger : Optimisé pour la vitesse, vous permettant de convertir de gros packs en quelques secondes.",
 
 	directionJavaToBedrock: "Java → Bedrock",
@@ -50,9 +50,9 @@ const fr: Translation = {
 	warnPossibleBedrock: "Le fichier sélectionné (.mcpack) est peut-être déjà un pack Bedrock. Pour une conversion depuis Java, sélectionnez un fichier .zip de la version Java.",
 	warnPossibleJava: "Le fichier sélectionné est peut-être déjà un pack Java. Pour une conversion depuis Bedrock, assurez-vous de sélectionner un fichier .mcpack ou .zip de la version Bedrock.",
 
-	footer: "PackBridge | Convertisseur de packs de ressources Minecraft",
+	footer: "PackBridge | Convertisseur de packs de ressources et de textures Minecraft",
 	terms: "Conditions d'utilisation",
-	keywords: "Minecraft, Pack de ressources, Texture, Convertisseur, Java vers Bedrock, Bedrock vers Java, PackBridge, Portrage",
+	keywords: "Minecraft, Pack de ressources, Pack de textures, Texture, Convertisseur, Java vers Bedrock, Bedrock vers Java, PackBridge, Portrage",
 	disclaimerPerfect: "*Note : La conversion parfaite de tous les fichiers n'est pas garantie. Des ajustements manuels peuvent être nécessaires après conversion.",
 	error404Title: "Page non trouvée",
 	error404Description: "Désolé, la page que vous recherchez n'existe pas ou a été déplacée.",
@@ -62,7 +62,7 @@ const fr: Translation = {
 	termsSections: [
 		{
 			title: "1. Utilisation du service",
-			content: "Ce service est un outil de conversion de packs de ressources Minecraft entre les éditions Java et Bedrock. Tout le traitement s'effectue localement dans le navigateur ; aucun fichier n'est envoyé à des serveurs externes.",
+			content: "Ce service est un outil de conversion de packs de ressources et de packs de textures Minecraft entre les éditions Java et Bedrock. Tout le traitement s'effectue localement dans le navigateur ; aucun fichier n'est envoyé à des serveurs externes.",
 		},
 		{
 			title: "2. Clause de non-responsabilité",

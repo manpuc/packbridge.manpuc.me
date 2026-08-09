@@ -43,7 +43,7 @@ const localeMap: Record<string, string> = {
 
 const keywords =
 	propKeywords ||
-	"Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, マイクラ, リソースパック, 変換, 統合版";
+	"Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, マイクラ, リソースパック, テクスチャパック, テクスチャ 変換, 変換, 統合版";
 
 const softwareAppStructuredData = {
 	"@context": "https://schema.org",
@@ -67,6 +67,7 @@ const softwareAppStructuredData = {
 	featureList: [
 		"Java to Bedrock Conversion",
 		"Bedrock to Java Conversion",
+		"Resource Pack & Texture Pack Conversion",
 		"Local Processing",
 		"Fast Conversion",
 		"No File Size Limit",
@@ -89,6 +90,20 @@ const faqStructuredData = {
 					lang === "ja"
 						? "いいえ、すべての変換処理はブラウザ内（ローカル）で完結します。ファイルが外部に送信されることはありません。"
 						: "No, all conversion processes are completed within your browser (locally). Files are never sent to external servers.",
+			},
+		},
+		{
+			"@type": "Question",
+			name:
+				lang === "ja"
+					? "リソースパックやテクスチャパックの変換に対応していますか？"
+					: "Does it support converting both Resource Packs and Texture Packs?",
+			acceptedAnswer: {
+				"@type": "Answer",
+				text:
+					lang === "ja"
+						? "はい。Minecraft Java Edition および Bedrock Edition（統合版）のリソースパック・テクスチャパックの相互変換に対応しています。"
+						: "Yes, PackBridge supports bidirectional conversion for both Resource Packs and Texture Packs between Minecraft Java Edition and Bedrock Edition.",
 			},
 		},
 		{

@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const zh: Translation = {
-	title: "我的世界资源包转换器 | PackBridge",
+	title: "我的世界资源包与材质包转换器 | PackBridge",
 	heading: "PackBridge",
-	description: "在 Java 版和基岩版之间转换我的世界资源包。所有操作都在您的浏览器中完成；您的文件绝不会上传到服务器。",
-	metaDescription: "免费在线我的世界（Minecraft）资源包转换器。在 Java 版和基岩版（Bedrock）之间轻松转换，在浏览器本地处理，安全且快速。",
-	h1Title: "我的世界资源包转换器",
+	description: "在 Java 版和基岩版之间转换我的世界资源包与材质包。所有操作都在您的浏览器中完成；您的文件绝不会上传到服务器。",
+	metaDescription: "免费在线我的世界（Minecraft）资源包与材质包转换器。在 Java 版和基岩版（Bedrock）之间轻松转换，在浏览器本地处理，安全且快速。",
+	h1Title: "我的世界资源包 / 材质包转换器",
 
 	// SEO Content
 	introTitle: "什么是 PackBridge？",
-	introDescription: "PackBridge 是一款功能强大的工具，旨在不同版本的我的世界（Java ⇄ 基岩版）之间转换资源包。我们自动化了复杂的资源映射过程，让您可以在任何设备上享受喜爱的材质。",
+	introDescription: "PackBridge 是一款功能强大的在线工具，旨在不同版本的我的世界（Java ⇄ 基岩版）之间转换资源包与材质包。我们自动化了复杂的资源映射过程，让您可以在任何设备上享受喜爱的材质。",
 	introFeaturesTitle: "主要功能",
 	introFeature1: "本地处理：您的文件绝不会离开您的计算机。转换完全在您的网络浏览器中进行。",
-	introFeature2: "双向转换：在 Java 版到基岩版以及基岩版到 Java 版之间无缝转换。",
+	introFeature2: "双向转换：支持 Java 版与基岩版之间资源包和材质包的双向无缝转换。",
 	introFeature3: "快速轻量：针对速度进行了优化，让您在几秒钟内完成大容量资源包的转换。",
 
 	directionJavaToBedrock: "Java → 基岩",
@@ -50,9 +50,9 @@ const zh: Translation = {
 	warnPossibleBedrock: "所选文件 (.mcpack) 可能已经是基岩版资源包。从 Java 版转换时，通常应选择 Java 版的 .zip 文件。",
 	warnPossibleJava: "所选文件可能已经是 Java 版资源包。从基岩版转换时，请确保选择基岩版的 .mcpack 或 .zip 文件。",
 
-	footer: "PackBridge | Minecraft Resource Pack Converter",
+	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "服务条款",
-	keywords: "我的世界, 资源包, 材质包, 转换器, Java, 基岩版, PackBridge, 移植",
+	keywords: "我的世界, 资源包, 材质包, 材质包转换, 资源包转换, 转换器, Java, 基岩版, PackBridge, 移植",
 	disclaimerPerfect: "*注意：不保证所有文件的完美转换识别。转换后可能需要手动调整。",
 	error404Title: "未找到页面",
 	error404Description: "抱歉，您访问的页面不存在或已被移动。",
@@ -62,7 +62,7 @@ const zh: Translation = {
 	termsSections: [
 		{
 			title: "1. 服务使用",
-			content: "本服务是用于在 Java 版和基岩版之间转换我的世界资源包的工具。所有处理均在浏览器中进行，文件不会上传。",
+			content: "本服务是用于在 Java 版和基岩版之间转换我的世界资源包与材质包的工具。所有处理均在浏览器中进行，文件不会上传。",
 		},
 		{
 			title: "2. 免责声明 (责任自负)",

@@ -1,6 +1,6 @@
-# 🌉 PackBridge | Minecraft Resource Pack Converter
+# 🌉 PackBridge | Minecraft Resource Pack & Texture Pack Converter
 
-**PackBridge** は、Minecraft のリソースパックを Java Edition と Bedrock Edition の間で相互に変換するための、高速でプライバシーを重視した Web アプリケーションです。
+**PackBridge** は、Minecraft のリソースパック・テクスチャパックを Java Edition と Bedrock Edition の間で相互に変換するための、高速でプライバシーを重視した Web アプリケーションです。
 
 すべての変換処理はユーザーのブラウザ内で行われるため、ファイルがサーバーにアップロードされることはありません。大容量のファイルでも安心して変換できます。
 

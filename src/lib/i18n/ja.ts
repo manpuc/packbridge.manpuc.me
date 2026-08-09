@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const ja: Translation = {
-	title: "マイクラ リソースパック 変換ツール | PackBridge",
+	title: "マイクラ リソースパック・テクスチャパック 変換ツール | PackBridge",
 	heading: "PackBridge",
-	description: "Minecraft のリソースパックを Java Edition と Bedrock Edition の間で相互に変換します。変換はすべてブラウザ内で行われ、ファイルがサーバーに送信されることはありません。",
-	metaDescription: "マイクラ（Minecraft）のJava版と統合版（Bedrock）の間でリソースパックを相互変換できる無料オンラインツールです。ブラウザ上で安全に、素早く変換できます。",
-	h1Title: "Minecraft リソースパック変換ツール",
+	description: "Minecraft のリソースパックやテクスチャパックを Java Edition と Bedrock Edition の間で相互に変換します。変換はすべてブラウザ内で行われ、ファイルがサーバーに送信されることはありません。",
+	metaDescription: "マイクラ（Minecraft）のJava版と統合版（Bedrock）の間でリソースパックやテクスチャパック（テクスチャ）を相互変換できる無料オンラインツールです。ブラウザ上で安全に、素早く変換できます。",
+	h1Title: "Minecraft リソースパック / テクスチャパック変換ツール",
 
 	// SEO Content
 	introTitle: "PackBridge とは？",
-	introDescription: "PackBridgeは、Minecraftの異なるエディション間（Java版 ⇄ 統合版）でリソースパックを変換するための強力なツールです。複雑なファイル構造の変換を自動化し、あなたの好みのテクスチャをどのデバイスでも楽しめるようにします。",
+	introDescription: "PackBridgeは、Minecraftの異なるエディション間（Java版 ⇄ 統合版）でリソースパックやテクスチャパック（テクスチャ）を変換するための強力なオンラインツールです。複雑なファイル構造の変換を自動化し、あなたの好みのテクスチャをどのデバイスでも楽しめるようにします。",
 	introFeaturesTitle: "主な特徴",
 	introFeature1: "ブラウザ完結：ファイルはサーバーに送信されず、手元のブラウザで安全に処理されます。",
-	introFeature2: "相互変換：Java版から統合版へ、また統合版からJava版への双方向の変換をサポート。",
+	introFeature2: "相互変換：Java版 ⇄ 統合版（Bedrock）でのリソースパック・テクスチャパックの双方向変換に対応。",
 	introFeature3: "高速・軽量：独自の最適化アルゴリズムにより、大容量のパックもスムーズに変換可能です。",
 
 	directionJavaToBedrock: "Java → Bedrock",
@@ -47,12 +47,12 @@ const ja: Translation = {
 	errorNoFile: "ファイルを選択してください。",
 	errorInvalidFile: "無効なファイル形式です。.zip または .mcpack を選択してください。",
 	errorConversion: "変換中にエラーが発生しました。",
-	warnPossibleBedrock: "選択されたファイル (.mcpack) は、すでに統合版用のリソースパックである可能性があります。Java版から変換する場合は、通常 Java版の .zip ファイルを選択します。",
-	warnPossibleJava: "選択されたファイルは、すでにJava版用のリソースパックである可能性があります。統合版から変換する場合は、統合版用の .mcpack または .zip ファイルを選択してください。",
+	warnPossibleBedrock: "選択されたファイル (.mcpack) は、すでに統合版用のリソースパック（テクスチャパック）である可能性があります。Java版から変換する場合は、通常 Java版の .zip ファイルを選択します。",
+	warnPossibleJava: "選択されたファイルは、すでにJava版用のリソースパック（テクスチャパック）である可能性があります。統合版から変換する場合は、統合版用の .mcpack または .zip ファイルを選択してください。",
 
-	footer: "PackBridge | Minecraft Resource Pack Converter",
+	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "利用規約",
-	keywords: "Minecraft, リソースパック, テクスチャパック, 変換, Java, Bedrock, 統合版, PackBridge, マイクラ, 変換シミュレーター, ポルティング",
+	keywords: "Minecraft, リソースパック, テクスチャパック, テクスチャ, 変換, リソースパック 変換, テクスチャパック 変換, テクスチャ 変換, Java, Bedrock, 統合版, PackBridge, マイクラ, 変換シミュレーター, ポルティング",
 	disclaimerPerfect: "※すべてのファイルの完全な変換を保証するものではありません。変換後に手動での修正が必要になる場合があります。",
 	error404Title: "ページが見つかりません",
 	error404Description: "申し訳ありません。お探しのページは存在しないか、移動した可能性があります。",
@@ -62,7 +62,7 @@ const ja: Translation = {
 	termsSections: [
 		{
 			title: "1. サービスの利用について",
-			content: "本サービスは、MinecraftのリソースパックをJava版と統合版（Bedrock）の間で変換するためのツールです。全ての処理はユーザーのブラウザ内で行われ、ファイルが外部サーバーに送信されることはありません。",
+			content: "本サービスは、MinecraftのリソースパックおよびテクスチャパックをJava版と統合版（Bedrock）の間で変換するためのツールです。全ての処理はユーザーのブラウザ内で行われ、ファイルが外部サーバーに送信されることはありません。",
 		},
 		{
 			title: "2. 免責事項（自己責任）",

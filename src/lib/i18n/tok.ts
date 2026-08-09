@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const tok: Translation = {
-	title: "ilo ante pi kulupu sitelen pi musi Manka | PackBridge",
+	title: "ilo ante pi kulupu sitelen en kule pi musi Manka | PackBridge",
 	heading: "PackBridge",
-	description: "ilo ni li ante e kulupu sitelen pi musi Manka lon poki Java en poki Pesaka. ilo li pali lon ilo lukin sina. musi sina li tawa ala ilo suli ante.",
-	metaDescription: "ilo ni li ante e kulupu sitelen pi musi Manka lon poki Java en poki Pesaka. ona li pali lon ilo lukin sina. pali ni li wawa li pona.",
-	h1Title: "ilo ante pi kulupu sitelen pi musi Manka",
+	description: "ilo ni li ante e kulupu sitelen en kule (resource pack, texture pack) pi musi Manka lon poki Java en poki Pesaka. ilo li pali lon ilo lukin sina. musi sina li tawa ala ilo suli ante.",
+	metaDescription: "ilo ni li ante e kulupu sitelen en kule pi musi Manka lon poki Java en poki Pesaka. ona li pali lon ilo lukin sina. pali ni li wawa li pona.",
+	h1Title: "ilo ante pi kulupu sitelen en kule pi musi Manka",
 
 	// SEO Content
 	introTitle: "PackBridge li seme?",
-	introDescription: "PackBridge li ilo wawa pi ante jo musi. ona li ante e jo pi musi Minecraft lon nasin ilo ante (Java ⇄ Bedrock). o jo e kule pona sina lon ilo musi ale.",
+	introDescription: "PackBridge li ilo wawa pi ante jo musi. ona li ante e kulupu sitelen e kule (resource pack / texture pack) pi musi Minecraft lon nasin ilo ante (Java ⇄ Bedrock). o jo e kule pona sina lon ilo musi ale.",
 	introFeaturesTitle: "pali suli ona",
 	introFeature1: "pali lon ni: ilo ni li pana ala e lipu sina tawa ma suli ante. ona li pali lon ilo lipu sina.",
-	introFeature2: "ante mute: ona li ken ante e ilo Java tawa ilo Bedrock e ilo Bedrock tawa ilo Java.",
+	introFeature2: "ante mute: ona li ken ante e kulupu sitelen e kule tan ilo Java tawa ilo Bedrock e ilo Bedrock tawa ilo Java.",
 	introFeature3: "pali wawa: ona li pali wawa e lipu suli lon tenpo lili.",
 
 	directionJavaToBedrock: "Java → Pesaka",
@@ -50,9 +50,9 @@ const tok: Translation = {
 	warnPossibleBedrock: "lipu .mcpack ni li ken kulupu Pesaka lon tenpo ni. sina ante tan Java la, o pana e poki .zip pi kulupu Java.",
 	warnPossibleJava: "lipu ni li ken kulupu Java lon tenpo ni. sina ante tan Pesaka la, o pana e poki .mcpack anu poki .zip pi kulupu Pesaka.",
 
-	footer: "PackBridge | ilo ante pi kulupu sitelen",
+	footer: "PackBridge | ilo ante pi kulupu sitelen en kule",
 	terms: "lipu pi ken pali",
-	keywords: "musi Manka, kulupu sitelen, ilo ante, PackBridge",
+	keywords: "musi Manka, kulupu sitelen, kule, ilo ante, PackBridge",
 	disclaimerPerfect: "※ilo ni li ken ala ante e ali pona. sina o pali e ijo lili sin lon tenpo pini.",
 	error404Title: "sina lon ala",
 	error404Description: "pakala. lipu ni li lon ala. sina o tawa tomo.",
@@ -62,7 +62,7 @@ const tok: Translation = {
 	termsSections: [
 		{
 			title: "1. pali musi",
-			content: "ilo ni li ante e kulupu sitelen pi musi Manka. pali li lon ilo lukin sina. musi sina li tawa ala.",
+			content: "ilo ni li ante e kulupu sitelen en kule pi musi Manka. pali li lon ilo lukin sina. musi sina li tawa ala.",
 		},
 		{
 			title: "2. pali ni li tan sina",

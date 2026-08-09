@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const tl: Translation = {
-	title: "Minecraft Resource Pack Converter | PackBridge",
+	title: "Minecraft Resource Pack & Texture Pack Converter | PackBridge",
 	heading: "PackBridge",
-	description: "I-convert ang mga Minecraft resource pack sa pagitan ng Java Edition at Bedrock Edition. Ang lahat ay nangyayari sa iyong browser; ang iyong mga file ay hindi kailanman ina-upload sa isang server.",
-	metaDescription: "Libreng online na tool para i-convert ang Minecraft resource packs sa pagitan ng Java Edition at Bedrock Edition. Ligtas at mabilis sa iyong browser.",
-	h1Title: "Minecraft Resource Pack Converter",
+	description: "I-convert ang mga Minecraft resource pack at texture pack sa pagitan ng Java Edition at Bedrock Edition. Ang lahat ay nangyayari sa iyong browser; ang iyong mga file ay hindi kailanman ina-upload sa isang server.",
+	metaDescription: "Libreng online na tool para i-convert ang Minecraft resource packs at texture packs sa pagitan ng Java Edition at Bedrock Edition. Ligtas at mabilis sa iyong browser.",
+	h1Title: "Minecraft Resource Pack & Texture Pack Converter",
 
 	// SEO Content
 	introTitle: "Ano ang PackBridge?",
-	introDescription: "Ang PackBridge ay isang mahusay na tool para i-convert ang mga Minecraft resource pack sa pagitan ng iba't ibang edisyon (Java ⇄ Bedrock). Awtomatiko naming binabago ang mga asset para ma-enjoy mo ang iyong paboritong textures sa anumang device.",
+	introDescription: "Ang PackBridge ay isang mahusay na tool para i-convert ang mga Minecraft resource pack at texture pack sa pagitan ng iba't ibang edisyon (Java ⇄ Bedrock). Awtomatiko naming binabago ang mga asset para ma-enjoy mo ang iyong paboritong textures sa anumang device.",
 	introFeaturesTitle: "Pangunahing Tampok",
 	introFeature1: "Lokal na Pagproseso: Ang iyong mga file ay hindi umaalis sa iyong computer. Ang conversion ay nangyayari sa loob ng iyong web browser.",
-	introFeature2: "Bidirectional: Madaling mag-convert mula Java patungong Bedrock at Bedrock patungong Java editions.",
+	introFeature2: "Bidirectional: Madaling mag-convert ng resource pack at texture pack mula Java patungong Bedrock at Bedrock patungong Java.",
 	introFeature3: "Mabilis at Magaan: Optimized para sa bilis, na nagbibigay-daan sa iyo na mag-convert ng malalaking pack sa loob ng ilang segundo.",
 
 	directionJavaToBedrock: "Java → Bedrock",
@@ -50,9 +50,9 @@ const tl: Translation = {
 	warnPossibleBedrock: "Maaaring ang napiling file (.mcpack) ay isa nang Bedrock Edition resource pack. Kapag nag-convert mula sa Java, karaniwan kang pumipili ng Java Edition .zip file.",
 	warnPossibleJava: "Maaaring ang napiling file ay isa nang Java Edition resource pack. Kapag nag-convert mula sa Bedrock, siguraduhing pumili ng Bedrock Edition na .mcpack o .zip file.",
 
-	footer: "PackBridge | Minecraft Resource Pack Converter",
+	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Kasunduan sa Serbisyo",
-	keywords: "Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge",
+	keywords: "Minecraft, Resource Pack, Texture Pack, Converter, Texture Pack Converter, Java to Bedrock, Bedrock to Java, PackBridge",
 	disclaimerPerfect: "*Tandaan: Hindi garantisado ang perpektong conversion ng lahat ng file. Maaaring kailanganin ang manual na pagsasaayos pagkatapos ng conversion.",
 	error404Title: "Hindi Nahanap ang Pahina",
 	error404Description: "Paumanhin, ang pahinang hinahanap mo ay hindi umiiral o nailipat na.",
@@ -62,7 +62,7 @@ const tl: Translation = {
 	termsSections: [
 		{
 			title: "1. Paggamit ng Serbisyo",
-			content: "Ang serbisyong ito ay isang tool para sa conversion ng Minecraft resource packs sa pagitan ng Java at Bedrock. Ang lahat ng processing ay ginagawa sa browser; walang files na ina-upload.",
+			content: "Ang serbisyong ito ay isang tool para sa conversion ng Minecraft resource packs at texture packs sa pagitan ng Java at Bedrock. Ang lahat ng processing ay ginagawa sa browser; walang files na ina-upload.",
 		},
 		{
 			title: "2. Disclaimer (Sariling Pananagutan)",

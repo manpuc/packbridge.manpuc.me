@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const de: Translation = {
-	title: "Minecraft Resource Pack Konverter | PackBridge",
+	title: "Minecraft Resource Pack & Texturenpack Konverter | PackBridge",
 	heading: "PackBridge",
-	description: "Konvertieren Sie Minecraft Ressourcenpakete zwischen Java und Bedrock Edition. Alles passiert in Ihrem Browser; Ihre Dateien werden nie auf einen Server hochgeladen.",
-	metaDescription: "Kostenloses Online-Tool zum Konvertieren von Minecraft Resource Packs zwischen Java Edition und Bedrock Edition. Verarbeiten Sie Dateien lokal in Ihrem Browser.",
-	h1Title: "Minecraft Resource Pack Konverter",
+	description: "Konvertieren Sie Minecraft Ressourcenpakete und Texturenpakete zwischen Java und Bedrock Edition. Alles passiert in Ihrem Browser; Ihre Dateien werden nie auf einen Server hochgeladen.",
+	metaDescription: "Kostenloses Online-Tool zum Konvertieren von Minecraft Resource Packs und Texturenpaketen zwischen Java Edition und Bedrock Edition. Verarbeiten Sie Dateien lokal in Ihrem Browser.",
+	h1Title: "Minecraft Resource Pack & Texturenpack Konverter",
 
 	// SEO Content
 	introTitle: "Was ist PackBridge?",
-	introDescription: "PackBridge ist ein leistungsstarkes Tool zum Konvertieren von Minecraft Resource Packs zwischen verschiedenen Editionen (Java ⇄ Bedrock). Wir automatisieren den komplexen Prozess der Neuordnung von Assets.",
+	introDescription: "PackBridge ist ein leistungsstarkes Tool zum Konvertieren von Minecraft Resource Packs und Texturenpaketen zwischen verschiedenen Editionen (Java ⇄ Bedrock). Wir automatisieren den komplexen Prozess der Neuordnung von Assets.",
 	introFeaturesTitle: "Hauptmerkmale",
 	introFeature1: "Lokale Verarbeitung: Ihre Dateien verlassen nie Ihren Computer. Die Konvertierung findet vollständig in Ihrem Browser statt.",
-	introFeature2: "Bidirektional: Konvertieren Sie nahtlos zwischen Java zu Bedrock und Bedrock zu Java Editionen.",
+	introFeature2: "Bidirektional: Konvertieren Sie Ressourcenpakete und Texturenpakete nahtlos zwischen Java und Bedrock Editionen.",
 	introFeature3: "Schnell & Leichtgewicht: Auf Geschwindigkeit optimiert, sodass Sie große Packs in Sekundenschnelle konvertieren können.",
 
 	directionJavaToBedrock: "Java → Bedrock",
@@ -50,9 +50,9 @@ const de: Translation = {
 	warnPossibleBedrock: "Die gewählte Datei (.mcpack) ist möglicherweise bereits ein Bedrock-Paket. Für eine Konvertierung von Java wählen Sie normalerweise eine .zip-Datei der Java Edition.",
 	warnPossibleJava: "Die gewählte Datei ist möglicherweise bereits ein Java-Paket. Für eine Konvertierung von Bedrock stellen Sie sicher, dass Sie eine .mcpack oder .zip der Bedrock Edition wählen.",
 
-	footer: "PackBridge | Minecraft Ressourcenpaket-Konverter",
+	footer: "PackBridge | Minecraft Ressourcenpaket- & Texturenpaket-Konverter",
 	terms: "Nutzungsbedingungen",
-	keywords: "Minecraft, Ressourcenpaket, Texturenpaket, Konverter, Java zu Bedrock, Bedrock zu Java, PackBridge, Portierung",
+	keywords: "Minecraft, Ressourcenpaket, Texturenpaket, Texturenpack, Konverter, Java zu Bedrock, Bedrock zu Java, PackBridge, Portierung",
 	disclaimerPerfect: "*Hinweis: Eine perfekte Konvertierung aller Dateien kann nicht garantiert werden. Manuelle Anpassungen können nach der Konvertierung erforderlich sein.",
 	error404Title: "Seite nicht gefunden",
 	error404Description: "Entschuldigung, die gesuchte Seite existiert nicht oder wurde verschoben.",
@@ -62,7 +62,7 @@ const de: Translation = {
 	termsSections: [
 		{
 			title: "1. Dienstnutzung",
-			content: "Dieser Dienst ist ein Werkzeug zur Konvertierung von Minecraft-Ressourcenpaketen zwischen Java- und Bedrock-Editionen. Die gesamte Verarbeitung erfolgt lokal im Browser; es werden keine Dateien an externe Server gesendet.",
+			content: "Dieser Dienst ist ein Werkzeug zur Konvertierung von Minecraft-Ressourcenpaketen und Texturenpaketen zwischen Java- und Bedrock-Editionen. Die gesamte Verarbeitung erfolgt lokal im Browser; es werden keine Dateien an externe Server gesendet.",
 		},
 		{
 			title: "2. Haftungsausschluss",

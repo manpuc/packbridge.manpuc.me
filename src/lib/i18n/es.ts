@@ -1,18 +1,18 @@
 import type { Translation } from "./types";
 
 const es: Translation = {
-	title: "Convertidor de paquetes de recursos de Minecraft | PackBridge",
+	title: "Convertidor de paquetes de recursos y texturas de Minecraft | PackBridge",
 	heading: "PackBridge",
-	description: "Convierte paquetes de recursos de Minecraft entre Java Edition y Bedrock Edition. Todo sucede en tu navegador; tus archivos nunca se suben a un servidor.",
-	metaDescription: "Convertidor gratuito en línea de paquetes de recursos de Minecraft. Convierte entre Java y Bedrock Edition de forma segura y rápida en tu navegador.",
-	h1Title: "Convertidor de paquetes de recursos de Minecraft",
+	description: "Convierte paquetes de recursos y paquetes de texturas de Minecraft entre Java Edition y Bedrock Edition. Todo sucede en tu navegador; tus archivos nunca se suben a un servidor.",
+	metaDescription: "Convertidor gratuito en línea de paquetes de recursos y paquetes de texturas de Minecraft. Convierte entre Java y Bedrock Edition de forma segura y rápida en tu navegador.",
+	h1Title: "Convertidor de paquetes de recursos y texturas de Minecraft",
 
 	// SEO Content
 	introTitle: "¿Qué es PackBridge?",
-	introDescription: "PackBridge es una herramienta potente diseñada para convertir paquetes de recursos de Minecraft entre diferentes ediciones (Java ⇄ Bedrock). Automatizamos el complejo proceso de remapeo de activos para que puedas disfrutar de tus texturas favoritas en cualquier dispositivo.",
+	introDescription: "PackBridge es una herramienta potente diseñada para convertir paquetes de recursos y paquetes de texturas de Minecraft entre diferentes ediciones (Java ⇄ Bedrock). Automatizamos el complejo proceso de remapeo de activos para que puedas disfrutar de tus texturas favoritas en cualquier dispositivo.",
 	introFeaturesTitle: "Características principales",
 	introFeature1: "Procesamiento local: Tus archivos nunca salen de tu ordenador. La conversión ocurre totalmente en tu navegador.",
-	introFeature2: "Bidireccional: Convierte sin problemas entre las ediciones Java a Bedrock y Bedrock a Java.",
+	introFeature2: "Bidireccional: Convierte paquetes de recursos y texturas sin problemas entre las ediciones Java y Bedrock.",
 	introFeature3: "Rápido y ligero: Optimizado para la velocidad, permitiéndote convertir paquetes grandes en segundos.",
 
 	directionJavaToBedrock: "Java → Bedrock",
@@ -50,9 +50,9 @@ const es: Translation = {
 	warnPossibleBedrock: "El archivo seleccionado (.mcpack) puede que ya sea un paquete de recursos de Bedrock Edition. Al convertir desde Java, normalmente se selecciona un archivo .zip de Java Edition.",
 	warnPossibleJava: "El archivo seleccionado puede que ya sea un paquete de recursos de Java Edition. Al convertir desde Bedrock, asegúrate de seleccionar un archivo .mcpack o .zip de Bedrock Edition.",
 
-	footer: "PackBridge | Convertidor de paquetes de recursos de Minecraft",
+	footer: "PackBridge | Convertidor de paquetes de recursos y texturas de Minecraft",
 	terms: "Términos de servicio",
-	keywords: "Minecraft, Paquete de recursos, Paquete de texturas, Convertidor, Java a Bedrock, Bedrock a Java, PackBridge, Portar, Activos",
+	keywords: "Minecraft, Paquete de recursos, Paquete de texturas, Texturas, Convertidor, Java a Bedrock, Bedrock a Java, PackBridge, Portar, Activos",
 	disclaimerPerfect: "*Nota: No se garantiza la conversión perfecta de todos los archivos. Pueden ser necesarios ajustes manuales después de la conversión.",
 	error404Title: "Página no encontrada",
 	error404Description: "Lo sentimos, la página que buscas no existe o ha sido movida.",
@@ -62,7 +62,7 @@ const es: Translation = {
 	termsSections: [
 		{
 			title: "1. Uso del servicio",
-			content: "Este servicio es una herramienta para convertir paquetes de recursos de Minecraft entre las ediciones Java y Bedrock. Todo el procesamiento ocurre localmente en el navegador; no se envían archivos a servidores externos.",
+			content: "Este servicio es una herramienta para convertir paquetes de recursos y paquetes de texturas de Minecraft entre las ediciones Java y Bedrock. Todo el procesamiento ocurre localmente en el navegador; no se envían archivos a servidores externos.",
 		},
 		{
 			title: "2. Descargo de responsabilidad (Responsabilidad propia)",
