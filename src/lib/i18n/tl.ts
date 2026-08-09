@@ -14,9 +14,15 @@ const tl: Translation = {
 	introFeature1: "Lokal na Pagproseso: Ang iyong mga file ay hindi umaalis sa iyong computer. Ang conversion ay nangyayari sa loob ng iyong web browser.",
 	introFeature2: "Bidirectional: Madaling mag-convert ng resource pack at texture pack mula Java patungong Bedrock at Bedrock patungong Java.",
 	introFeature3: "Mabilis at Magaan: Optimized para sa bilis, na nagbibigay-daan sa iyo na mag-convert ng malalaking pack sa loob ng ilang segundo.",
+	introFeature4: "Conversion ng Bersyon: Sinusuportahan ang pag-update mula sa mas lumang mga bersyon patungo sa mas bagong mga bersyon sa loob ng parehong edisyon.",
 
 	directionJavaToBedrock: "Java → Bedrock",
 	directionBedrockToJava: "Bedrock → Java",
+	directionVersionUpdate: "Baguhin ang Bersyon",
+	sourceEdition: "Pinagmulang Edisyon",
+	targetEdition: "Target na Edisyon",
+	editionJava: "Java Edition",
+	editionBedrock: "Bedrock Edition",
 
 	dropzoneTitle: "I-drop ang iyong pack dito o i-click para mag-browse",
 	dropzoneSubtitle: "Sinusuportahan ang mga .zip o .mcpack na file",

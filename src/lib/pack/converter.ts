@@ -110,7 +110,7 @@ export async function convertPack(
     let relativePath = path.substring(packRoot.length);
 
     // Normalize legacy paths
-    if (direction === 'java-to-bedrock') {
+    if (direction === 'java-to-bedrock' || direction === 'java-to-java') {
       const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId);
       if (jVersion) {
         relativePath = normalizeLegacyPath(relativePath, jVersion.packFormat);
@@ -146,7 +146,7 @@ export async function convertPack(
       }
 
       if (targetPath) {
-        if (!options.enableGuiConversion) {
+        if (!options.enableGuiConversion && (direction === 'java-to-bedrock' || direction === 'bedrock-to-java')) {
           if (relativePath.includes('/gui/') || targetPath.includes('/gui/')) {
             report.skippedCount++;
             report.details.push({ filename: path, status: 'skipped', reason: 'GUI conversion disabled' });
@@ -180,6 +180,11 @@ export async function convertPack(
               report.details.push({ filename: path, status: 'converted', outputPath: targetPath });
               continue;
             } else if (relativePath.endsWith('sounds.json')) {
+              if (!options.enableSoundConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
+                continue;
+              }
               finalContent = javaToBedrockSounds(decoder.decode(content));
               targetPath = 'sounds/sound_definitions.json';
             } else if (relativePath === 'assets/minecraft/texts/splashes.txt') {
@@ -236,9 +241,11 @@ export async function convertPack(
                     // Bedrock usually omits 'textures/' and '.png' in flipbook_texture path sometimes?
                     // According to animation.ts logic, flipbook_texture is usually e.g., 'blocks/stone' or 'items/apple'.
                     // So Bedrock path is usually 'textures/' + entry.flipbook_texture + '.png'
-                    const bPath = entry.flipbook_texture.startsWith('textures/')
-                      ? entry.flipbook_texture + '.png'
-                      : 'textures/' + entry.flipbook_texture + '.png';
+                    let rawTex = entry.flipbook_texture;
+                    if (!rawTex.endsWith('.png')) rawTex += '.png';
+                    const bPath = rawTex.startsWith('textures/')
+                      ? rawTex
+                      : 'textures/' + rawTex;
                     const jPath = getTargetContext(bPath, 'bedrock-to-java');
                     if (jPath) {
                       const mcmetaPath = jPath + '.mcmeta';
@@ -256,6 +263,11 @@ export async function convertPack(
               report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
               continue;
             } else if (relativePath === 'sounds/sound_definitions.json') {
+              if (!options.enableSoundConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
+                continue;
+              }
               finalContent = bedrockToJavaSounds(decoder.decode(content));
               targetPath = 'assets/minecraft/sounds.json';
             } else {
@@ -263,6 +275,35 @@ export async function convertPack(
             }
           } else {
             finalContent = content;
+          }
+        }
+
+        // Same-edition metadata updates
+        if (direction === 'java-to-java' && relativePath === 'pack.mcmeta') {
+          try {
+            const resolvedContent = finalContent instanceof Promise ? await finalContent : finalContent;
+            let contentStr = typeof resolvedContent === 'string' ? resolvedContent : new TextDecoder().decode(resolvedContent);
+            const json = JSON.parse(contentStr);
+            if (json.pack) {
+              const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+              json.pack.pack_format = jVersion.packFormat;
+              finalContent = JSON.stringify(json, null, 2);
+            }
+          } catch (e) {
+            console.warn('Failed to update pack_format in pack.mcmeta', e);
+          }
+        } else if (direction === 'bedrock-to-bedrock' && relativePath === 'manifest.json') {
+          try {
+            const resolvedContent = finalContent instanceof Promise ? await finalContent : finalContent;
+            let contentStr = typeof resolvedContent === 'string' ? resolvedContent : new TextDecoder().decode(resolvedContent);
+            const json = JSON.parse(contentStr);
+            if (json.header) {
+              const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+              json.header.min_engine_version = bVersion.minEngineVersion;
+              finalContent = JSON.stringify(json, null, 2);
+            }
+          } catch (e) {
+            console.warn('Failed to update min_engine_version in manifest.json', e);
           }
         }
 
@@ -429,8 +470,8 @@ function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: stri
     }
 
     // Ensure it's a component object
-    if (typeof baseComp === 'string') {
-      baseComp = { text: baseComp };
+    if (typeof baseComp !== 'object' || baseComp === null) {
+      baseComp = { text: String(baseComp) };
     } else if (Array.isArray(baseComp)) {
       baseComp = { text: "", extra: baseComp };
     }

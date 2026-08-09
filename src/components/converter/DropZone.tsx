@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, RefreshCw } from 'lucide-react';
+import type { Translation } from '@/lib/i18n';
 
 interface DropZoneProps {
   file: File | null;
@@ -11,7 +12,7 @@ interface DropZoneProps {
   onFileSelect: (file: File) => void;
   onConvert: () => void;
   onReset: () => void;
-  t: any;
+  t: Translation;
 }
 
 const springTransition = { type: "spring", stiffness: 300, damping: 30 } as const;

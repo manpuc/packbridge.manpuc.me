@@ -14,9 +14,15 @@ const ja: Translation = {
 	introFeature1: "ブラウザ完結：ファイルはサーバーに送信されず、手元のブラウザで安全に処理されます。",
 	introFeature2: "相互変換：Java版 ⇄ 統合版（Bedrock）でのリソースパック・テクスチャパックの双方向変換に対応。",
 	introFeature3: "高速・軽量：独自の最適化アルゴリズムにより、大容量のパックもスムーズに変換可能です。",
+	introFeature4: "バージョン変換：同じエディション内で古いバージョンから新しいバージョンへの更新にも対応。パックのポルティング（Porting）にも最適です。",
 
 	directionJavaToBedrock: "Java → Bedrock",
 	directionBedrockToJava: "Bedrock → Java",
+	directionVersionUpdate: "バージョン変換",
+	sourceEdition: "変換元のエディション",
+	targetEdition: "変換先のエディション",
+	editionJava: "Java版",
+	editionBedrock: "統合版 (Bedrock)",
 
 	dropzoneTitle: "ファイルをドロップするか選択",
 	dropzoneSubtitle: ".zip または .mcpack 形式に対応",

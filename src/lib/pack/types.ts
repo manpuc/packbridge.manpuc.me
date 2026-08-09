@@ -15,7 +15,7 @@ export interface PackReport {
   details: ConversionResult[];
 }
 
-export type ConversionDirection = 'java-to-bedrock' | 'bedrock-to-java';
+export type ConversionDirection = 'java-to-bedrock' | 'bedrock-to-java' | 'java-to-java' | 'bedrock-to-bedrock';
 
 export interface ConversionOptions {
   direction: ConversionDirection;
@@ -24,4 +24,5 @@ export interface ConversionOptions {
   enableGuiConversion: boolean;
   enableAnimationConversion: boolean;
   enableLanguageConversion: boolean;
+  enableSoundConversion: boolean;
 }

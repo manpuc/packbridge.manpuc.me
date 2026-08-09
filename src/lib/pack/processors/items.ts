@@ -15,9 +15,8 @@ export function generateItemTexture(convertedItems: Set<string>): string {
   const fallback = getFallbackMappings();
 
   for (const javaPath of convertedItems) {
-    // Normalize path for mappings lookup (assets/minecraft/ -> assets/)
     const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
-    const bedrockPath = active.java_to_bedrock[lookupPath] || fallback.java_to_bedrock[lookupPath];
+    const bedrockPath = active.java_to_bedrock[javaPath] || fallback.java_to_bedrock[lookupPath];
     if (bedrockPath && bedrockPath.startsWith('textures/items/')) {
       // Remove textures/items/ prefix and .png extension for the short name
       // e.g. textures/items/apple.png -> apple

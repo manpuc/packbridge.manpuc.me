@@ -14,9 +14,15 @@ const tok: Translation = {
 	introFeature1: "pali lon ni: ilo ni li pana ala e lipu sina tawa ma suli ante. ona li pali lon ilo lipu sina.",
 	introFeature2: "ante mute: ona li ken ante e kulupu sitelen e kule tan ilo Java tawa ilo Bedrock e ilo Bedrock tawa ilo Java.",
 	introFeature3: "pali wawa: ona li pali wawa e lipu suli lon tenpo lili.",
+	introFeature4: "ante nanpa: ona li ken ante e nanpa tan tenpo pini tawa tenpo sin lon kulupu sama.",
 
 	directionJavaToBedrock: "Java → Pesaka",
 	directionBedrockToJava: "Pesaka → Java",
+	directionVersionUpdate: "ante nanpa",
+	sourceEdition: "kulupu open",
+	targetEdition: "kulupu pini",
+	editionJava: "kulupu Java",
+	editionBedrock: "kulupu Pesaka",
 
 	dropzoneTitle: "o pana e poki musi lon ni",
 	dropzoneSubtitle: "ilo li ken e poki .zip en poki .mcpack",

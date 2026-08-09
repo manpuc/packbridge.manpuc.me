@@ -17,9 +17,15 @@ export interface Translation {
 	introFeature1: string;
 	introFeature2: string;
 	introFeature3: string;
+	introFeature4: string;
 
 	directionJavaToBedrock: string;
 	directionBedrockToJava: string;
+	directionVersionUpdate: string;
+	sourceEdition: string;
+	targetEdition: string;
+	editionJava: string;
+	editionBedrock: string;
 
 	dropzoneTitle: string;
 	dropzoneSubtitle: string;

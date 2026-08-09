@@ -14,11 +14,16 @@ const zh: Translation = {
 	introFeature1: "本地处理：您的文件绝不会离开您的计算机。转换完全在您的网络浏览器中进行。",
 	introFeature2: "双向转换：支持 Java 版与基岩版之间资源包和材质包的双向无缝转换。",
 	introFeature3: "快速轻量：针对速度进行了优化，让您在几秒钟内完成大容量资源包的转换。",
+	introFeature4: "版本转换：支持在同一版本内从旧版本更新到新版本。非常适合资源包移植（Porting）。",
 
 	directionJavaToBedrock: "Java → 基岩",
 	directionBedrockToJava: "基岩 → Java",
-
-	dropzoneTitle: "拖放文件或点击浏览",
+	directionVersionUpdate: "更改版本",
+	sourceEdition: "源版本",
+	targetEdition: "目标版本",
+	editionJava: "Java版",
+	editionBedrock: "基岩版",
+	dropzoneTitle: "将文件拖放到此处，或点击浏览",
 	dropzoneSubtitle: "支持 .zip 或 .mcpack 文件",
 	dropzoneProcessing: "处理中...",
 	sourceVersion: "源版本",

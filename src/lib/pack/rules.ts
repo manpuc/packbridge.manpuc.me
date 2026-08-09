@@ -23,8 +23,8 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
 ];
 
 export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
-  { match: /^textures\/blocks\/(.*)$/, replace: 'assets/minecraft/textures/block/$1' },
-  { match: /^textures\/items\/(.*)$/, replace: 'assets/minecraft/textures/item/$1' },
+  { match: /^textures\/blocks?\/(.*)$/, replace: 'assets/minecraft/textures/block/$1' },
+  { match: /^textures\/items?\/(.*)$/, replace: 'assets/minecraft/textures/item/$1' },
   { match: /^textures\/models\/armor\/(.*)_([12])\.png$/, replace: 'assets/minecraft/textures/models/armor/$1_layer_$2.png' },
   { match: /^textures\/entity\/(.*)$/, replace: 'assets/minecraft/textures/entity/$1' },
   { match: /^textures\/gui\/realms\/(.*)$/, replace: 'assets/realms/textures/$1' },
@@ -62,10 +62,6 @@ export async function loadMappings(javaVersionId?: string, bedrockVersionId?: st
   const bClean = bedrockVersionId; // e.g. '1.20.80'
 
   try {
-    // Attempt to load the specific mapping file dynamically
-    // In a browser/vite context, we can fetch it from public dir, or use dynamic import.
-    // For now, if we assume they are bundled or available via dynamic import:
-    // This requires Vite to bundle them, which we can do using an explicit import or fetch.
     const mapModule = await import(`./mappings/${jClean}_to_${bClean}.json`);
     activeMappings = mapModule.default;
   } catch (e) {
@@ -75,23 +71,30 @@ export async function loadMappings(javaVersionId?: string, bedrockVersionId?: st
 }
 
 export function getTargetContext(path: string, direction: ConversionDirection): string | null {
-  // Normalize path for mappings.json lookup since mappings.json incorrectly uses 'assets/textures/...' instead of 'assets/minecraft/textures/...'
-  const lookupPath = direction === 'java-to-bedrock'
-    ? path.replace(/^assets\/minecraft\//, 'assets/')
-    : path;
+  if (direction === 'java-to-java' || direction === 'bedrock-to-bedrock') {
+    return path;
+  }
 
-  // 1. Try exact mapping from the generated database
-  const map = direction === 'java-to-bedrock'
-    ? activeMappings.java_to_bedrock
-    : activeMappings.bedrock_to_java;
-
-  const exactMatch = map[lookupPath] || (direction === 'java-to-bedrock' ? fallbackMappings.java_to_bedrock[lookupPath] : fallbackMappings.bedrock_to_java[lookupPath]);
-  if (exactMatch) {
-    if (direction === 'bedrock-to-java') {
-      // Map returns 'assets/textures/...', needs to be 'assets/minecraft/textures/...'
-      return exactMatch.replace(/^assets\//, 'assets/minecraft/');
+  if (direction === 'java-to-bedrock') {
+    // Active version mapping uses full Java path ('assets/minecraft/...')
+    if (activeMappings.java_to_bedrock[path]) {
+      return activeMappings.java_to_bedrock[path];
     }
-    return exactMatch;
+    // Fallback mapping uses normalized path ('assets/...')
+    const lookupPath = path.replace(/^assets\/minecraft\//, 'assets/');
+    if (fallbackMappings.java_to_bedrock[lookupPath]) {
+      return fallbackMappings.java_to_bedrock[lookupPath];
+    }
+  } else if (direction === 'bedrock-to-java') {
+    // Active version mapping returns full Java path ('assets/minecraft/...')
+    if (activeMappings.bedrock_to_java[path]) {
+      return activeMappings.bedrock_to_java[path];
+    }
+    // Fallback mapping returns 'assets/textures/...' (needs 'assets/minecraft/')
+    if (fallbackMappings.bedrock_to_java[path]) {
+      const match = fallbackMappings.bedrock_to_java[path];
+      return match.startsWith('assets/minecraft/') ? match : match.replace(/^assets\//, 'assets/minecraft/');
+    }
   }
 
   // 2. Fallback to regex rules for patterns

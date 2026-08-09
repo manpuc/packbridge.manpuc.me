@@ -17,9 +17,8 @@ export function generateTerrainTexture(convertedBlocks: Set<string>): string {
   const fallback = getFallbackMappings();
 
   for (const javaPath of convertedBlocks) {
-    // Normalize path for mappings lookup (assets/minecraft/ -> assets/)
     const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
-    const bedrockPath = active.java_to_bedrock[lookupPath] || fallback.java_to_bedrock[lookupPath];
+    const bedrockPath = active.java_to_bedrock[javaPath] || fallback.java_to_bedrock[lookupPath];
     if (bedrockPath && bedrockPath.startsWith('textures/blocks/')) {
       // Remove textures/ prefix and .png extension for the short name
       const shortName = bedrockPath.replace('textures/blocks/', '').replace('.png', '');
@@ -47,9 +46,8 @@ export function generateBlocksJson(convertedBlocks: Set<string>): string {
   const fallback = getFallbackMappings();
 
   for (const javaPath of convertedBlocks) {
-    // Normalize path for mappings lookup (assets/minecraft/ -> assets/)
     const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
-    const bedrockPath = active.java_to_bedrock[lookupPath] || fallback.java_to_bedrock[lookupPath];
+    const bedrockPath = active.java_to_bedrock[javaPath] || fallback.java_to_bedrock[lookupPath];
     if (bedrockPath && bedrockPath.startsWith('textures/blocks/')) {
       const shortName = bedrockPath.replace('textures/blocks/', '').replace('.png', '');
 

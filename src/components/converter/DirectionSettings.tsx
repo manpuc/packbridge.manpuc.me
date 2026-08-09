@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ConversionDirection } from '@/lib/pack/types';
+import type { Translation } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from '@/lib/pack/versions';
 
 const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: boolean) => void }) => (
@@ -53,7 +54,9 @@ interface DirectionSettingsProps {
   setEnableAnimationConversion: (v: boolean) => void;
   enableLanguageConversion: boolean;
   setEnableLanguageConversion: (v: boolean) => void;
-  t: any;
+  enableSoundConversion: boolean;
+  setEnableSoundConversion: (v: boolean) => void;
+  t: Translation;
 }
 
 export function DirectionSettings({
@@ -71,11 +74,30 @@ export function DirectionSettings({
   setEnableAnimationConversion,
   enableLanguageConversion,
   setEnableLanguageConversion,
+  enableSoundConversion,
+  setEnableSoundConversion,
   t
 }: DirectionSettingsProps) {
   const [isBetaExpanded, setIsBetaExpanded] = useState(false);
-  const sourceName = direction === 'java-to-bedrock' ? 'Java' : 'Bedrock';
-  const targetName = direction === 'java-to-bedrock' ? 'Bedrock' : 'Java';
+  const [uiDirection, setUiDirection] = useState<'java-to-bedrock' | 'bedrock-to-java' | 'version-update'>(
+    direction === 'java-to-bedrock' ? 'java-to-bedrock' : 
+    direction === 'bedrock-to-java' ? 'bedrock-to-java' : 'version-update'
+  );
+  
+  // We determine the internal source edition based on the direction passed from Converter
+  const sourceEdition = direction.startsWith('java') ? 'java' : 'bedrock';
+
+  const handleUiDirectionChange = (newDir: 'java-to-bedrock' | 'bedrock-to-java' | 'version-update') => {
+    setUiDirection(newDir);
+    if (newDir === 'java-to-bedrock') {
+      setDirection('java-to-bedrock');
+    } else if (newDir === 'bedrock-to-java') {
+      setDirection('bedrock-to-java');
+    } else {
+      // Defaults to java-to-java before auto-detect, Converter logic will auto-correct to bedrock-to-bedrock if Bedrock uploaded
+      setDirection(sourceEdition === 'bedrock' ? 'bedrock-to-bedrock' : 'java-to-java');
+    }
+  };
 
   return (
     <motion.div
@@ -84,64 +106,127 @@ export function DirectionSettings({
       animate={{ opacity: 1, y: 0 }}
       className="card"
     >
-      <div className="segmented-control">
+      <div className="segmented-control" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap' }}>
         <button
-          className={direction === 'java-to-bedrock' ? 'active' : ''}
-          onClick={() => setDirection('java-to-bedrock')}
+          className={uiDirection === 'java-to-bedrock' ? 'active' : ''}
+          onClick={() => handleUiDirectionChange('java-to-bedrock')}
+          style={{ flex: 1, minWidth: '30%' }}
         >
           {t.directionJavaToBedrock}
         </button>
         <button
-          className={direction === 'bedrock-to-java' ? 'active' : ''}
-          onClick={() => setDirection('bedrock-to-java')}
+          className={uiDirection === 'bedrock-to-java' ? 'active' : ''}
+          onClick={() => handleUiDirectionChange('bedrock-to-java')}
+          style={{ flex: 1, minWidth: '30%' }}
         >
           {t.directionBedrockToJava}
         </button>
+        <button
+          className={uiDirection === 'version-update' ? 'active' : ''}
+          onClick={() => handleUiDirectionChange('version-update')}
+          style={{ flex: 1, minWidth: '30%' }}
+        >
+          {t.directionVersionUpdate || 'Version Update'}
+        </button>
       </div>
 
-      <motion.div layout style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>{t.sourceVersion} ({sourceName})</span>
-            {isAutoDetected && <span style={{ color: 'var(--color-primary)' }}>{t.autoDetected}</span>}
-          </label>
-          <div className={`select-wrapper ${!isAutoDetected ? 'disabled' : ''}`} style={{ opacity: !isAutoDetected ? 0.7 : 1 }}>
-            {hasFile ? (
-              <select
-                className="select-input"
-                value={direction === 'java-to-bedrock' ? selectedJavaVersion : selectedBedrockVersion}
-                disabled={true}
-              >
-                {direction === 'java-to-bedrock'
-                  ? JAVA_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
-                  : BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
-                }
-              </select>
-            ) : (
-              <div className="select-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
-                {t.uploadToAutoDetect}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-            {t.targetVersion} ({targetName})
-          </label>
-          <div className="select-wrapper">
-            <select
-              className="select-input"
-              value={direction === 'java-to-bedrock' ? selectedBedrockVersion : selectedJavaVersion}
-              onChange={(e) => direction === 'java-to-bedrock' ? setSelectedBedrockVersion(e.target.value) : setSelectedJavaVersion(e.target.value)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+        <AnimatePresence initial={false}>
+          {uiDirection !== 'version-update' && (
+            <motion.div
+              key="cross-edition"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              style={{ overflow: 'hidden' }}
             >
-              {direction === 'java-to-bedrock'
-                ? BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
-                : JAVA_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
-              }
-            </select>
-          </div>
-        </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{t.sourceVersion} ({uiDirection === 'java-to-bedrock' ? 'Java' : 'Bedrock'})</span>
+                    {isAutoDetected && <span style={{ color: 'var(--color-primary)' }}>{t.autoDetected}</span>}
+                  </label>
+                  <div className={`select-wrapper ${!isAutoDetected ? 'disabled' : ''}`} style={{ opacity: !isAutoDetected ? 0.7 : 1 }}>
+                    {hasFile ? (
+                      <select
+                        className="select-input"
+                        value={uiDirection === 'java-to-bedrock' ? selectedJavaVersion : selectedBedrockVersion}
+                        disabled={true}
+                      >
+                        {uiDirection === 'java-to-bedrock'
+                          ? JAVA_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                          : BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                        }
+                      </select>
+                    ) : (
+                      <div className="select-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
+                        {t.uploadToAutoDetect}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                    {t.targetVersion} ({uiDirection === 'java-to-bedrock' ? 'Bedrock' : 'Java'})
+                  </label>
+                  <div className="select-wrapper">
+                    <select
+                      className="select-input"
+                      value={uiDirection === 'java-to-bedrock' ? selectedBedrockVersion : selectedJavaVersion}
+                      onChange={(e) => uiDirection === 'java-to-bedrock' ? setSelectedBedrockVersion(e.target.value) : setSelectedJavaVersion(e.target.value)}
+                    >
+                      {uiDirection === 'java-to-bedrock'
+                        ? BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                        : JAVA_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                      }
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence initial={false}>
+          {uiDirection === 'version-update' && (
+            <motion.div
+              key="version-update"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '4px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{t.targetVersion} {hasFile ? `(${sourceEdition === 'java' ? 'Java' : 'Bedrock'})` : ''}</span>
+                  {isAutoDetected && <span style={{ color: 'var(--color-primary)' }}>{t.autoDetected}</span>}
+                </label>
+                <div className="select-wrapper">
+                  {hasFile ? (
+                    <select
+                      className="select-input"
+                      value={sourceEdition === 'java' ? selectedJavaVersion : selectedBedrockVersion}
+                      onChange={(e) => sourceEdition === 'java' ? setSelectedJavaVersion(e.target.value) : setSelectedBedrockVersion(e.target.value)}
+                    >
+                      {sourceEdition === 'java'
+                        ? JAVA_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                        : BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                      }
+                    </select>
+                  ) : (
+                    <div className="select-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
+                      {t.uploadToAutoDetect}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <button
@@ -181,12 +266,15 @@ export function DirectionSettings({
                     <span style={{ color: 'var(--color-text)' }}>{t.enableLanguageConversion || 'Enable Language Conversion'}</span>
                     <IosSwitch checked={enableLanguageConversion} onChange={setEnableLanguageConversion} />
                   </label>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ color: 'var(--color-text)' }}>{t.enableSoundConversion || 'Enable Sound Conversion'}</span>
+                    <IosSwitch checked={enableSoundConversion} onChange={setEnableSoundConversion} />
+                  </label>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
     </motion.div>
   );
 }

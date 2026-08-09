@@ -13,10 +13,16 @@ const en: Translation = {
 	introFeaturesTitle: "Key Features",
 	introFeature1: "Local Processing: Your files never leave your computer. Conversion happens entirely within your web browser.",
 	introFeature2: "Bidirectional: Seamlessly convert resource packs and texture packs between Java and Bedrock editions.",
-	introFeature3: "Fast & Lightweight: Optimized for speed, allowing you to convert large packs in seconds.",
+	introFeature3: "Fast & Lightweight: Optimized for speed, allowing you to convert large resource packs in seconds.",
+	introFeature4: "Version Conversion: Supports updating from older versions to newer versions within the same edition. Perfect for pack porting.",
 
 	directionJavaToBedrock: "Java → Bedrock",
 	directionBedrockToJava: "Bedrock → Java",
+	directionVersionUpdate: "Change Version",
+	sourceEdition: "Source Edition",
+	targetEdition: "Target Edition",
+	editionJava: "Java Edition",
+	editionBedrock: "Bedrock Edition",
 
 	dropzoneTitle: "Drop your pack here or click to browse",
 	dropzoneSubtitle: "Supports .zip or .mcpack files",

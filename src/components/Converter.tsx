@@ -35,6 +35,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
   const [enableAnimationConversion, setEnableAnimationConversion] = useState(false);
   const [enableLanguageConversion, setEnableLanguageConversion] = useState(false);
+  const [enableSoundConversion, setEnableSoundConversion] = useState(false);
 
   // Load saved beta preferences on mount
   useEffect(() => {
@@ -47,6 +48,9 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
 
       const savedLang = localStorage.getItem('pb_beta_lang');
       if (savedLang) setEnableLanguageConversion(savedLang === 'true');
+
+      const savedSound = localStorage.getItem('pb_beta_sound');
+      if (savedSound) setEnableSoundConversion(savedSound === 'true');
     } catch (e) {
       // Ignore localStorage errors (e.g., in incognito mode)
     }
@@ -58,10 +62,11 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       localStorage.setItem('pb_beta_gui', String(enableGuiConversion));
       localStorage.setItem('pb_beta_anim', String(enableAnimationConversion));
       localStorage.setItem('pb_beta_lang', String(enableLanguageConversion));
+      localStorage.setItem('pb_beta_sound', String(enableSoundConversion));
     } catch (e) {
       // Ignore
     }
-  }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion]);
+  }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion]);
 
   const handleFile = useCallback((selectedFile: File) => {
     if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
@@ -111,10 +116,25 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         // Logic-based warning
         const packMcmetaEntry = zip.file('pack.mcmeta') || zip.file(/pack\.mcmeta$/)[0];
         const manifestEntry = zip.file('manifest.json') || zip.file(/manifest\.json$/)[0];
+        
+        const isVersionUpdate = direction === 'java-to-java' || direction === 'bedrock-to-bedrock';
+        let actualSource = direction.startsWith('java') ? 'java' : 'bedrock';
 
-        if (direction === 'java-to-bedrock' && (manifestEntry || file.name.endsWith('.mcpack'))) {
+        if (isVersionUpdate) {
+          if (manifestEntry || file.name.endsWith('.mcpack')) {
+            actualSource = 'bedrock';
+            if (direction !== 'bedrock-to-bedrock') setDirection('bedrock-to-bedrock');
+          } else if (packMcmetaEntry) {
+            actualSource = 'java';
+            if (direction !== 'java-to-java') setDirection('java-to-java');
+          }
+        }
+        
+        const sourceEdition = actualSource;
+        
+        if (sourceEdition === 'java' && (manifestEntry || file.name.endsWith('.mcpack'))) {
           setWarning(t.warnPossibleBedrock);
-        } else if (direction === 'bedrock-to-java' && packMcmetaEntry) {
+        } else if (sourceEdition === 'bedrock' && packMcmetaEntry) {
           setWarning(t.warnPossibleJava);
         } else {
           setWarning(null);
@@ -122,7 +142,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
 
         // Version Extraction
         try {
-          if (direction === 'java-to-bedrock' && packMcmetaEntry) {
+          if (sourceEdition === 'java' && packMcmetaEntry) {
             const content = await packMcmetaEntry.async('string');
             const json = JSON.parse(content);
             if (json?.pack?.pack_format) {
@@ -132,7 +152,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
                 setIsAutoDetected(true);
               }
             }
-          } else if (direction === 'bedrock-to-java' && manifestEntry) {
+          } else if (sourceEdition === 'bedrock' && manifestEntry) {
             const content = await manifestEntry.async('string');
             const json = JSON.parse(content);
             if (json?.header?.min_engine_version) {
@@ -181,7 +201,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         bedrockVersionId: selectedBedrockVersion,
         enableGuiConversion,
         enableAnimationConversion,
-        enableLanguageConversion
+        enableLanguageConversion,
+        enableSoundConversion
       };
       // Reuse zipInstance if available to save memory/time
       const result = await convertPack(zipInstance || file, options, file.name);
@@ -199,8 +220,10 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
 
   const reset = () => {
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    if (iconUrl) URL.revokeObjectURL(iconUrl);
     setFile(null);
     setZipInstance(null);
+    setIconUrl(null);
     setReport(null);
     setDownloadUrl(null);
     setError(null);
@@ -252,6 +275,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         setEnableAnimationConversion={setEnableAnimationConversion}
         enableLanguageConversion={enableLanguageConversion}
         setEnableLanguageConversion={setEnableLanguageConversion}
+        enableSoundConversion={enableSoundConversion}
+        setEnableSoundConversion={setEnableSoundConversion}
         t={t}
       />
 
