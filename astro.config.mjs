@@ -17,6 +17,11 @@ export default defineConfig({
     },
   })],
   site: 'https://packbridge.manpuc.me',
+  vite: {
+    worker: {
+      format: 'es'
+    }
+  },
   i18n: {
     defaultLocale: 'ja',
     locales: ['ja', 'en', 'ko', 'zh', 'tl', 'tok', 'es', 'fr', 'de'],

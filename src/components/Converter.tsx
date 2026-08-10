@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload } from 'lucide-react';
 import JSZip from 'jszip';
-import { convertPack } from '@/lib/pack/converter';
+import { convertPack, convertPackWithWorker } from '@/lib/pack/converter';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
 import type { Translation, Language } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion } from '@/lib/pack/versions';
@@ -204,8 +204,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         enableLanguageConversion,
         enableSoundConversion
       };
-      // Reuse zipInstance if available to save memory/time
-      const result = await convertPack(zipInstance || file, options, file.name);
+      const result = await convertPackWithWorker(file, options);
       setReport(result.report);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       const url = URL.createObjectURL(result.blob);
