@@ -23,16 +23,17 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
 ];
 
 export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
-  { match: /^textures\/blocks?\/(.*)$/, replace: 'assets/minecraft/textures/block/$1' },
-  { match: /^textures\/items?\/(.*)$/, replace: 'assets/minecraft/textures/item/$1' },
-  { match: /^textures\/models\/armor\/(.*)_([12])\.png$/, replace: 'assets/minecraft/textures/models/armor/$1_layer_$2.png' },
-  { match: /^textures\/entity\/(.*)$/, replace: 'assets/minecraft/textures/entity/$1' },
-  { match: /^textures\/gui\/realms\/(.*)$/, replace: 'assets/realms/textures/$1' },
-  { match: /^textures\/ui\/(.*)$/, replace: 'assets/minecraft/textures/gui/$1' },
-  { match: /^textures\/(.*)$/, replace: 'assets/minecraft/textures/$1' },
+  { match: /^textures\/blocks?\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/block/$1.png' },
+  { match: /^textures\/items?\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/item/$1.png' },
+  { match: /^textures\/models\/armor\/(.*)_(layer_)?([12])\.(png|tga)$/, replace: 'assets/minecraft/textures/models/armor/$1_layer_$3.png' },
+  { match: /^textures\/entity\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/$1.png' },
+  { match: /^textures\/gui\/realms\/(.*)\.(png|tga)$/, replace: 'assets/realms/textures/$1.png' },
+  { match: /^textures\/ui\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/gui/$1.png' },
+  { match: /^textures\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/$1.png' },
   { match: /^sounds\/(.*)$/, replace: 'assets/minecraft/sounds/$1' },
   { match: /^texts\/(.*)\.lang$/, replace: 'assets/minecraft/lang/$1.json' },
-  { match: /^pack_icon\.png$/, replace: 'pack.png' },
+  { match: /^pack_icon\.(png|tga)$/, replace: 'pack.png' },
+  { match: /^pack\.png$/, replace: 'pack.png' },
 ];
 
 interface MappingsData {

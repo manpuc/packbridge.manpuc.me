@@ -11,9 +11,16 @@ export interface BedrockVersion {
 }
 
 export const JAVA_VERSIONS: JavaVersion[] = [
-  { id: '26.0.0', name: '26.x', packFormat: 64 },
-  { id: '1.21.4', name: '1.21.4+', packFormat: 48 },
-  { id: '1.21.2', name: '1.21.2 - 1.21.3', packFormat: 46 },
+  { id: '26.3.0', name: '26.3', packFormat: 95 },
+  { id: '26.2.0', name: '26.2', packFormat: 88 },
+  { id: '26.1.0', name: '26.1', packFormat: 84 },
+  { id: '1.21.11', name: '1.21.11', packFormat: 75 },
+  { id: '1.21.9', name: '1.21.9 - 1.21.10', packFormat: 69 },
+  { id: '1.21.7', name: '1.21.7 - 1.21.8', packFormat: 64 },
+  { id: '1.21.6', name: '1.21.6', packFormat: 63 },
+  { id: '1.21.5', name: '1.21.5', packFormat: 55 },
+  { id: '1.21.4', name: '1.21.4', packFormat: 48 },
+  { id: '1.21.2', name: '1.21.2 - 1.21.3', packFormat: 42 },
   { id: '1.21.0', name: '1.21.0 - 1.21.1', packFormat: 34 },
   { id: '1.20.5', name: '1.20.5 - 1.20.6', packFormat: 32 },
   { id: '1.20.3', name: '1.20.3 - 1.20.4', packFormat: 22 },
@@ -37,7 +44,7 @@ export const JAVA_VERSIONS: JavaVersion[] = [
 ];
 
 export const BEDROCK_VERSIONS: BedrockVersion[] = [
-  { id: '26.0.0', name: '26.x', minEngineVersion: [26, 0, 0] },
+  { id: '1.26.0', name: '26.x (1.26.0)', minEngineVersion: [1, 26, 0] },
   { id: '1.21.50', name: '1.21.50+', minEngineVersion: [1, 21, 50] },
   { id: '1.21.0', name: '1.21.0', minEngineVersion: [1, 21, 0] },
   { id: '1.20.80', name: '1.20.80', minEngineVersion: [1, 20, 80] },

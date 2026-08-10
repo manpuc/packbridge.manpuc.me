@@ -171,9 +171,6 @@ export const itemRenames: Record<string, string> = {
 };
 
 export function normalizeLegacyPath(path: string, packFormat: number): string {
-  // pack_format <= 3 corresponds to 1.12.2 and older
-  if (packFormat > 3) return path;
-
   let normalized = path;
 
   // 1. Fix structural changes (blocks -> block, items -> item)
@@ -183,7 +180,7 @@ export function normalizeLegacyPath(path: string, packFormat: number): string {
     normalized = normalized.replace('assets/minecraft/textures/items/', 'assets/minecraft/textures/item/');
   }
 
-  // 2. Fix filenames
+  // 2. Fix filenames for 1.13+ (Flattening) and legacy conversions
   const match = normalized.match(/^(assets\/minecraft\/textures\/(?:block|item)\/)(.*?)(\.png|\.png\.mcmeta)?$/);
   if (match) {
     const prefix = match[1];

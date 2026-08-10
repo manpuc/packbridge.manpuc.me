@@ -168,6 +168,13 @@ export async function convertPack(
     try {
       let targetPath = getTargetContext(relativePath, direction);
 
+      if (direction === 'bedrock-to-java' && targetPath) {
+        const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId);
+        if (jVersion) {
+          targetPath = normalizeLegacyPath(targetPath, jVersion.packFormat);
+        }
+      }
+
       // Check if we need to load and decode the content for text/logic processing
       let needsProcessing = false;
       if (targetPath) {
@@ -335,6 +342,10 @@ export async function convertPack(
             if (json.pack) {
               const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
               json.pack.pack_format = jVersion.packFormat;
+              if (jVersion.packFormat >= 69) {
+                json.pack.min_format = jVersion.packFormat;
+                json.pack.max_format = jVersion.packFormat;
+              }
               finalContent = JSON.stringify(json, null, 2);
             }
           } catch (e) {
@@ -383,9 +394,8 @@ export async function convertPack(
         } else if (direction === 'bedrock-to-java' && relativePath === 'manifest.json') {
           const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
           generateMcmeta(targetZip, report, path, packDescription, jVersion.packFormat);
-        } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png') {
-          const iconName = direction === 'java-to-bedrock' ? 'pack_icon.png' : 'pack.png';
-          // No processing needed, pass Promise directly
+        } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png' || relativePath.endsWith('/pack_icon.png') || relativePath.endsWith('/pack.png')) {
+          const iconName = (direction === 'java-to-bedrock') ? 'pack_icon.png' : 'pack.png';
           targetZip.file(iconName, fileEntry.async('uint8array'), getZipFileOptions(iconName));
           report.convertedCount++;
           report.details.push({ filename: path, status: 'converted', outputPath: iconName });
@@ -445,6 +455,12 @@ export async function convertPack(
     // Write merged languages
     for (const [tPath, content] of mergedLangs.entries()) {
       targetZip.file(tPath, content, getZipFileOptions(tPath));
+    }
+  } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
+    // Ensure pack.mcmeta exists in output zip
+    if (!targetZip.file('pack.mcmeta')) {
+      const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+      generateMcmeta(targetZip, report, 'manifest.json', packDescription, jVersion.packFormat);
     }
   }
 
@@ -536,11 +552,19 @@ function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: stri
     finalDescription = description + "\nConverted with PackBridge (https://packbridge.manpuc.me)";
   }
 
+  const packObj: any = {
+    pack_format: packFormat,
+    description: finalDescription
+  };
+
+  // Minecraft 1.21.9+ (packFormat >= 69, 26.x などの min_format/max_format 推奨仕様)
+  if (packFormat >= 69) {
+    packObj.min_format = packFormat;
+    packObj.max_format = packFormat;
+  }
+
   const mcmeta = {
-    pack: {
-      pack_format: packFormat,
-      description: finalDescription
-    }
+    pack: packObj
   };
 
   targetZip.file('pack.mcmeta', JSON.stringify(mcmeta, null, 2), getZipFileOptions('pack.mcmeta'));

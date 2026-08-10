@@ -126,6 +126,13 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       try {
         let targetPath = getTargetContext(relativePath, direction);
 
+        if (direction === 'bedrock-to-java' && targetPath) {
+          const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId);
+          if (jVersion) {
+            targetPath = normalizeLegacyPath(targetPath, jVersion.packFormat);
+          }
+        }
+
         let needsProcessing = false;
         if (targetPath) {
           if (direction === 'bedrock-to-java' && relativePath.endsWith('.fsb')) {
@@ -271,6 +278,10 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
               if (json.pack) {
                 const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
                 json.pack.pack_format = jVersion.packFormat;
+                if (jVersion.packFormat >= 69) {
+                  json.pack.min_format = jVersion.packFormat;
+                  json.pack.max_format = jVersion.packFormat;
+                }
                 finalBytes = strToU8(JSON.stringify(json, null, 2));
               }
             } catch {}
@@ -314,7 +325,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
             targetFiles['pack.mcmeta'] = [strToU8(mcmetaStr), { level: getFileCompressionLevel('pack.mcmeta') }];
             report.convertedCount++;
             report.details.push({ filename: path, status: 'converted', outputPath: 'pack.mcmeta' });
-          } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png') {
+          } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png' || relativePath.endsWith('/pack_icon.png') || relativePath.endsWith('/pack.png')) {
             const iconName = direction === 'java-to-bedrock' ? 'pack_icon.png' : 'pack.png';
             targetFiles[iconName] = [content, { level: getFileCompressionLevel(iconName) }];
             report.convertedCount++;
@@ -368,6 +379,14 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       }
       for (const [tPath, content] of mergedLangs.entries()) {
         targetFiles[tPath] = [strToU8(content), { level: 1 }];
+      }
+    } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
+      if (!targetFiles['pack.mcmeta']) {
+        const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+        const mcmetaStr = generateMcmetaContent(packDescription, jVersion.packFormat);
+        targetFiles['pack.mcmeta'] = [strToU8(mcmetaStr), { level: getFileCompressionLevel('pack.mcmeta') }];
+        report.convertedCount++;
+        report.details.push({ filename: 'manifest.json', status: 'converted', outputPath: 'pack.mcmeta' });
       }
     }
 
@@ -444,10 +463,17 @@ function generateMcmetaContent(description: string, packFormat: number): string 
     finalDescription = description + "\nConverted with PackBridge (https://packbridge.manpuc.me)";
   }
 
+  const packObj: any = {
+    pack_format: packFormat,
+    description: finalDescription
+  };
+
+  if (packFormat >= 69) {
+    packObj.min_format = packFormat;
+    packObj.max_format = packFormat;
+  }
+
   return JSON.stringify({
-    pack: {
-      pack_format: packFormat,
-      description: finalDescription
-    }
+    pack: packObj
   }, null, 2);
 }
