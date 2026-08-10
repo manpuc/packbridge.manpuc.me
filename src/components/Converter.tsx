@@ -116,7 +116,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         // Logic-based warning
         const packMcmetaEntry = zip.file('pack.mcmeta') || zip.file(/pack\.mcmeta$/)[0];
         const manifestEntry = zip.file('manifest.json') || zip.file(/manifest\.json$/)[0];
-        
+
         const isVersionUpdate = direction === 'java-to-java' || direction === 'bedrock-to-bedrock';
         let actualSource = direction.startsWith('java') ? 'java' : 'bedrock';
 
@@ -129,9 +129,9 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             if (direction !== 'java-to-java') setDirection('java-to-java');
           }
         }
-        
+
         const sourceEdition = actualSource;
-        
+
         if (sourceEdition === 'java' && (manifestEntry || file.name.endsWith('.mcpack'))) {
           setWarning(t.warnPossibleBedrock);
         } else if (sourceEdition === 'bedrock' && packMcmetaEntry) {

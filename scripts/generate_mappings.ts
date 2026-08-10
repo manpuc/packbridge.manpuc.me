@@ -66,7 +66,7 @@ async function generateMappings() {
     const javaDirIdx = args.indexOf('--local-java');
     const bedrockDirIdx = args.indexOf('--local-bedrock');
     const outIdx = args.indexOf('--out');
-    
+
     if (javaDirIdx === -1 || bedrockDirIdx === -1) {
       console.error("Usage: npx tsx generate_mappings.ts --local --local-java <path> --local-bedrock <path> [--out <name>]");
       return;
