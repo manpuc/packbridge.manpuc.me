@@ -79,16 +79,15 @@ export function DirectionSettings({
   t
 }: DirectionSettingsProps) {
   const [isBetaExpanded, setIsBetaExpanded] = useState(false);
-  const [uiDirection, setUiDirection] = useState<'java-to-bedrock' | 'bedrock-to-java' | 'version-update'>(
-    direction === 'java-to-bedrock' ? 'java-to-bedrock' : 
-    direction === 'bedrock-to-java' ? 'bedrock-to-java' : 'version-update'
-  );
-  
+
+  const uiDirection: 'java-to-bedrock' | 'bedrock-to-java' | 'version-update' =
+    direction === 'java-to-bedrock' ? 'java-to-bedrock' :
+    direction === 'bedrock-to-java' ? 'bedrock-to-java' : 'version-update';
+
   // We determine the internal source edition based on the direction passed from Converter
   const sourceEdition = direction.startsWith('java') ? 'java' : 'bedrock';
 
   const handleUiDirectionChange = (newDir: 'java-to-bedrock' | 'bedrock-to-java' | 'version-update') => {
-    setUiDirection(newDir);
     if (newDir === 'java-to-bedrock') {
       setDirection('java-to-bedrock');
     } else if (newDir === 'bedrock-to-java') {
