@@ -39,6 +39,8 @@ export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
 interface MappingsData {
   java_to_bedrock: Record<string, string>;
   bedrock_to_java: Record<string, string>;
+  sounds_java_to_bedrock?: Record<string, string>;
+  sounds_bedrock_to_java?: Record<string, string>;
 }
 
 const typedMappings = mappings as MappingsData;

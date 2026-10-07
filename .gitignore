@@ -37,6 +37,9 @@ devfile/
 scratch/
 DESIGN.md
 fetch_test.js
+PRODUCT.md
+test.html
+map.html
 
 # Python
 *.py

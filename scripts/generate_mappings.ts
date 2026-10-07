@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import stringSimilarity from 'string-similarity';
 
 async function fetchJson(url: string) {
   const res = await fetch(url);
@@ -7,13 +8,25 @@ async function fetchJson(url: string) {
   return await res.json();
 }
 
+async function fetchAllPages(url: string) {
+  let page = 1;
+  let all: any[] = [];
+  while (true) {
+    const res = await fetchJson(`${url}&page=${page}`);
+    if (res.length === 0) break;
+    all = all.concat(res);
+    page++;
+  }
+  return all;
+}
+
 async function getJavaVersions() {
-  const branches = await fetchJson('https://api.github.com/repos/InventivetalentDev/minecraft-assets/branches');
+  const branches = await fetchAllPages('https://api.github.com/repos/InventivetalentDev/minecraft-assets/branches?per_page=100');
   return branches.map((b: any) => b.name);
 }
 
 async function getBedrockVersions() {
-  const tags = await fetchJson('https://api.github.com/repos/Mojang/bedrock-samples/tags?per_page=100');
+  const tags = await fetchAllPages('https://api.github.com/repos/Mojang/bedrock-samples/tags?per_page=100');
   return tags.map((t: any) => t.name);
 }
 
@@ -27,24 +40,37 @@ function findClosestVersion(target: string, available: string[]) {
   return match || available.find(v => v.includes(prefix)) || available[available.length - 1];
 }
 
-async function getLocalFiles(dir: string, prefix: string = ''): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  let files: string[] = [];
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) {
-      files.push(...await getLocalFiles(fullPath, relPath));
-    } else {
-      files.push(relPath);
-    }
+// Utility to score word matches
+function scoreWordMatch(str1: string, str2: string): number {
+  const words1 = str1.replace(/[^a-zA-Z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+  const words2 = str2.replace(/[^a-zA-Z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words1.length === 0 || words2.length === 0) return 0;
+  
+  let matches = 0;
+  for (const w1 of words1) {
+    if (words2.includes(w1)) matches++;
   }
-  return files;
+  return (matches * 2) / (words1.length + words2.length);
+}
+
+async function fetchSoundsJson(repo: string, version: string, p: string) {
+  try {
+    const url = `https://raw.githubusercontent.com/${repo}/${version}/${p}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {}
+  return null;
 }
 
 async function generateMappings() {
-  const args = process.argv.slice(2);
-  const isLocal = args.includes('--local');
+  console.log("Fetching available versions from GitHub...");
+  const javaAvailable = await getJavaVersions();
+  const bedrockAvailable = await getBedrockVersions();
+
+  const targetJavaVers = ['26.3.0'];
+  const targetBedrockVers = ['1.26.50'];
 
   const baseMappingPath = path.join(__dirname, '../src/lib/pack/mappings.json');
   const baseMapping = JSON.parse(await fs.readFile(baseMappingPath, 'utf8'));
@@ -61,59 +87,6 @@ async function generateMappings() {
   const outDir = path.join(__dirname, '../src/lib/pack/mappings');
   await fs.mkdir(outDir, { recursive: true });
 
-  if (isLocal) {
-    console.log("Running in local mode...");
-    const javaDirIdx = args.indexOf('--local-java');
-    const bedrockDirIdx = args.indexOf('--local-bedrock');
-    const outIdx = args.indexOf('--out');
-
-    if (javaDirIdx === -1 || bedrockDirIdx === -1) {
-      console.error("Usage: npx tsx generate_mappings.ts --local --local-java <path> --local-bedrock <path> [--out <name>]");
-      return;
-    }
-
-    const javaDir = args[javaDirIdx + 1];
-    const bedrockDir = args[bedrockDirIdx + 1];
-    const outFile = outIdx !== -1 ? args[outIdx + 1] : 'local_mapping.json';
-
-    try {
-      const javaFilesRaw = await getLocalFiles(javaDir);
-      const bedrockFilesRaw = await getLocalFiles(bedrockDir);
-
-      // Filter local files just like remote ones
-      const javaFiles = javaFilesRaw.filter(p => p.startsWith('assets/minecraft/'));
-      const bedrockFiles = bedrockFilesRaw; // Bedrock is usually the root of resource_pack
-      const bedrockSet = new Set(bedrockFiles);
-
-      const newMapping = {
-        java_to_bedrock: {} as Record<string, string>,
-        bedrock_to_java: {} as Record<string, string>
-      };
-
-      for (const jPath of javaFiles) {
-        const mappedBPath = normalizedBase.java_to_bedrock[jPath];
-        if (mappedBPath && bedrockSet.has(mappedBPath)) {
-          newMapping.java_to_bedrock[jPath] = mappedBPath;
-          newMapping.bedrock_to_java[mappedBPath] = jPath;
-        }
-      }
-
-      const outPath = path.join(outDir, outFile);
-      await fs.writeFile(outPath, JSON.stringify(newMapping, null, 2));
-      console.log(`Saved local mapping to ${outPath}`);
-    } catch (e) {
-      console.error("Local mapping generation failed:", e);
-    }
-    return;
-  }
-
-  console.log("Fetching available versions from GitHub...");
-  const javaAvailable = await getJavaVersions();
-  const bedrockAvailable = await getBedrockVersions();
-
-  const targetJavaVers = ['1.21.4', '1.20.4', '1.19.4', '1.18.2', '1.17.1', '1.16.5'];
-  const targetBedrockVers = ['1.21.50', '1.20.80', '1.19.80', '1.18.30', '1.17.40', '1.16.200'];
-
   for (let i = 0; i < targetJavaVers.length; i++) {
     const jVer = findClosestVersion(targetJavaVers[i], javaAvailable);
     const bVer = findClosestVersion(targetBedrockVers[i], bedrockAvailable);
@@ -125,26 +98,98 @@ async function generateMappings() {
 
       const javaFiles = javaTree.tree.filter((t: any) => t.type === 'blob' && t.path.startsWith('assets/minecraft/')).map((t: any) => t.path);
       const bedrockFiles = bedrockTree.tree.filter((t: any) => t.type === 'blob' && t.path.startsWith('resource_pack/')).map((t: any) => t.path.replace('resource_pack/', ''));
-      const bedrockSet = new Set(bedrockFiles);
+      const bedrockSet = new Set<string>(bedrockFiles);
 
       const newMapping = {
         java_to_bedrock: {} as Record<string, string>,
-        bedrock_to_java: {} as Record<string, string>
+        bedrock_to_java: {} as Record<string, string>,
+        sounds_java_to_bedrock: {} as Record<string, string>
       };
 
+      // 1. File Path Mapping (Blocks/Items/Entities)
+      const bPathList = Array.from(bedrockSet);
       for (const jPath of javaFiles) {
-        const mappedBPath = normalizedBase.java_to_bedrock[jPath];
+        if (!jPath.endsWith('.png')) continue; // Focus on textures for fuzzy match
+
+        let mappedBPath = normalizedBase.java_to_bedrock[jPath];
+        
+        // Fuzzy Matching if not in base map
+        if (!mappedBPath) {
+          const jName = path.basename(jPath, '.png');
+          const isBlock = jPath.includes('/block/') || jPath.includes('/blocks/');
+          const isItem = jPath.includes('/item/') || jPath.includes('/items/');
+          
+          if (isBlock || isItem) {
+            const bCategory = isBlock ? '/blocks/' : '/items/';
+            const candidates = bPathList.filter(b => b.includes(bCategory) && b.endsWith('.png'));
+            
+            let bestMatch = '';
+            let bestScore = 0;
+            for (const cand of candidates) {
+              const cName = path.basename(cand, '.png');
+              const sim = scoreWordMatch(jName, cName) + (stringSimilarity.compareTwoStrings(jName, cName) * 0.5);
+              if (sim > bestScore) {
+                bestScore = sim;
+                bestMatch = cand;
+              }
+            }
+            if (bestScore >= 0.8 && bestMatch) { // Threshold for auto-match
+              mappedBPath = bestMatch;
+            }
+          }
+        }
+
         if (mappedBPath && bedrockSet.has(mappedBPath)) {
           newMapping.java_to_bedrock[jPath] = mappedBPath;
           newMapping.bedrock_to_java[mappedBPath] = jPath;
         }
       }
 
+      // 2. Sound Mapping
+      console.log(`  Fetching sounds JSON for ${jVer} <-> ${bVer}`);
+      const javaSounds = await fetchSoundsJson('InventivetalentDev/minecraft-assets', jVer, 'assets/minecraft/sounds.json');
+      const bedrockSounds = await fetchSoundsJson('Mojang/bedrock-samples', bVer, 'resource_pack/sounds/sound_definitions.json');
+
+      if (javaSounds && bedrockSounds && bedrockSounds.sound_definitions) {
+        const jEvents = Object.keys(javaSounds);
+        const bEvents = Object.keys(bedrockSounds.sound_definitions);
+
+        // Predefined crucial sound mappings
+        const baseSoundMap: Record<string, string> = {
+          "block.anvil.land": "random.anvil_land",
+          "block.chest.open": "random.chestopen",
+          "block.chest.close": "random.chestclosed",
+          "entity.zombie.ambient": "mob.zombie.say",
+          "entity.creeper.primed": "random.fuse",
+          "entity.generic.explode": "random.explode"
+        };
+
+        for (const je of jEvents) {
+          if (baseSoundMap[je] && bEvents.includes(baseSoundMap[je])) {
+            newMapping.sounds_java_to_bedrock[je] = baseSoundMap[je];
+            continue;
+          }
+
+          let bestMatch = '';
+          let bestScore = 0;
+          for (const be of bEvents) {
+            const sim = scoreWordMatch(je, be) + (stringSimilarity.compareTwoStrings(je, be) * 0.5);
+            if (sim > bestScore) {
+              bestScore = sim;
+              bestMatch = be;
+            }
+          }
+          if (bestScore >= 0.9 && bestMatch) {
+            newMapping.sounds_java_to_bedrock[je] = bestMatch;
+          }
+        }
+      }
+
       const outFile = path.join(outDir, `${targetJavaVers[i]}_to_${targetBedrockVers[i]}.json`);
       await fs.writeFile(outFile, JSON.stringify(newMapping, null, 2));
-      console.log(`Saved mapping to ${outFile}`);
+      console.log(`  Saved mapping to ${outFile}`);
     } catch (e) {
-      console.error(`Failed to process ${jVer} <-> ${bVer}:`, e);
+      console.error(`  Failed to process ${jVer} <-> ${bVer}:`, e);
     }
   }
 }

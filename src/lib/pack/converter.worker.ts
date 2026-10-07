@@ -10,6 +10,8 @@ import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from '.
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
 import { normalizeLegacyPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
+import { processGuiSpriteSheet, ICONS_MAPPINGS, WIDGETS_MAPPINGS } from './processors/gui';
+import { reencodeOgg } from './processors/audio';
 
 const MEDIA_EXTENSIONS = new Set(['.png', '.tga', '.ogg', '.wav', '.mp3', '.fsb', '.jpg', '.jpeg', '.webp']);
 
@@ -61,6 +63,8 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     // Pre-scan for metadata & pack root
     let packRoot = "";
     for (const path of filePaths) {
+      if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
+
       if (path.endsWith('pack.mcmeta') || path.endsWith('manifest.json')) {
         const parts = path.split('/');
         parts.pop();
@@ -93,8 +97,13 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       }
 
       const content = sourceFiles[path];
-      // Skip directory placeholders
+      // Skip directory placeholders and hidden files
       if (path.endsWith('/')) continue;
+      if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) {
+        report.skippedCount++;
+        report.details.push({ filename: path, status: 'skipped', reason: 'System hidden file' });
+        continue;
+      }
 
       if (!path.startsWith(packRoot)) {
         report.skippedCount++;
@@ -155,6 +164,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
           }
 
           let finalBytes: Uint8Array = content;
+          let skipDefaultWrite = false;
 
           if (needsProcessing) {
             if (direction === 'java-to-bedrock') {
@@ -256,6 +266,40 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 finalBytes = strToU8(bedrockToJavaSounds(strFromU8(content)));
                 targetPath = 'assets/minecraft/sounds.json';
               }
+            }
+          } else if (options.enableGuiConversion && direction === 'java-to-bedrock') {
+            try {
+              if (relativePath === 'assets/minecraft/textures/gui/icons.png') {
+                const uiFiles = await processGuiSpriteSheet(content, ICONS_MAPPINGS);
+                for (const [uiPath, uiData] of Object.entries(uiFiles)) {
+                  targetFiles[uiPath] = [uiData, { level: getFileCompressionLevel(uiPath) }];
+                  report.convertedCount++;
+                  report.details.push({ filename: path, status: 'converted', outputPath: uiPath });
+                }
+                continue;
+              } else if (relativePath === 'assets/minecraft/textures/gui/widgets.png') {
+                const uiFiles = await processGuiSpriteSheet(content, WIDGETS_MAPPINGS);
+                for (const [uiPath, uiData] of Object.entries(uiFiles)) {
+                  targetFiles[uiPath] = [uiData, { level: getFileCompressionLevel(uiPath) }];
+                  report.convertedCount++;
+                  report.details.push({ filename: path, status: 'converted', outputPath: uiPath });
+                }
+                continue;
+              }
+            } catch (e) {
+              console.warn("Failed to process GUI spritesheet:", e);
+              report.details.push({ filename: path, status: 'error', reason: 'GUI image processing failed' });
+            }
+          } else if (options.enableAudioReencode && targetPath.endsWith('.ogg')) {
+            try {
+              const reencoded = await reencodeOgg(content);
+              if (reencoded) {
+                finalBytes = reencoded;
+              } else {
+                report.details.push({ filename: path, status: 'skipped', reason: 'Audio re-encode failed, using original' });
+              }
+            } catch (e) {
+              console.warn("Audio re-encoding failed:", e);
             }
           }
 
@@ -368,6 +412,15 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       for (const [tPath, content] of mergedLangs.entries()) {
         targetFiles[tPath] = [strToU8(content), { level: 1 }];
       }
+      
+      // Ensure manifest.json exists
+      if (!targetFiles['manifest.json']) {
+        const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+        const manifestStr = generateManifestContent(packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
+        targetFiles['manifest.json'] = [strToU8(manifestStr), { level: getFileCompressionLevel('manifest.json') }];
+        report.convertedCount++;
+        report.details.push({ filename: 'pack.mcmeta', status: 'converted', outputPath: 'manifest.json', reason: 'Generated fallback manifest' });
+      }
     } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
       if (!targetFiles['pack.mcmeta']) {
         const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
@@ -375,6 +428,20 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
         targetFiles['pack.mcmeta'] = [strToU8(mcmetaStr), { level: getFileCompressionLevel('pack.mcmeta') }];
         report.convertedCount++;
         report.details.push({ filename: 'manifest.json', status: 'converted', outputPath: 'pack.mcmeta' });
+      }
+    }
+
+    // Ensure all directories exist for fflate (Bedrock zip parser requires explicit directory entries)
+    const directories = new Set<string>();
+    for (const file of Object.keys(targetFiles)) {
+      const parts = file.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        directories.add(parts.slice(0, i).join('/') + '/');
+      }
+    }
+    for (const dir of directories) {
+      if (!targetFiles[dir]) {
+        targetFiles[dir] = [new Uint8Array(0), { level: 0 }];
       }
     }
 

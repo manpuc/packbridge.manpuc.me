@@ -42,15 +42,17 @@ const t = getTranslation(lang);
 	</div>
 
 	<main class="container">
-		<header>
+		<header class="animate-fade-up stagger-1">
 			<div class="brand-name">{t.heading}</div>
 			<h1>{t.h1Title}</h1>
 			<p class="description">{t.description}</p>
 		</header>
 
-		<Converter client:load t={t} lang={lang} />
+		<div class="animate-fade-up stagger-2">
+			<Converter client:load t={t} lang={lang} />
+		</div>
 
-		<div class="intro-section" id="intro-section">
+		<div class="intro-section animate-fade-up stagger-3" id="intro-section">
 			<section class="intro-card">
 				<div class="intro-header">
 					<h2>{t.introTitle}</h2>
@@ -99,7 +101,9 @@ const t = getTranslation(lang);
 			</section>
 		</div>
 
-		<Footer t={t} lang={lang} />
+		<div class="animate-fade-up stagger-4">
+			<Footer t={t} lang={lang} />
+		</div>
 	</main>
 </Layout>
 

@@ -25,4 +25,5 @@ export interface ConversionOptions {
   enableAnimationConversion: boolean;
   enableLanguageConversion: boolean;
   enableSoundConversion: boolean;
+  enableAudioReencode: boolean;
 }

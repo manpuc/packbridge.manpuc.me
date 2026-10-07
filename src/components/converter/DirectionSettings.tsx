@@ -13,14 +13,14 @@ const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: bool
       width: '40px',
       height: '24px',
       borderRadius: '12px',
-      backgroundColor: checked ? '#007AFF' : 'rgba(120, 120, 120, 0.3)',
+      backgroundColor: checked ? 'var(--color-success)' : 'var(--color-border)',
       border: 'none',
       padding: '2px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: checked ? 'flex-end' : 'flex-start',
       cursor: 'pointer',
-      transition: 'background-color 0.2s',
+      transition: 'background-color var(--transition-normal)',
       flexShrink: 0,
       transform: 'none'
     }}
@@ -31,9 +31,9 @@ const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: bool
       style={{
         width: '20px',
         height: '20px',
-        backgroundColor: '#fff',
+        backgroundColor: '#ffffff',
         borderRadius: '50%',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        boxShadow: 'var(--shadow-sm)'
       }}
     />
   </button>
@@ -56,6 +56,8 @@ interface DirectionSettingsProps {
   setEnableLanguageConversion: (v: boolean) => void;
   enableSoundConversion: boolean;
   setEnableSoundConversion: (v: boolean) => void;
+  enableAudioReencode: boolean;
+  setEnableAudioReencode: (v: boolean) => void;
   t: Translation;
 }
 
@@ -76,6 +78,8 @@ export function DirectionSettings({
   setEnableLanguageConversion,
   enableSoundConversion,
   setEnableSoundConversion,
+  enableAudioReencode,
+  setEnableAudioReencode,
   t
 }: DirectionSettingsProps) {
   const [isBetaExpanded, setIsBetaExpanded] = useState(false);
@@ -268,6 +272,10 @@ export function DirectionSettings({
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
                     <span style={{ color: 'var(--color-text)' }}>{t.enableSoundConversion || 'Enable Sound Conversion'}</span>
                     <IosSwitch checked={enableSoundConversion} onChange={setEnableSoundConversion} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ color: 'var(--color-text)' }}>{t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}</span>
+                    <IosSwitch checked={enableAudioReencode} onChange={setEnableAudioReencode} />
                   </label>
                 </div>
               </motion.div>

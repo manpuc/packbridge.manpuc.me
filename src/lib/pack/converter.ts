@@ -97,6 +97,8 @@ export async function convertPack(
   // Pre-scan for metadata and pack root
   let packRoot = "";
   for (const path of files) {
+    if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
+
     if (path.endsWith('pack.mcmeta') || path.endsWith('manifest.json')) {
       const parts = path.split('/');
       parts.pop();
@@ -128,6 +130,11 @@ export async function convertPack(
 
     const fileEntry = sourceZip.files[path];
     if (fileEntry.dir) continue;
+    if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) {
+      report.skippedCount++;
+      report.details.push({ filename: path, status: 'skipped', reason: 'System hidden file' });
+      continue;
+    }
 
     // Normalize path relative to pack root
     if (!path.startsWith(packRoot)) {
@@ -440,6 +447,12 @@ export async function convertPack(
     // Write merged languages
     for (const [tPath, content] of mergedLangs.entries()) {
       targetZip.file(tPath, content, getZipFileOptions(tPath));
+    }
+
+    // Ensure manifest.json exists
+    if (!targetZip.file('manifest.json')) {
+      const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+      generateManifest(targetZip, report, 'pack.mcmeta', packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
     }
   } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
     // Ensure pack.mcmeta exists in output zip

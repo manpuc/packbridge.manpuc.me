@@ -39,7 +39,7 @@ export function generateTerrainTexture(convertedBlocks: Set<string>): string {
  */
 export function generateBlocksJson(convertedBlocks: Set<string>): string {
   const blocksJson: Record<string, any> = {
-    format_version: [1, 1, 0]
+    format_version: "1.16.0"
   };
 
   const active = getActiveMappings();

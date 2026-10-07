@@ -80,12 +80,10 @@ body {
   max-width: 680px;
   margin: 0 auto;
   padding: 80px 20px 100px;
-  animation: fadeUp 0.8s var(--spring-smooth) both;
   display: flex;
   flex-direction: column;
   gap: 32px;
 }
-
 @keyframes fadeUp {
   0% {
     opacity: 0;
@@ -97,6 +95,21 @@ body {
     transform: translateY(0);
   }
 }
+
+@keyframes gradientShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.8s var(--spring-smooth) both;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
 
 header {
   text-align: center;
@@ -118,9 +131,11 @@ h1 {
   letter-spacing: -0.03em;
   margin-bottom: 12px;
   background: var(--color-text-gradient);
+  background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  animation: gradientShimmer 8s ease infinite;
   text-wrap: balance;
   word-break: keep-all;
   overflow-wrap: break-word;

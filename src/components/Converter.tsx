@@ -33,9 +33,10 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [warning, setWarning] = useState<string | null>(null);
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
-  const [enableAnimationConversion, setEnableAnimationConversion] = useState(false);
-  const [enableLanguageConversion, setEnableLanguageConversion] = useState(false);
-  const [enableSoundConversion, setEnableSoundConversion] = useState(false);
+  const [enableAnimationConversion, setEnableAnimationConversion] = useState(true);
+  const [enableLanguageConversion, setEnableLanguageConversion] = useState(true);
+  const [enableSoundConversion, setEnableSoundConversion] = useState(true);
+  const [enableAudioReencode, setEnableAudioReencode] = useState(false);
 
   // Load saved beta preferences on mount
   useEffect(() => {
@@ -51,6 +52,9 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
 
       const savedSound = localStorage.getItem('pb_beta_sound');
       if (savedSound) setEnableSoundConversion(savedSound === 'true');
+
+      const savedAudioReencode = localStorage.getItem('pb_beta_audio_reencode');
+      if (savedAudioReencode) setEnableAudioReencode(savedAudioReencode === 'true');
     } catch (e) {
       // Ignore localStorage errors (e.g., in incognito mode)
     }
@@ -63,10 +67,11 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       localStorage.setItem('pb_beta_anim', String(enableAnimationConversion));
       localStorage.setItem('pb_beta_lang', String(enableLanguageConversion));
       localStorage.setItem('pb_beta_sound', String(enableSoundConversion));
+      localStorage.setItem('pb_beta_audio_reencode', String(enableAudioReencode));
     } catch (e) {
       // Ignore
     }
-  }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion]);
+  }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode]);
 
   const handleFile = useCallback((selectedFile: File) => {
     if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
@@ -202,7 +207,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         enableGuiConversion,
         enableAnimationConversion,
         enableLanguageConversion,
-        enableSoundConversion
+        enableSoundConversion,
+        enableAudioReencode
       };
       const result = await convertPackWithWorker(file, options);
       setReport(result.report);
@@ -276,6 +282,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         setEnableLanguageConversion={setEnableLanguageConversion}
         enableSoundConversion={enableSoundConversion}
         setEnableSoundConversion={setEnableSoundConversion}
+        enableAudioReencode={enableAudioReencode}
+        setEnableAudioReencode={setEnableAudioReencode}
         t={t}
       />
 

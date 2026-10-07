@@ -80,4 +80,5 @@ export interface Translation {
 	enableAnimationConversion: string;
 	enableLanguageConversion: string;
 	enableSoundConversion: string;
+	enableAudioReencode?: string;
 }
