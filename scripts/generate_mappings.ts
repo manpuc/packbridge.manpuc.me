@@ -45,7 +45,7 @@ function scoreWordMatch(str1: string, str2: string): number {
   const words1 = str1.replace(/[^a-zA-Z0-9]/g, ' ').split(/\s+/).filter(Boolean);
   const words2 = str2.replace(/[^a-zA-Z0-9]/g, ' ').split(/\s+/).filter(Boolean);
   if (words1.length === 0 || words2.length === 0) return 0;
-  
+
   let matches = 0;
   for (const w1 of words1) {
     if (words2.includes(w1)) matches++;
@@ -60,7 +60,7 @@ async function fetchSoundsJson(repo: string, version: string, p: string) {
     if (res.ok) {
       return await res.json();
     }
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -112,17 +112,17 @@ async function generateMappings() {
         if (!jPath.endsWith('.png')) continue; // Focus on textures for fuzzy match
 
         let mappedBPath = normalizedBase.java_to_bedrock[jPath];
-        
+
         // Fuzzy Matching if not in base map
         if (!mappedBPath) {
           const jName = path.basename(jPath, '.png');
           const isBlock = jPath.includes('/block/') || jPath.includes('/blocks/');
           const isItem = jPath.includes('/item/') || jPath.includes('/items/');
-          
+
           if (isBlock || isItem) {
             const bCategory = isBlock ? '/blocks/' : '/items/';
             const candidates = bPathList.filter(b => b.includes(bCategory) && b.endsWith('.png'));
-            
+
             let bestMatch = '';
             let bestScore = 0;
             for (const cand of candidates) {

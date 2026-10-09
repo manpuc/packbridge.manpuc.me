@@ -47,10 +47,10 @@ export async function processGuiSpriteSheet(
     const canvas = new OffscreenCanvas(box.w, box.h);
     const ctx = canvas.getContext('2d');
     if (!ctx) continue;
-    
+
     // Draw only the specified crop area
     ctx.drawImage(bitmap, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
-    
+
     const outBlob = await canvas.convertToBlob({ type: 'image/png' });
     const buffer = await outBlob.arrayBuffer();
     results[targetPath] = new Uint8Array(buffer);

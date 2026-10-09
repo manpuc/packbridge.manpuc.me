@@ -8,6 +8,8 @@ import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/p
 import type { Translation, Language } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion } from '@/lib/pack/versions';
 import { useFileDrop } from '@/hooks/useFileDrop';
+import { Bug } from 'lucide-react';
+import { getReportStrings, reportHref, LAST_CONVERSION_KEY } from '@/lib/i18n/report';
 
 // Sub-components
 import { DirectionSettings } from './converter/DirectionSettings';
@@ -215,13 +217,33 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       const url = URL.createObjectURL(result.blob);
       setDownloadUrl(url);
+      saveContext(result.report.details
+        .filter((d) => d.status !== 'converted')
+        .map((d) => `[${d.status}] ${d.filename}: ${d.reason ?? ''}`)
+        .join('\n'));
     } catch (err) {
       console.error(err);
       setError(t.errorConversion);
+      saveContext(`[fatal] ${err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err)}`);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const saveContext = (log: string) => {
+    if (!file) return;
+    try {
+      sessionStorage.setItem(LAST_CONVERSION_KEY, JSON.stringify({
+        direction: `${direction} (java ${selectedJavaVersion}, bedrock ${selectedBedrockVersion})`,
+        fileName: file.name,
+        fileSize: file.size,
+        log,
+      }));
+    } catch { /* ignore */ }
+  };
+
+  const rs = getReportStrings(initialLang);
+  const showReportEntry = error === t.errorConversion || (report && (report.errorCount > 0 || report.skippedCount > 0));
 
   const reset = () => {
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
@@ -311,6 +333,12 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
           />
         )}
       </AnimatePresence>
+
+      {showReportEntry && (
+        <motion.a layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} href={`${reportHref(initialLang)}?from=conversion`} className="report-entry" id="report-entry">
+          <Bug size={16} />{rs.reportThis}
+        </motion.a>
+      )}
 
       <motion.div
         layout

@@ -33,12 +33,12 @@ export async function reencodeOgg(inputBuffer: Uint8Array): Promise<Uint8Array |
     const outputName = 'output.ogg';
 
     await ffmpeg.writeFile(inputName, inputBuffer);
-    
+
     // Re-encode to 44100Hz stereo OGG Vorbis
     await ffmpeg.exec(['-i', inputName, '-c:a', 'libvorbis', '-ar', '44100', '-ac', '2', '-q:a', '4', outputName]);
 
     const data = await ffmpeg.readFile(outputName);
-    
+
     // Cleanup
     await ffmpeg.deleteFile(inputName);
     await ffmpeg.deleteFile(outputName);

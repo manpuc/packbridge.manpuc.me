@@ -1,5 +1,6 @@
 ---
-import type { Translation } from "@/lib/i18n";
+import type { Translation, Language } from "@/lib/i18n";
+import { getReportStrings, reportHref } from "@/lib/i18n/report";
 
 interface Props {
 	t: Translation;
@@ -8,6 +9,7 @@ interface Props {
 
 const { t, lang = "ja" } = Astro.props;
 const termsHref = lang === "ja" ? "/terms" : `/${lang}/terms`;
+const rs = getReportStrings(lang as Language);
 ---
 
 <footer>
@@ -18,6 +20,7 @@ const termsHref = lang === "ja" ? "/terms" : `/${lang}/terms`;
 
 		<div class="footer-links">
 			<a href={termsHref} class="footer-link">{t.terms}</a>
+			<a href={reportHref(lang)} class="footer-link">{rs.link}</a>
 		</div>
 	</div>
 

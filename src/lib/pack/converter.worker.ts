@@ -81,7 +81,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
           } else if (path.endsWith('pack.mcmeta')) {
             if (data.pack?.description) packDescription = data.pack.description;
           }
-        } catch {}
+        } catch { }
       }
     }
 
@@ -253,7 +253,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                       }
                     }
                   }
-                } catch {}
+                } catch { }
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
                 continue;
@@ -316,7 +316,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 }
                 finalBytes = strToU8(JSON.stringify(json, null, 2));
               }
-            } catch {}
+            } catch { }
           } else if (direction === 'bedrock-to-bedrock' && relativePath === 'manifest.json') {
             try {
               const json = JSON.parse(strFromU8(finalBytes));
@@ -325,7 +325,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 json.header.min_engine_version = bVersion.minEngineVersion;
                 finalBytes = strToU8(JSON.stringify(json, null, 2));
               }
-            } catch {}
+            } catch { }
           }
 
           if (direction === 'java-to-bedrock') {
@@ -412,7 +412,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       for (const [tPath, content] of mergedLangs.entries()) {
         targetFiles[tPath] = [strToU8(content), { level: 1 }];
       }
-      
+
       // Ensure manifest.json exists
       if (!targetFiles['manifest.json']) {
         const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];

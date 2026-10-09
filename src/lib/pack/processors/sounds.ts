@@ -100,7 +100,7 @@ export function bedrockToJavaSounds(jsonContent: string): string {
         const jKey = Object.keys(active.sounds_java_to_bedrock).find(k => active.sounds_java_to_bedrock![k] === soundEvent);
         if (jKey) dynamicMapped = jKey;
       }
-      
+
       const mappedEvent = dynamicMapped || BEDROCK_TO_JAVA_EVENT_MAP[soundEvent] || soundEvent;
 
       javaData[mappedEvent] = {

@@ -1,0 +1,37 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
+import ReportForm from "@/components/ReportForm";
+import Footer from "@/components/Footer.astro";
+import { getTranslation } from "@/lib/i18n";
+import { getReportStrings } from "@/lib/i18n/report";
+
+const t = getTranslation("ja");
+const s = getReportStrings("ja");
+---
+
+<Layout
+	title={`${s.pageTitle} - PackBridge`}
+	description={s.pageDescription}
+	keywords={t.keywords}
+	lang="ja"
+>
+	<div class="top-controls">
+		<LangToggle client:load />
+		<ThemeToggle client:load />
+	</div>
+	<main class="container">
+		<header>
+			<a
+				href="/"
+				class="brand-name"
+				style="text-decoration:none;display:inline-block">{t.heading}</a
+			>
+			<h1>{s.pageTitle}</h1>
+			<p class="description">{s.pageDescription}</p>
+		</header>
+		<ReportForm client:load lang="ja" />
+		<Footer t={t} lang="ja" />
+	</main>
+</Layout>
