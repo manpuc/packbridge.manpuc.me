@@ -8,6 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "update-mappings": "node scripts/generate_mappings.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -33,6 +34,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/string-similarity": "^4.0.2",
+    "minecraft-data": "^3.117.0",
     "string-similarity": "^4.0.4",
     "typescript": "^6.0.3"
   }

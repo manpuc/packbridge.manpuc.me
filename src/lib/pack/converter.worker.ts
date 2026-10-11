@@ -12,6 +12,7 @@ import { normalizeLegacyPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
 import { processGuiSpriteSheet, ICONS_MAPPINGS, WIDGETS_MAPPINGS } from './processors/gui';
 import { reencodeOgg } from './processors/audio';
+import { javaToBedrockGeometry } from './processors/models';
 
 const MEDIA_EXTENSIONS = new Set(['.png', '.tga', '.ogg', '.wav', '.mp3', '.fsb', '.jpg', '.jpeg', '.webp']);
 
@@ -45,7 +46,8 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       details: [],
     };
 
-    const filePaths = Object.keys(sourceFiles);
+    // Filter out directories from file count so totalFiles accurately reflects actual files
+    const filePaths = Object.keys(sourceFiles).filter(p => !p.endsWith('/'));
     report.totalFiles = filePaths.length;
 
     let packName = (fileName || "pack").replace(/\.(zip|mcpack)$/, '');
@@ -97,8 +99,6 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       }
 
       const content = sourceFiles[path];
-      // Skip directory placeholders and hidden files
-      if (path.endsWith('/')) continue;
       if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) {
         report.skippedCount++;
         report.details.push({ filename: path, status: 'skipped', reason: 'System hidden file' });
@@ -139,7 +139,8 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
               (relativePath.endsWith('.json') && targetPath.startsWith('texts/')) ||
               relativePath.endsWith('sounds.json') ||
               relativePath === 'assets/minecraft/texts/splashes.txt' ||
-              relativePath.endsWith('.png.mcmeta')
+              relativePath.endsWith('.png.mcmeta') ||
+              (relativePath.startsWith('assets/minecraft/models/') && relativePath.endsWith('.json'))
             ) {
               needsProcessing = true;
             }
@@ -193,6 +194,21 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 }
                 finalBytes = strToU8(javaToBedrockSounds(strFromU8(content)));
                 targetPath = 'sounds/sound_definitions.json';
+              } else if (relativePath.startsWith('assets/minecraft/models/') && relativePath.endsWith('.json')) {
+                if (!options.enableModelConversion) {
+                  report.skippedCount++;
+                  report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is experimental and disabled' });
+                  continue;
+                }
+                const modelName = relativePath.split('/').pop()?.replace('.json', '') || 'custom';
+                const geoJson = javaToBedrockGeometry(strFromU8(content), modelName);
+                if (geoJson) {
+                  finalBytes = strToU8(geoJson);
+                } else {
+                  report.skippedCount++;
+                  report.details.push({ filename: path, status: 'skipped', reason: 'Model has no elements/cubes to convert' });
+                  continue;
+                }
               } else if (relativePath === 'assets/minecraft/texts/splashes.txt') {
                 const lines = strFromU8(content).split(/\r?\n/).filter(l => l.trim().length > 0);
                 finalBytes = strToU8(JSON.stringify({ splashes: lines }, null, 2));
@@ -209,9 +225,12 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 const flipbook = parseJavaAnimation(strFromU8(content), bedrockPngPath);
                 if (flipbook) {
                   flipbookEntries.push(flipbook);
+                  report.convertedCount++;
+                  report.details.push({ filename: path, status: 'converted', outputPath: 'textures/flipbook_textures.json' });
+                } else {
+                  report.skippedCount++;
+                  report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or empty animation metadata' });
                 }
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Converted to flipbook entry' });
                 continue;
               }
             } else if (direction === 'bedrock-to-java') {
@@ -388,19 +407,45 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
 
     // Finalization Phase
     if (direction === 'java-to-bedrock') {
-      if (convertedBlockTextures.size > 0) {
-        targetFiles['textures/terrain_texture.json'] = [strToU8(generateTerrainTexture(convertedBlockTextures)), { level: 1 }];
-        targetFiles['blocks.json'] = [strToU8(generateBlocksJson(convertedBlockTextures)), { level: 1 }];
-        report.convertedCount += 2;
-      }
-      if (convertedItemTextures.size > 0) {
-        targetFiles['textures/item_texture.json'] = [strToU8(generateItemTexture(convertedItemTextures)), { level: 1 }];
+      const terrainTextureJson = convertedBlockTextures.size > 0 ? generateTerrainTexture(convertedBlockTextures) : null;
+      if (terrainTextureJson) {
+        targetFiles['textures/terrain_texture.json'] = [strToU8(terrainTextureJson), { level: 1 }];
         report.convertedCount++;
       }
+
+      const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
+      if (itemTextureJson) {
+        targetFiles['textures/item_texture.json'] = [strToU8(itemTextureJson), { level: 1 }];
+        report.convertedCount++;
+      }
+
+      // Validating flipbook textures: Bedrock crashes if atlas_tile is not in terrain_texture or item_texture
       if (flipbookEntries.length > 0) {
-        targetFiles['textures/flipbook_textures.json'] = [strToU8(JSON.stringify(flipbookEntries, null, 2)), { level: 1 }];
-        report.convertedCount++;
+        const validAtlasTiles = new Set<string>();
+        if (terrainTextureJson) {
+          try {
+            const parsed = JSON.parse(terrainTextureJson);
+            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+          } catch { }
+        }
+        if (itemTextureJson) {
+          try {
+            const parsed = JSON.parse(itemTextureJson);
+            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+          } catch { }
+        }
+
+        const safeFlipbooks = flipbookEntries.filter(entry => {
+          // If atlas_tile exists in texture atlases or the texture path is present in output
+          return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
+        });
+
+        if (safeFlipbooks.length > 0) {
+          targetFiles['textures/flipbook_textures.json'] = [strToU8(JSON.stringify(safeFlipbooks, null, 2)), { level: 1 }];
+          report.convertedCount++;
+        }
       }
+
       if (allTargetTextures.size > 0) {
         targetFiles['textures/textures_list.json'] = [strToU8(JSON.stringify(Array.from(allTargetTextures), null, 2)), { level: 1 }];
         report.convertedCount++;

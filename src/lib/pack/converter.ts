@@ -78,7 +78,7 @@ export async function convertPack(
     details: [],
   };
 
-  const files = Object.keys(sourceZip.files);
+  const files = Object.keys(sourceZip.files).filter(p => !sourceZip.files[p].dir && !p.endsWith('/'));
   report.totalFiles = files.length;
 
   let packName = (fileName || (input instanceof File ? input.name : "pack")).replace(/\.(zip|mcpack)$/, '');
@@ -251,10 +251,12 @@ export async function convertPack(
               const flipbook = parseJavaAnimation(decoder.decode(content), bedrockPngPath);
               if (flipbook) {
                 flipbookEntries.push(flipbook);
+                report.convertedCount++;
+                report.details.push({ filename: path, status: 'converted', outputPath: 'textures/flipbook_textures.json' });
+              } else {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or empty animation metadata' });
               }
-              // Skip copying the .mcmeta itself to Bedrock
-              report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'Converted to flipbook entry' });
               continue;
             }
           } else if (direction === 'bedrock-to-java') {
@@ -422,18 +424,41 @@ export async function convertPack(
 
   // Finalization Phase (Metadata Generation)
   if (direction === 'java-to-bedrock') {
-    if (convertedBlockTextures.size > 0) {
-      targetZip.file('textures/terrain_texture.json', generateTerrainTexture(convertedBlockTextures), getZipFileOptions('textures/terrain_texture.json'));
-      targetZip.file('blocks.json', generateBlocksJson(convertedBlockTextures), getZipFileOptions('blocks.json'));
-      report.convertedCount += 2;
-    }
-    if (convertedItemTextures.size > 0) {
-      targetZip.file('textures/item_texture.json', generateItemTexture(convertedItemTextures), getZipFileOptions('textures/item_texture.json'));
+    const terrainTextureJson = convertedBlockTextures.size > 0 ? generateTerrainTexture(convertedBlockTextures) : null;
+    if (terrainTextureJson) {
+      targetZip.file('textures/terrain_texture.json', terrainTextureJson, getZipFileOptions('textures/terrain_texture.json'));
       report.convertedCount++;
     }
+
+    const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
+    if (itemTextureJson) {
+      targetZip.file('textures/item_texture.json', itemTextureJson, getZipFileOptions('textures/item_texture.json'));
+      report.convertedCount++;
+    }
+
     if (flipbookEntries.length > 0) {
-      targetZip.file('textures/flipbook_textures.json', JSON.stringify(flipbookEntries, null, 2), getZipFileOptions('textures/flipbook_textures.json'));
-      report.convertedCount++;
+      const validAtlasTiles = new Set<string>();
+      if (terrainTextureJson) {
+        try {
+          const parsed = JSON.parse(terrainTextureJson);
+          Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+        } catch { }
+      }
+      if (itemTextureJson) {
+        try {
+          const parsed = JSON.parse(itemTextureJson);
+          Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+        } catch { }
+      }
+
+      const safeFlipbooks = flipbookEntries.filter(entry => {
+        return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
+      });
+
+      if (safeFlipbooks.length > 0) {
+        targetZip.file('textures/flipbook_textures.json', JSON.stringify(safeFlipbooks, null, 2), getZipFileOptions('textures/flipbook_textures.json'));
+        report.convertedCount++;
+      }
     }
     if (allTargetTextures.size > 0) {
       targetZip.file('textures/textures_list.json', JSON.stringify(Array.from(allTargetTextures), null, 2), getZipFileOptions('textures/textures_list.json'));

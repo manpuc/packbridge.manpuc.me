@@ -18,6 +18,8 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
   { match: /^assets\/minecraft\/sounds\/(.*)$/, replace: 'sounds/$1' },
   { match: /^assets\/(minecraft|realms)\/lang\/(.*)\.json$/, replace: 'texts/$2.lang' },
   { match: /^assets\/realms\/textures\/(.*)$/, replace: 'textures/gui/realms/$1' },
+  { match: /^assets\/minecraft\/models\/block\/(.*)\.json$/, replace: 'models/entity/block_$1.geo.json' },
+  { match: /^assets\/minecraft\/models\/item\/(.*)\.json$/, replace: 'models/entity/item_$1.geo.json' },
   { match: /^assets\/minecraft\/texts\/splashes\.txt$/, replace: 'texts/splashes.json' },
   { match: /^pack\.png$/, replace: 'pack_icon.png' },
 ];
@@ -32,6 +34,8 @@ export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
   { match: /^textures\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/$1.png' },
   { match: /^sounds\/(.*)$/, replace: 'assets/minecraft/sounds/$1' },
   { match: /^texts\/(.*)\.lang$/, replace: 'assets/minecraft/lang/$1.json' },
+  { match: /^models\/entity\/block_(.*)\.geo\.json$/, replace: 'assets/minecraft/models/block/$1.json' },
+  { match: /^models\/entity\/item_(.*)\.geo\.json$/, replace: 'assets/minecraft/models/item/$1.json' },
   { match: /^pack_icon\.(png|tga)$/, replace: 'pack.png' },
   { match: /^pack\.png$/, replace: 'pack.png' },
 ];
@@ -41,6 +45,8 @@ interface MappingsData {
   bedrock_to_java: Record<string, string>;
   sounds_java_to_bedrock?: Record<string, string>;
   sounds_bedrock_to_java?: Record<string, string>;
+  lang_java_to_bedrock?: Record<string, string>;
+  lang_bedrock_to_java?: Record<string, string>;
 }
 
 const typedMappings = mappings as MappingsData;

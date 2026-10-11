@@ -95,8 +95,9 @@ export function bedrockToJavaSounds(jsonContent: string): string {
       // Build reverse dynamic map on the fly if provided
       const active = getActiveMappings();
       let dynamicMapped: string | undefined;
-      if (active.sounds_java_to_bedrock) {
-        // Ideally sounds_bedrock_to_java would be pre-built, but we can search reverse
+      if (active.sounds_bedrock_to_java && active.sounds_bedrock_to_java[soundEvent]) {
+        dynamicMapped = active.sounds_bedrock_to_java[soundEvent];
+      } else if (active.sounds_java_to_bedrock) {
         const jKey = Object.keys(active.sounds_java_to_bedrock).find(k => active.sounds_java_to_bedrock![k] === soundEvent);
         if (jKey) dynamicMapped = jKey;
       }

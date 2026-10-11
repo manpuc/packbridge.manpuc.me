@@ -1,14 +1,21 @@
+import { getActiveMappings } from '../rules';
+
 /**
  * Converts Java Edition language JSON to Bedrock Edition .lang format
  */
 export function javaToBedrockLang(jsonContent: string): string {
   try {
     const data = JSON.parse(jsonContent);
+    const active = getActiveMappings();
+    const keyMap = active.lang_java_to_bedrock || {};
+
     let output = "";
     for (const [key, value] of Object.entries(data)) {
+      // Map Java translation key to Bedrock equivalent if available
+      const mappedKey = keyMap[key] || key;
       // Replace actual newlines with literal \n for Bedrock .lang
       const safeValue = String(value).replace(/\r?\n/g, "\\n");
-      output += `${key}=${safeValue}\n`;
+      output += `${mappedKey}=${safeValue}\n`;
     }
     return output;
   } catch (e) {
@@ -22,6 +29,8 @@ export function javaToBedrockLang(jsonContent: string): string {
 export function bedrockToJavaLang(langContent: string): string {
   const lines = langContent.split(/\r?\n/);
   const output: Record<string, string> = {};
+  const active = getActiveMappings();
+  const keyMap = active.lang_bedrock_to_java || {};
 
   for (const line of lines) {
     const trimLine = line.trim();
@@ -31,9 +40,8 @@ export function bedrockToJavaLang(langContent: string): string {
     if (firstEquals !== -1) {
       const key = trimLine.substring(0, firstEquals).trim();
       const value = trimLine.substring(firstEquals + 1).trim();
-      // In JSON, we want actual newlines if the .lang used literal \n
-      // Actually, Minecraft Java JSON also uses literal \n, so we keep it as is.
-      output[key] = value;
+      const mappedKey = keyMap[key] || key;
+      output[mappedKey] = value;
     }
   }
 
