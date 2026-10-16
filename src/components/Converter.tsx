@@ -3,13 +3,25 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload } from 'lucide-react';
 import JSZip from 'jszip';
-import { convertPack, convertPackWithWorker } from '@/lib/pack/converter';
+import { convertPackWithWorker } from '@/lib/pack/worker-client';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
 import type { Translation, Language } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion } from '@/lib/pack/versions';
 import { useFileDrop } from '@/hooks/useFileDrop';
 import { Bug } from 'lucide-react';
 import { getReportStrings, reportHref, LAST_CONVERSION_KEY } from '@/lib/i18n/report';
+import {
+  trackEvent,
+  getSizeTier,
+  getDurationTier,
+  getFileCountTier,
+  getLocalConversionCount,
+  incrementLocalConversionCount,
+  getUsageTier,
+  categorizeError,
+  analyzeReportSafety
+} from '@/lib/analytics';
+import { LARGE_FILE_WARN_THRESHOLD_BYTES } from '@/lib/pack/security';
 
 // Sub-components
 import { DirectionSettings } from './converter/DirectionSettings';
@@ -75,30 +87,61 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     }
   }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode]);
 
-  const handleFile = useCallback((selectedFile: File) => {
+  const handleFile = useCallback((selectedFile: File, inputMethod: 'drop' | 'file_picker' = 'drop') => {
     if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
       setFile(selectedFile);
       setZipInstance(null); // Reset instance, will be loaded in preview useEffect
       setReport(null);
       setDownloadUrl(null);
       setError(null);
-      setWarning(null);
       setIsAutoDetected(false);
+
+      if (selectedFile.size > LARGE_FILE_WARN_THRESHOLD_BYTES) {
+        const mb = (selectedFile.size / (1024 * 1024)).toFixed(0);
+        const largeFileWarn = initialLang === 'ja'
+          ? `ファイルサイズが大容量（${mb}MB）です。端末のメモリ状況によって処理が遅延またはクラッシュする可能性があります。`
+          : `Large file (${mb}MB). May cause high memory usage or crash depending on device resources.`;
+        setWarning(largeFileWarn);
+      } else {
+        setWarning(null);
+      }
+
+      trackEvent('file_selected', {
+        format: selectedFile.name.endsWith('.mcpack') ? 'mcpack' : 'zip',
+        size_tier: getSizeTier(selectedFile.size),
+        input_method: inputMethod,
+      });
     } else {
       setError(t.errorInvalidFile);
       setWarning(null);
     }
-  }, [t]);
+  }, [t, initialLang]);
 
   // Window-wide drag and drop hook
   const onFileDrop = useCallback((files: FileList) => {
     const droppedFile = files[0];
-    if (droppedFile) handleFile(droppedFile);
+    if (droppedFile) handleFile(droppedFile, 'drop');
   }, [handleFile]);
 
   const { isDragging } = useFileDrop({
     onDrop: onFileDrop
   });
+
+  // Track abandonment on page unload if file is loaded but not converted
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (file && !report && !isProcessing) {
+        trackEvent('file_abandoned', {
+          reason: 'page_unload',
+          has_warning: !!warning,
+        });
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [file, report, isProcessing, warning]);
 
   // Preview and Content Analysis
   useEffect(() => {
@@ -139,10 +182,27 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
 
         const sourceEdition = actualSource;
 
+        const isLargeFile = file.size > LARGE_FILE_WARN_THRESHOLD_BYTES;
+        const mb = (file.size / (1024 * 1024)).toFixed(0);
+        const largeFileWarn = isLargeFile
+          ? (initialLang === 'ja'
+              ? `ファイルサイズが大容量（${mb}MB）です。端末のメモリ状況によって処理が遅延またはクラッシュする可能性があります。`
+              : `Large file (${mb}MB). May cause high memory usage or crash depending on device resources.`)
+          : null;
+
+        let editionWarn: string | null = null;
         if (sourceEdition === 'java' && (manifestEntry || file.name.endsWith('.mcpack'))) {
-          setWarning(t.warnPossibleBedrock);
+          editionWarn = t.warnPossibleBedrock;
         } else if (sourceEdition === 'bedrock' && packMcmetaEntry) {
-          setWarning(t.warnPossibleJava);
+          editionWarn = t.warnPossibleJava;
+        }
+
+        if (largeFileWarn && editionWarn) {
+          setWarning(`${largeFileWarn} ${editionWarn}`);
+        } else if (largeFileWarn) {
+          setWarning(largeFileWarn);
+        } else if (editionWarn) {
+          setWarning(editionWarn);
         } else {
           setWarning(null);
         }
@@ -201,6 +261,25 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     if (!file) return;
     setIsProcessing(true);
     setError(null);
+    const startTime = Date.now();
+
+    // 匿名利用回数の取得とインクリメント（UUID不保持）
+    const prevCount = getLocalConversionCount();
+    const nextCount = incrementLocalConversionCount();
+
+    trackEvent('conversion_start', {
+      direction,
+      java_version: selectedJavaVersion,
+      bedrock_version: selectedBedrockVersion,
+      detection: isAutoDetected ? 'auto_detected' : 'manual_changed',
+      opt_gui: enableGuiConversion,
+      opt_animation: enableAnimationConversion,
+      opt_audio_reencode: enableAudioReencode,
+      user_type: prevCount === 0 ? 'first_time' : 'repeat',
+      usage_tier: getUsageTier(nextCount),
+      ui_lang: initialLang,
+    });
+
     try {
       const options: ConversionOptions = {
         direction,
@@ -221,10 +300,28 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         .filter((d) => d.status !== 'converted')
         .map((d) => `[${d.status}] ${d.filename}: ${d.reason ?? ''}`)
         .join('\n'));
+
+      const safety = analyzeReportSafety(result.report);
+      trackEvent('conversion_success', {
+        direction,
+        duration_tier: getDurationTier(Date.now() - startTime),
+        file_count_tier: getFileCountTier(result.report.totalFiles),
+        has_audio: safety.hasAudio,
+        has_animations: safety.hasAnimations,
+        opt_audio_reencode: enableAudioReencode,
+        skip_reason_top: safety.skipReasonTop,
+      });
     } catch (err) {
       console.error(err);
       setError(t.errorConversion);
       saveContext(`[fatal] ${err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err)}`);
+
+      trackEvent('conversion_failed', {
+        direction,
+        error_category: categorizeError(err),
+        opt_audio_reencode: enableAudioReencode,
+        size_tier: getSizeTier(file.size),
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -246,6 +343,12 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const showReportEntry = error === t.errorConversion || (report && (report.errorCount > 0 || report.skippedCount > 0));
 
   const reset = () => {
+    if (file && !report && !isProcessing) {
+      trackEvent('file_abandoned', {
+        reason: 'manual_reset',
+        has_warning: !!warning,
+      });
+    }
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     if (iconUrl) URL.revokeObjectURL(iconUrl);
     setFile(null);
@@ -335,7 +438,19 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       </AnimatePresence>
 
       {showReportEntry && (
-        <motion.a layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} href={`${reportHref(initialLang)}?from=conversion`} className="report-entry" id="report-entry">
+        <motion.a
+          layout
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          href={`${reportHref(initialLang)}?from=conversion`}
+          className="report-entry"
+          id="report-entry"
+          onClick={() => {
+            trackEvent('report_click', {
+              source: error === t.errorConversion ? 'error_banner' : 'report_summary',
+            });
+          }}
+        >
           <Bug size={16} />{rs.reportThis}
         </motion.a>
       )}

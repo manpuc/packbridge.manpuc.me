@@ -5,7 +5,7 @@ import type { Language } from '@/lib/i18n';
 import { getReportStrings, LAST_CONVERSION_KEY, APP_VERSION } from '@/lib/i18n/report';
 
 const REPO = 'manpuc/packbridge.manpuc.me';
-const LOG_LIMIT = 6000;
+const LOG_LIMIT = 1500;
 
 export interface LastConversion {
   direction: string;

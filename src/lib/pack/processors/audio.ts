@@ -25,12 +25,15 @@ export async function initFFmpeg(): Promise<void> {
 }
 
 export async function reencodeOgg(inputBuffer: Uint8Array): Promise<Uint8Array | null> {
+  let inputName = '';
+  let outputName = '';
   try {
     await initFFmpeg();
     if (!ffmpeg) return null;
 
-    const inputName = 'input.ogg';
-    const outputName = 'output.ogg';
+    const id = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    inputName = `in_${id}.ogg`;
+    outputName = `out_${id}.ogg`;
 
     await ffmpeg.writeFile(inputName, inputBuffer);
 
@@ -38,14 +41,16 @@ export async function reencodeOgg(inputBuffer: Uint8Array): Promise<Uint8Array |
     await ffmpeg.exec(['-i', inputName, '-c:a', 'libvorbis', '-ar', '44100', '-ac', '2', '-q:a', '4', outputName]);
 
     const data = await ffmpeg.readFile(outputName);
-
-    // Cleanup
-    await ffmpeg.deleteFile(inputName);
-    await ffmpeg.deleteFile(outputName);
-
     return new Uint8Array(data as Uint8Array);
   } catch (error) {
     console.error('Audio re-encoding failed:', error);
     return null;
+  } finally {
+    if (ffmpeg && inputName) {
+      try { await ffmpeg.deleteFile(inputName); } catch {}
+    }
+    if (ffmpeg && outputName) {
+      try { await ffmpeg.deleteFile(outputName); } catch {}
+    }
   }
 }

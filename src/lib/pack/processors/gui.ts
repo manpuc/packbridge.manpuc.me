@@ -43,17 +43,29 @@ export async function processGuiSpriteSheet(
   const bitmap = await createImageBitmap(blob);
   const results: Record<string, Uint8Array> = {};
 
-  for (const [targetPath, box] of Object.entries(mappings)) {
-    const canvas = new OffscreenCanvas(box.w, box.h);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) continue;
+  try {
+    // Standard Minecraft GUI sprite sheet base resolution is 256px
+    const scale = bitmap.width > 0 ? bitmap.width / 256 : 1;
 
-    // Draw only the specified crop area
-    ctx.drawImage(bitmap, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+    for (const [targetPath, box] of Object.entries(mappings)) {
+      const sx = Math.round(box.x * scale);
+      const sy = Math.round(box.y * scale);
+      const sw = Math.max(1, Math.round(box.w * scale));
+      const sh = Math.max(1, Math.round(box.h * scale));
 
-    const outBlob = await canvas.convertToBlob({ type: 'image/png' });
-    const buffer = await outBlob.arrayBuffer();
-    results[targetPath] = new Uint8Array(buffer);
+      const canvas = new OffscreenCanvas(sw, sh);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+
+      // Draw only the specified crop area
+      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
+
+      const outBlob = await canvas.convertToBlob({ type: 'image/png' });
+      const buffer = await outBlob.arrayBuffer();
+      results[targetPath] = new Uint8Array(buffer);
+    }
+  } finally {
+    bitmap.close();
   }
 
   return results;

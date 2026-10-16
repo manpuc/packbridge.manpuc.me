@@ -10,6 +10,7 @@ import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from '.
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
 import { normalizeLegacyPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
+import { isSafePath, MAX_SAFE_FILE_COUNT, isSystemHiddenFile } from './security';
 
 const MEDIA_EXTENSIONS = new Set(['.png', '.tga', '.ogg', '.wav', '.mp3', '.fsb', '.jpg', '.jpeg', '.webp']);
 
@@ -79,6 +80,9 @@ export async function convertPack(
   };
 
   const files = Object.keys(sourceZip.files).filter(p => !sourceZip.files[p].dir && !p.endsWith('/'));
+  if (files.length > MAX_SAFE_FILE_COUNT) {
+    throw new Error(`Archive contains too many files (exceeds limit of ${MAX_SAFE_FILE_COUNT.toLocaleString()} files)`);
+  }
   report.totalFiles = files.length;
 
   let packName = (fileName || (input instanceof File ? input.name : "pack")).replace(/\.(zip|mcpack)$/, '');
@@ -130,7 +134,12 @@ export async function convertPack(
 
     const fileEntry = sourceZip.files[path];
     if (fileEntry.dir) continue;
-    if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) {
+    if (!isSafePath(path)) {
+      report.skippedCount++;
+      report.details.push({ filename: path, status: 'skipped', reason: 'Unsafe path traversal attempt' });
+      continue;
+    }
+    if (isSystemHiddenFile(path)) {
       report.skippedCount++;
       report.details.push({ filename: path, status: 'skipped', reason: 'System hidden file' });
       continue;
@@ -371,6 +380,12 @@ export async function convertPack(
 
         if (targetPath.endsWith('.png') || targetPath.endsWith('.tga')) {
           allTargetTextures.add(targetPath);
+        }
+
+        if (!isSafePath(targetPath)) {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: 'Unsafe target path traversal' });
+          continue;
         }
 
         targetZip.file(targetPath, finalContent as any, getZipFileOptions(targetPath));

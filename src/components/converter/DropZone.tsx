@@ -9,7 +9,7 @@ interface DropZoneProps {
   error: string | null;
   warning: string | null;
   isProcessing: boolean;
-  onFileSelect: (file: File) => void;
+  onFileSelect: (file: File, inputMethod?: 'drop' | 'file_picker') => void;
   onConvert: () => void;
   onReset: () => void;
   t: Translation;
@@ -32,13 +32,13 @@ export function DropZone({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) onFileSelect(selectedFile);
+    if (selectedFile) onFileSelect(selectedFile, 'file_picker');
   };
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile) onFileSelect(droppedFile);
+    if (droppedFile) onFileSelect(droppedFile, 'drop');
   };
 
   return (

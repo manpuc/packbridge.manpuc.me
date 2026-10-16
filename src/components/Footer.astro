@@ -20,7 +20,12 @@ const rs = getReportStrings(lang as Language);
 
 		<div class="footer-links">
 			<a href={termsHref} class="footer-link">{t.terms}</a>
-			<a href={reportHref(lang)} class="footer-link">{rs.link}</a>
+			<a
+				href={reportHref(lang)}
+				class="footer-link"
+				data-umami-event="report_click"
+				data-umami-event-source="footer"
+			>{rs.link}</a>
 		</div>
 	</div>
 

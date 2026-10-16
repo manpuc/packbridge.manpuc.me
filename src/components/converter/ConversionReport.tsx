@@ -4,6 +4,8 @@ import { Download, RefreshCw, AlertCircle, ChevronDown } from 'lucide-react';
 import type { PackReport, ConversionResult } from '@/lib/pack/types';
 import type { Translation } from '@/lib/i18n';
 
+import { trackEvent } from '@/lib/analytics';
+
 interface ConversionReportProps {
   report: PackReport;
   downloadUrl: string | null;
@@ -51,7 +53,11 @@ export function ConversionReport({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               href={downloadUrl}
-              download={`${fileName.split('.')[0]}_converted.${direction.endsWith('bedrock') ? 'mcpack' : 'zip'}`}
+              download={`${fileName.replace(/\.(zip|mcpack)$/i, '')}_converted.${direction.endsWith('bedrock') ? 'mcpack' : 'zip'}`}
+              onClick={() => {
+                const format = direction.endsWith('bedrock') ? 'mcpack' : 'zip';
+                trackEvent('pack_download', { format, direction });
+              }}
               className="primary"
               style={{ textDecoration: 'none', flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 24px', borderRadius: '14px', backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-text)', fontWeight: 600 }}
             >

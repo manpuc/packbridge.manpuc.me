@@ -11,6 +11,7 @@ export function javaToBedrockLang(jsonContent: string): string {
 
     let output = "";
     for (const [key, value] of Object.entries(data)) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
       // Map Java translation key to Bedrock equivalent if available
       const mappedKey = keyMap[key] || key;
       // Replace actual newlines with literal \n for Bedrock .lang
@@ -28,7 +29,7 @@ export function javaToBedrockLang(jsonContent: string): string {
  */
 export function bedrockToJavaLang(langContent: string): string {
   const lines = langContent.split(/\r?\n/);
-  const output: Record<string, string> = {};
+  const output: Record<string, string> = Object.create(null);
   const active = getActiveMappings();
   const keyMap = active.lang_bedrock_to_java || {};
 
@@ -41,6 +42,9 @@ export function bedrockToJavaLang(langContent: string): string {
       const key = trimLine.substring(0, firstEquals).trim();
       const value = trimLine.substring(firstEquals + 1).trim();
       const mappedKey = keyMap[key] || key;
+      if (mappedKey === '__proto__' || mappedKey === 'constructor' || mappedKey === 'prototype') {
+        continue;
+      }
       output[mappedKey] = value;
     }
   }

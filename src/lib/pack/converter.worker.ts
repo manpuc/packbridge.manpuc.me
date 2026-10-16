@@ -13,6 +13,7 @@ import { generateUUID, generateManifestContent, generateMcmetaContent } from './
 import { processGuiSpriteSheet, ICONS_MAPPINGS, WIDGETS_MAPPINGS } from './processors/gui';
 import { reencodeOgg } from './processors/audio';
 import { javaToBedrockGeometry } from './processors/models';
+import { isSafePath, createZipSafetyFilter, type ZipSafetyTracker } from './security';
 
 const MEDIA_EXTENSIONS = new Set(['.png', '.tga', '.ogg', '.wav', '.mp3', '.fsb', '.jpg', '.jpeg', '.webp']);
 
@@ -35,7 +36,10 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     // Load mappings
     await loadMappings(options.javaVersionId, options.bedrockVersionId);
 
-    const sourceFiles = unzipSync(new Uint8Array(fileBuffer));
+    const tracker: ZipSafetyTracker = { totalUncompressedBytes: 0, fileCount: 0 };
+    const sourceFiles = unzipSync(new Uint8Array(fileBuffer), {
+      filter: createZipSafetyFilter(tracker)
+    });
     const targetFiles: Zippable = {};
 
     const report: PackReport = {
@@ -99,6 +103,12 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
       }
 
       const content = sourceFiles[path];
+      if (!isSafePath(path)) {
+        report.skippedCount++;
+        report.details.push({ filename: path, status: 'skipped', reason: 'Unsafe path traversal attempt' });
+        continue;
+      }
+
       if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) {
         report.skippedCount++;
         report.details.push({ filename: path, status: 'skipped', reason: 'System hidden file' });
@@ -357,6 +367,12 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
 
           if (targetPath.endsWith('.png') || targetPath.endsWith('.tga')) {
             allTargetTextures.add(targetPath);
+          }
+
+          if (!isSafePath(targetPath)) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'Unsafe target path traversal' });
+            continue;
           }
 
           targetFiles[targetPath] = [finalBytes, { level: getFileCompressionLevel(targetPath) }];
