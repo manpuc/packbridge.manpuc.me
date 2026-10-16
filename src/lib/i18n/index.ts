@@ -3,7 +3,6 @@ import en from "./en";
 import ko from "./ko";
 import zh from "./zh";
 import tl from "./tl";
-import tok from "./tok";
 import es from "./es";
 import fr from "./fr";
 import de from "./de";
@@ -16,7 +15,6 @@ export const translations: Record<Language, Translation> = {
 	ko,
 	zh,
 	tl,
-	tok,
 	es,
 	fr,
 	de,

@@ -89,7 +89,7 @@ export default function LangToggle() {
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           border: 1px solid var(--color-border);
-          border-radius: 12px;
+          border-radius: 14px; /* Concentric: 8px (item radius) + 6px (padding) = 14px */
           min-width: 160px;
           box-shadow: var(--shadow-md);
           z-index: 1000;

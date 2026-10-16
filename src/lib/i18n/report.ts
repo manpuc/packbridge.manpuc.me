@@ -182,42 +182,6 @@ const tl: ReportStrings = {
 	again: "Bumalik sa form",
 };
 
-const tok: ReportStrings = {
-	link: "o toki e pakala",
-	reportThis: "o toki e pakala ni",
-	pageTitle: "o toki e pakala",
-	pageDescription: "sina ken toki e pakala ante anu pakala lukin lon GitHub.",
-	kind: "nasin",
-	kindConversion: "ante",
-	kindUi: "lukin",
-	kindOther: "ante ijo",
-	summary: "seme li kama?",
-	summaryPlaceholder: "sama ni: sitelen pi palisa utala li loje pimeja",
-	summaryRequired: "linja wan li pona. o toki e ijo kama.",
-	expected: "sina wile e seme, ijo seme li kama",
-	expectedPlaceholder: "wile: …\nkama: …",
-	steps: "nasin pi kama sin",
-	stepsPlaceholder: "1. o kepeken Java → Bedrock\n2. …",
-	optional: "wile ala",
-	auto: "sona pi kama sama",
-	autoHint: "o lukin lon tenpo pini. sina ken weka e ijo.",
-	autoEmpty: "sona ante li lon ala. sona pi ilo lukin taso li tawa.",
-	fieldDirection: "nasin ante",
-	fieldFile: "lipu",
-	fieldLog: "lipu pakala",
-	fieldEnv: "ilo lukin / ilo OS",
-	fieldVersion: "nanpa ilo",
-	copyLog: "o jo e lipu pakala ale",
-	copied: "pini",
-	truncated: "lipu li suli. o jo e ale, o pana lon GitHub.",
-	publicNotice: "jan ale li ken lukin lon GitHub. lipu pack sina li tawa ala.",
-	preview: "o lukin e ijo tawa",
-	submit: "o pali e toki lon GitHub",
-	sentTitle: "o pini lon GitHub",
-	sentBody: "lipu sin li open. o lukin, o luka e “Submit new issue”.",
-	again: "o tawa sin",
-};
-
 const es: ReportStrings = {
 	link: "Informar de un error",
 	reportThis: "Informar de este problema",
@@ -326,7 +290,7 @@ const de: ReportStrings = {
 	again: "Zurück zum Formular",
 };
 
-const strings: Record<Language, ReportStrings> = { ja, en, ko, zh, tl, tok, es, fr, de };
+const strings: Record<Language, ReportStrings> = { ja, en, ko, zh, tl, es, fr, de };
 
 export const getReportStrings = (lang: Language): ReportStrings => strings[lang] ?? en;
 export const reportHref = (lang: string) => (lang === "ja" ? "/report" : `/${lang}/report`);

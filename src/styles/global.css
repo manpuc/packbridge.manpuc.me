@@ -97,20 +97,6 @@ body {
   }
 }
 
-@keyframes gradientShimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
 .animate-fade-up {
   animation: fadeUp 0.8s var(--spring-smooth) both;
 }
@@ -150,12 +136,7 @@ h1 {
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: 12px;
-  background: var(--color-text-gradient);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientShimmer 8s ease infinite;
+  color: var(--color-text);
   text-wrap: balance;
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -314,7 +295,7 @@ button.icon-btn {
 /* Dropzone */
 .dropzone {
   border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: 48px 24px;
   text-align: center;
   transition: all 0.3s var(--spring-bounce);

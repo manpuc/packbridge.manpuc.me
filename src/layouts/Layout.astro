@@ -24,7 +24,7 @@ const alternateLinks = SUPPORTED_LANGUAGES.map((l) => {
 	const prefix = l === "ja" ? "" : `/${l}`;
 	return {
 		href: new URL(`${prefix}${currentPath}` || "/", siteUrl).href,
-		lang: l === "tok" ? "tok" : l,
+		lang: l,
 	};
 });
 
@@ -35,7 +35,6 @@ const localeMap: Record<string, string> = {
 	ko: "ko_KR",
 	zh: "zh_CN",
 	tl: "tl_PH",
-	tok: "mis_TOKI",
 	es: "es_ES",
 	fr: "fr_FR",
 	de: "de_DE",

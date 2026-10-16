@@ -1,4 +1,4 @@
-export const SUPPORTED_LANGUAGES = ["ja", "en", "ko", "zh", "tl", "tok", "es", "fr", "de"] as const;
+export const SUPPORTED_LANGUAGES = ["ja", "en", "ko", "zh", "tl", "es", "fr", "de"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
 export const LANG_NAMES: Record<Language, string> = {
@@ -7,7 +7,6 @@ export const LANG_NAMES: Record<Language, string> = {
 	ko: "한국어",
 	zh: "中文",
 	tl: "Tagalog",
-	tok: "toki pona",
 	es: "Español",
 	fr: "Français",
 	de: "Deutsch",
