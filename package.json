@@ -16,19 +16,19 @@
   "license": "ISC",
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
-    "@astrojs/react": "^5.0.3",
-    "@astrojs/sitemap": "^3.7.2",
+    "@astrojs/react": "^7.1.1",
+    "@astrojs/sitemap": "^3.7.4",
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "astro": "^6.1.8",
+    "astro": "^7.4.2",
     "fflate": "^0.8.3",
     "framer-motion": "^12.38.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "zod": "^4.3.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
@@ -37,5 +37,10 @@
     "minecraft-data": "^3.117.0",
     "string-similarity": "^4.0.4",
     "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    }
   }
 }
