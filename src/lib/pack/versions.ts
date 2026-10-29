@@ -44,6 +44,7 @@ export const JAVA_VERSIONS: JavaVersion[] = [
 ];
 
 export const BEDROCK_VERSIONS: BedrockVersion[] = [
+  { id: '1.26.60', name: '26.x (1.26.60)', minEngineVersion: [1, 26, 60] },
   { id: '1.26.50', name: '26.x (1.26.50)', minEngineVersion: [1, 26, 50] },
   { id: '1.21.50', name: '1.21.50+', minEngineVersion: [1, 21, 50] },
   { id: '1.21.0', name: '1.21.0', minEngineVersion: [1, 21, 0] },
