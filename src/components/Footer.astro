@@ -1,6 +1,6 @@
 ---
 import type { Translation, Language } from "@/lib/i18n";
-import { getReportStrings, reportHref } from "@/lib/i18n/report";
+import { getReportStrings, reportHref, APP_VERSION } from "@/lib/i18n/report";
 
 interface Props {
 	t: Translation;
@@ -46,7 +46,7 @@ const rs = getReportStrings(lang as Language);
 			/>
 			<span class="developed-by">Developed by manpuc</span>
 		</a>
-		<span class="app-version">v1.5.1</span>
+		<span class="app-version">v{APP_VERSION}</span>
 	</div>
 </footer>
 

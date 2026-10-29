@@ -42,6 +42,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [selectedJavaVersion, setSelectedJavaVersion] = useState(JAVA_VERSIONS[0].id);
   const [selectedBedrockVersion, setSelectedBedrockVersion] = useState(BEDROCK_VERSIONS[0].id);
+  const [sourceJavaVersion, setSourceJavaVersion] = useState(JAVA_VERSIONS[0].id);
+  const [sourceBedrockVersion, setSourceBedrockVersion] = useState(BEDROCK_VERSIONS[0].id);
   const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -215,7 +217,13 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             if (json?.pack?.pack_format) {
               const detected = getJavaVersionByPackFormat(json.pack.pack_format);
               if (detected) {
-                setSelectedJavaVersion(detected);
+                setSourceJavaVersion(detected);
+                if (direction === 'java-to-bedrock') {
+                  setSelectedJavaVersion(detected);
+                } else if (direction === 'java-to-java') {
+                  // In version-update, if target was pointing to old default or same as detected, point to latest version
+                  setSelectedJavaVersion(JAVA_VERSIONS[0].id);
+                }
                 setIsAutoDetected(true);
               }
             }
@@ -225,7 +233,13 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             if (json?.header?.min_engine_version) {
               const detected = getBedrockVersionByEngineVersion(json.header.min_engine_version);
               if (detected) {
-                setSelectedBedrockVersion(detected);
+                setSourceBedrockVersion(detected);
+                if (direction === 'bedrock-to-java') {
+                  setSelectedBedrockVersion(detected);
+                } else if (direction === 'bedrock-to-bedrock') {
+                  // In version-update, default target to latest version
+                  setSelectedBedrockVersion(BEDROCK_VERSIONS[0].id);
+                }
                 setIsAutoDetected(true);
               }
             }
@@ -285,6 +299,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         direction,
         javaVersionId: selectedJavaVersion,
         bedrockVersionId: selectedBedrockVersion,
+        sourceJavaVersionId: sourceJavaVersion,
+        sourceBedrockVersionId: sourceBedrockVersion,
         enableGuiConversion,
         enableAnimationConversion,
         enableLanguageConversion,
@@ -397,6 +413,10 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         setSelectedJavaVersion={setSelectedJavaVersion}
         selectedBedrockVersion={selectedBedrockVersion}
         setSelectedBedrockVersion={setSelectedBedrockVersion}
+        sourceJavaVersion={sourceJavaVersion}
+        setSourceJavaVersion={setSourceJavaVersion}
+        sourceBedrockVersion={sourceBedrockVersion}
+        setSourceBedrockVersion={setSourceBedrockVersion}
         isAutoDetected={isAutoDetected}
         hasFile={!!file}
         enableGuiConversion={enableGuiConversion}

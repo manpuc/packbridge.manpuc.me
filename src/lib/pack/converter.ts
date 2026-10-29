@@ -8,7 +8,7 @@ import { generateBlocksJson, generateTerrainTexture } from './processors/blocks'
 import { generateItemTexture } from './processors/items';
 import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
-import { normalizeLegacyPath } from './legacy';
+import { normalizeLegacyPath, downgradeLegacyPath, migrateJavaPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
 import { isSafePath, MAX_SAFE_FILE_COUNT, isSystemHiddenFile } from './security';
 
@@ -100,6 +100,7 @@ export async function convertPack(
 
   // Pre-scan for metadata and pack root
   let packRoot = "";
+  let detectedSourcePackFormat: number | null = null;
   for (const path of files) {
     if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
 
@@ -119,10 +120,20 @@ export async function convertPack(
           if (data.modules?.[0]?.uuid) moduleUuid = data.modules[0].uuid;
         } else if (path.endsWith('pack.mcmeta')) {
           if (data.pack?.description) packDescription = data.pack.description;
+          if (typeof data.pack?.pack_format === 'number') {
+            detectedSourcePackFormat = data.pack.pack_format;
+          }
         }
       } catch (e) { }
     }
   }
+
+  // Determine target and source pack formats for Java migrations
+  const targetJavaVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+  const sourceJavaVersion = options.sourceJavaVersionId
+    ? JAVA_VERSIONS.find(v => v.id === options.sourceJavaVersionId)
+    : (detectedSourcePackFormat !== null ? JAVA_VERSIONS.find(v => v.packFormat === detectedSourcePackFormat) : null);
+  const sourcePackFormat = sourceJavaVersion?.packFormat ?? detectedSourcePackFormat ?? targetJavaVersion.packFormat;
 
   let lastYieldTime = performance.now();
   for (const path of files) {
@@ -159,20 +170,23 @@ export async function convertPack(
     let relativePath = path.substring(packRoot.length);
 
     // Normalize legacy paths
-    if (direction === 'java-to-bedrock' || direction === 'java-to-java') {
-      const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId);
-      if (jVersion) {
-        relativePath = normalizeLegacyPath(relativePath, jVersion.packFormat);
-      }
+    if (direction === 'java-to-bedrock') {
+      relativePath = normalizeLegacyPath(relativePath, targetJavaVersion.packFormat);
     }
 
     try {
-      let targetPath = getTargetContext(relativePath, direction);
+      let targetPath: string | null = null;
+      if (direction === 'java-to-java') {
+        targetPath = migrateJavaPath(relativePath, sourcePackFormat, targetJavaVersion.packFormat);
+      } else {
+        targetPath = getTargetContext(relativePath, direction);
+      }
 
       if (direction === 'bedrock-to-java' && targetPath) {
-        const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId);
-        if (jVersion) {
-          targetPath = normalizeLegacyPath(targetPath, jVersion.packFormat);
+        if (targetJavaVersion.packFormat <= 3) {
+          targetPath = downgradeLegacyPath(targetPath, targetJavaVersion.packFormat);
+        } else {
+          targetPath = normalizeLegacyPath(targetPath, targetJavaVersion.packFormat);
         }
       }
 
@@ -348,6 +362,9 @@ export async function convertPack(
               if (jVersion.packFormat >= 69) {
                 json.pack.min_format = jVersion.packFormat;
                 json.pack.max_format = jVersion.packFormat;
+              } else {
+                delete json.pack.min_format;
+                delete json.pack.max_format;
               }
               finalContent = JSON.stringify(json, null, 2);
             }

@@ -200,3 +200,73 @@ export function normalizeLegacyPath(path: string, packFormat: number): string {
 
   return normalized;
 }
+
+// Inverted lookup tables for 1.13+ -> 1.12- downgrades
+export const blockRenamesInverse: Record<string, string> = Object.entries(blockRenames).reduce(
+  (acc, [legacy, modern]) => {
+    acc[modern] = legacy;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+export const itemRenamesInverse: Record<string, string> = Object.entries(itemRenames).reduce(
+  (acc, [legacy, modern]) => {
+    acc[modern] = legacy;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+export function downgradeLegacyPath(path: string, targetPackFormat: number): string {
+  let downgraded = path;
+
+  // 1. Reverse filenames for 1.12-
+  const match = downgraded.match(/^(assets\/minecraft\/textures\/(?:block|item)\/)(.*?)(\.png|\.png\.mcmeta)?$/);
+  if (match) {
+    const prefix = match[1];
+    const name = match[2];
+    const suffix = match[3] || '';
+
+    if (prefix.includes('/block/')) {
+      const legacyName = blockRenamesInverse[name] || name;
+      downgraded = `assets/minecraft/textures/blocks/${legacyName}${suffix}`;
+    } else if (prefix.includes('/item/')) {
+      const legacyName = itemRenamesInverse[name] || name;
+      downgraded = `assets/minecraft/textures/items/${legacyName}${suffix}`;
+    }
+  } else {
+    // 2. Structural reverse (block -> blocks, item -> items)
+    if (downgraded.startsWith('assets/minecraft/textures/block/')) {
+      downgraded = downgraded.replace('assets/minecraft/textures/block/', 'assets/minecraft/textures/blocks/');
+    } else if (downgraded.startsWith('assets/minecraft/textures/item/')) {
+      downgraded = downgraded.replace('assets/minecraft/textures/item/', 'assets/minecraft/textures/items/');
+    }
+  }
+
+  return downgraded;
+}
+
+/**
+ * Migrates a Java resource pack path between versions.
+ * Pack format <= 3 is Minecraft 1.6 - 1.12.x
+ * Pack format >= 4 is Minecraft 1.13+
+ */
+export function migrateJavaPath(
+  path: string,
+  sourcePackFormat: number,
+  targetPackFormat: number
+): string {
+  // If moving from legacy (1.12-) to modern (1.13+)
+  if (sourcePackFormat <= 3 && targetPackFormat >= 4) {
+    return normalizeLegacyPath(path, targetPackFormat);
+  }
+
+  // If moving from modern (1.13+) to legacy (1.12-)
+  if (sourcePackFormat >= 4 && targetPackFormat <= 3) {
+    return downgradeLegacyPath(path, targetPackFormat);
+  }
+
+  return path;
+}
+

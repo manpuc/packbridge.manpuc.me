@@ -46,6 +46,10 @@ interface DirectionSettingsProps {
   setSelectedJavaVersion: (v: string) => void;
   selectedBedrockVersion: string;
   setSelectedBedrockVersion: (v: string) => void;
+  sourceJavaVersion?: string;
+  setSourceJavaVersion?: (v: string) => void;
+  sourceBedrockVersion?: string;
+  setSourceBedrockVersion?: (v: string) => void;
   isAutoDetected?: boolean;
   hasFile?: boolean;
   enableGuiConversion: boolean;
@@ -68,6 +72,10 @@ export function DirectionSettings({
   setSelectedJavaVersion,
   selectedBedrockVersion,
   setSelectedBedrockVersion,
+  sourceJavaVersion,
+  setSourceJavaVersion,
+  sourceBedrockVersion,
+  setSourceBedrockVersion,
   isAutoDetected,
   hasFile,
   enableGuiConversion,
@@ -202,13 +210,37 @@ export function DirectionSettings({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               style={{ overflow: 'hidden' }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '4px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{t.targetVersion} {hasFile ? `(${sourceEdition === 'java' ? 'Java' : 'Bedrock'})` : ''}</span>
-                  {isAutoDetected && <span style={{ color: 'var(--color-primary)' }}>{t.autoDetected}</span>}
-                </label>
-                <div className="select-wrapper">
-                  {hasFile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{t.sourceVersion} {hasFile ? `(${sourceEdition === 'java' ? 'Java' : 'Bedrock'})` : ''}</span>
+                    {isAutoDetected && <span style={{ color: 'var(--color-primary)' }}>{t.autoDetected}</span>}
+                  </label>
+                  <div className={`select-wrapper ${!isAutoDetected ? 'disabled' : ''}`} style={{ opacity: !isAutoDetected ? 0.7 : 1 }}>
+                    {hasFile ? (
+                      <select
+                        className="select-input"
+                        value={sourceEdition === 'java' ? (sourceJavaVersion || selectedJavaVersion) : (sourceBedrockVersion || selectedBedrockVersion)}
+                        disabled={true}
+                      >
+                        {sourceEdition === 'java'
+                          ? JAVA_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                          : BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
+                        }
+                      </select>
+                    ) : (
+                      <div className="select-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
+                        {t.uploadToAutoDetect}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                    {t.targetVersion} {hasFile ? `(${sourceEdition === 'java' ? 'Java' : 'Bedrock'})` : ''}
+                  </label>
+                  <div className="select-wrapper">
                     <select
                       className="select-input"
                       value={sourceEdition === 'java' ? selectedJavaVersion : selectedBedrockVersion}
@@ -219,11 +251,7 @@ export function DirectionSettings({
                         : BEDROCK_VERSIONS.map(v => <option key={v.id} value={v.id}>{v.name}</option>)
                       }
                     </select>
-                  ) : (
-                    <div className="select-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
-                      {t.uploadToAutoDetect}
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </motion.div>

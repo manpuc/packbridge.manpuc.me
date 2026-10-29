@@ -21,6 +21,8 @@ export interface ConversionOptions {
   direction: ConversionDirection;
   javaVersionId?: string;
   bedrockVersionId?: string;
+  sourceJavaVersionId?: string;
+  sourceBedrockVersionId?: string;
   enableGuiConversion: boolean;
   enableAnimationConversion: boolean;
   enableLanguageConversion: boolean;
