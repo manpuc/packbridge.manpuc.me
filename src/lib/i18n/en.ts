@@ -96,9 +96,12 @@ const en: Translation = {
 	openSourceText: "This service is open source.",
   betaFeatures: "Beta Features",
   enableGuiConversion: "Enable GUI Conversion",
+  enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
+  enableTgaConversion: "Convert TGA Textures to PNG",
   enableAnimationConversion: "Enable Animation Conversion",
   enableLanguageConversion: 'Enable Language Conversion',
   enableSoundConversion: 'Enable Sound Conversion',
+  enableAudioReencode: 'Re-encode Audio (FFmpeg, ~20MB)',
 };
 
 export default en;

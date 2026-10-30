@@ -9,17 +9,22 @@ export async function initFFmpeg(): Promise<void> {
   if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
 
   ffmpegLoadingPromise = (async () => {
-    ffmpeg = new FFmpeg();
-    ffmpeg.on('log', ({ message }) => {
+    const instance = new FFmpeg();
+    instance.on('log', ({ message }) => {
       // console.log('[FFmpeg]', message);
     });
 
     const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
-    await ffmpeg.load({
+    await instance.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
     });
-  })();
+    ffmpeg = instance;
+  })().catch((err) => {
+    ffmpegLoadingPromise = null;
+    ffmpeg = null;
+    throw err;
+  });
 
   return ffmpegLoadingPromise;
 }

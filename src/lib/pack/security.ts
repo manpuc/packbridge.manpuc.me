@@ -8,9 +8,15 @@ export const MAX_SAFE_COMPRESSION_RATIO = 100; // e.g. 10MB compressing to <100K
 export const LARGE_FILE_WARN_THRESHOLD_BYTES = 350 * 1024 * 1024; // 350 MB threshold to alert user
 export const MAX_INPUT_FILE_SIZE_BYTES = LARGE_FILE_WARN_THRESHOLD_BYTES;
 
+const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function isUnsafeObjectKey(key: string): boolean {
+  return UNSAFE_OBJECT_KEYS.has(key);
+}
+
 /**
  * Validates that a relative path within a zip archive is safe and does not attempt
- * directory traversal (Zip Slip vulnerability).
+ * directory traversal (Zip Slip vulnerability) or prototype pollution.
  */
 export function isSafePath(path: string): boolean {
   if (!path || typeof path !== 'string') return false;
@@ -24,10 +30,10 @@ export function isSafePath(path: string): boolean {
     return false;
   }
 
-  // Check each path segment for directory traversal attempts
+  // Check each path segment for directory traversal or prototype pollution attempts
   const segments = normalized.split('/');
   for (const seg of segments) {
-    if (seg === '..') {
+    if (seg === '..' || UNSAFE_OBJECT_KEYS.has(seg)) {
       return false;
     }
   }

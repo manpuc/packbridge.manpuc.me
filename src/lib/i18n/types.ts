@@ -77,6 +77,8 @@ export interface Translation {
 	// Beta Features
 	betaFeatures: string;
 	enableGuiConversion: string;
+	enableModernGuiSprites?: string;
+	enableTgaConversion?: string;
 	enableAnimationConversion: string;
 	enableLanguageConversion: string;
 	enableSoundConversion: string;

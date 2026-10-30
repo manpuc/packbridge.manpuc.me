@@ -96,6 +96,8 @@ const tl: Translation = {
 	openSourceText: "Ang serbisyong ito ay open source.",
   betaFeatures: "Beta Features",
   enableGuiConversion: "Enable GUI Conversion",
+  enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
+  enableTgaConversion: "I-convert ang TGA Textures sa PNG",
   enableAnimationConversion: "Enable Animation Conversion",
   enableLanguageConversion: 'Enable Language Conversion',
   enableSoundConversion: 'Enable Sound Conversion',

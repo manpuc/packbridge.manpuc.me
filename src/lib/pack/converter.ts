@@ -10,7 +10,17 @@ import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from '.
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
 import { normalizeLegacyPath, downgradeLegacyPath, migrateJavaPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
-import { isSafePath, MAX_SAFE_FILE_COUNT, isSystemHiddenFile } from './security';
+import {
+  processGuiSpriteSheet,
+  ICONS_MAPPINGS,
+  WIDGETS_MAPPINGS,
+  MODERN_GUI_SPRITE_JAVA_TO_BEDROCK,
+  MODERN_GUI_SPRITE_BEDROCK_TO_JAVA
+} from './processors/gui';
+import { convertTgaToPng } from './processors/tga';
+import { reencodeOgg } from './processors/audio';
+import { javaToBedrockGeometry } from './processors/models';
+import { isSafePath, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES, isSystemHiddenFile } from './security';
 
 const MEDIA_EXTENSIONS = new Set(['.png', '.tga', '.ogg', '.wav', '.mp3', '.fsb', '.jpg', '.jpeg', '.webp']);
 
@@ -83,10 +93,23 @@ export async function convertPack(
   if (files.length > MAX_SAFE_FILE_COUNT) {
     throw new Error(`Archive contains too many files (exceeds limit of ${MAX_SAFE_FILE_COUNT.toLocaleString()} files)`);
   }
+
+  let totalUncompressed = 0;
+  for (const p of files) {
+    const rawData = (sourceZip.files[p] as any)._data;
+    const uncompressedSize = typeof rawData?.uncompressedSize === 'number' ? rawData.uncompressedSize : 0;
+    if (uncompressedSize > 0) {
+      totalUncompressed += uncompressedSize;
+      if (totalUncompressed > MAX_SAFE_UNCOMPRESSED_BYTES) {
+        throw new Error(`Archive exceeds maximum uncompressed size limit (${(MAX_SAFE_UNCOMPRESSED_BYTES / (1024 * 1024 * 1024)).toFixed(0)} GB)`);
+      }
+    }
+  }
+
   report.totalFiles = files.length;
 
-  let packName = (fileName || (input instanceof File ? input.name : "pack")).replace(/\.(zip|mcpack)$/, '');
-  let packDescription = "Converted by PackBridge";
+  let packName = (fileName || (input instanceof File ? input.name : "pack")).replace(/\.(zip|mcpack)$/i, '');
+  let packDescription: unknown = "Converted by PackBridge";
   let headerUuid = generateUUID();
   let moduleUuid = generateUUID();
 
@@ -98,30 +121,37 @@ export async function convertPack(
   const mergedLangs = new Map<string, string>();
   const flipbookEntries: FlipbookEntry[] = [];
 
-  // Pre-scan for metadata and pack root
+  // Pre-scan for metadata and pack root (prefer shallowest pack.mcmeta or manifest.json)
   let packRoot = "";
+  let bestRootDepth = Infinity;
   let detectedSourcePackFormat: number | null = null;
   for (const path of files) {
     if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
 
-    if (path.endsWith('pack.mcmeta') || path.endsWith('manifest.json')) {
+    const isMcmeta = path === 'pack.mcmeta' || path.endsWith('/pack.mcmeta');
+    const isManifest = path === 'manifest.json' || path.endsWith('/manifest.json');
+    if (isMcmeta || isManifest) {
       const parts = path.split('/');
       parts.pop();
+      const depth = parts.length;
+      if (depth >= bestRootDepth) continue;
+      bestRootDepth = depth;
       packRoot = parts.join('/') + (parts.length > 0 ? '/' : '');
 
       const entry = sourceZip.files[path];
       try {
         const text = await entry.async('text');
         const data = JSON.parse(text);
-        if (path.endsWith('manifest.json')) {
-          if (data.header?.name) packName = data.header.name;
-          if (data.header?.description) packDescription = data.header.description;
-          if (data.header?.uuid) headerUuid = data.header.uuid;
-          if (data.modules?.[0]?.uuid) moduleUuid = data.modules[0].uuid;
-        } else if (path.endsWith('pack.mcmeta')) {
-          if (data.pack?.description) packDescription = data.pack.description;
-          if (typeof data.pack?.pack_format === 'number') {
-            detectedSourcePackFormat = data.pack.pack_format;
+        if (isManifest) {
+          if (data.header?.name) packName = String(data.header.name);
+          if (data.header?.description !== undefined) packDescription = data.header.description;
+          if (typeof data.header?.uuid === 'string') headerUuid = data.header.uuid;
+          if (typeof data.modules?.[0]?.uuid === 'string') moduleUuid = data.modules[0].uuid;
+        } else if (isMcmeta) {
+          if (data.pack?.description !== undefined) packDescription = data.pack.description;
+          const rawFormat = data.pack?.pack_format ?? (Array.isArray(data.pack?.min_format) ? data.pack.min_format[0] : data.pack?.min_format);
+          if (typeof rawFormat === 'number') {
+            detectedSourcePackFormat = rawFormat;
           }
         }
       } catch (e) { }
@@ -171,15 +201,25 @@ export async function convertPack(
 
     // Normalize legacy paths
     if (direction === 'java-to-bedrock') {
-      relativePath = normalizeLegacyPath(relativePath, targetJavaVersion.packFormat);
+      relativePath = normalizeLegacyPath(relativePath, sourcePackFormat);
     }
 
     try {
       let targetPath: string | null = null;
-      if (direction === 'java-to-java') {
-        targetPath = migrateJavaPath(relativePath, sourcePackFormat, targetJavaVersion.packFormat);
-      } else {
-        targetPath = getTargetContext(relativePath, direction);
+      if (options.enableModernGuiSprites) {
+        if (direction === 'java-to-bedrock' && Object.hasOwn(MODERN_GUI_SPRITE_JAVA_TO_BEDROCK, relativePath)) {
+          targetPath = MODERN_GUI_SPRITE_JAVA_TO_BEDROCK[relativePath];
+        } else if (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18 && Object.hasOwn(MODERN_GUI_SPRITE_BEDROCK_TO_JAVA, relativePath)) {
+          targetPath = MODERN_GUI_SPRITE_BEDROCK_TO_JAVA[relativePath];
+        }
+      }
+
+      if (!targetPath) {
+        if (direction === 'java-to-java') {
+          targetPath = migrateJavaPath(relativePath, sourcePackFormat, targetJavaVersion.packFormat);
+        } else {
+          targetPath = getTargetContext(relativePath, direction);
+        }
       }
 
       if (direction === 'bedrock-to-java' && targetPath) {
@@ -200,7 +240,8 @@ export async function convertPack(
             (relativePath.endsWith('.json') && targetPath.startsWith('texts/')) ||
             relativePath.endsWith('sounds.json') ||
             relativePath === 'assets/minecraft/texts/splashes.txt' ||
-            relativePath.endsWith('.png.mcmeta')
+            relativePath.endsWith('.png.mcmeta') ||
+            (relativePath.startsWith('assets/minecraft/models/') && relativePath.endsWith('.json'))
           ) {
             needsProcessing = true;
           }
@@ -216,8 +257,12 @@ export async function convertPack(
       }
 
       if (targetPath) {
-        if (!options.enableGuiConversion && (direction === 'java-to-bedrock' || direction === 'bedrock-to-java')) {
-          if (relativePath.includes('/gui/') || targetPath.includes('/gui/')) {
+        const isModernSpriteHandled = options.enableModernGuiSprites && (
+          (direction === 'java-to-bedrock' && Object.hasOwn(MODERN_GUI_SPRITE_JAVA_TO_BEDROCK, relativePath)) ||
+          (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18 && Object.hasOwn(MODERN_GUI_SPRITE_BEDROCK_TO_JAVA, relativePath))
+        );
+        if (!options.enableGuiConversion && !isModernSpriteHandled && (direction === 'java-to-bedrock' || direction === 'bedrock-to-java')) {
+          if (relativePath.includes('/gui/') || targetPath.includes('/gui/') || targetPath.startsWith('textures/ui/')) {
             report.skippedCount++;
             report.details.push({ filename: path, status: 'skipped', reason: 'GUI conversion disabled' });
             continue;
@@ -240,7 +285,8 @@ export async function convertPack(
               }
               const converted = javaToBedrockLang(decoder.decode(content));
               const current = mergedLangs.get(targetPath) || "";
-              mergedLangs.set(targetPath, current + converted);
+              const prefix = current ? (current.endsWith('\n') ? '' : '\n') : '';
+              mergedLangs.set(targetPath, current + prefix + converted);
 
               const langCode = targetPath.split('/').pop()?.replace('.lang', '');
               if (langCode) supportedLanguages.add(langCode);
@@ -257,6 +303,21 @@ export async function convertPack(
               }
               finalContent = javaToBedrockSounds(decoder.decode(content));
               targetPath = 'sounds/sound_definitions.json';
+            } else if (relativePath.startsWith('assets/minecraft/models/') && relativePath.endsWith('.json')) {
+              if (!options.enableModelConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is experimental and disabled' });
+                continue;
+              }
+              const modelName = relativePath.split('/').pop()?.replace('.json', '') || 'custom';
+              const geoJson = javaToBedrockGeometry(decoder.decode(content), modelName);
+              if (geoJson) {
+                finalContent = geoJson;
+              } else {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Model has no elements/cubes to convert' });
+                continue;
+              }
             } else if (relativePath === 'assets/minecraft/texts/splashes.txt') {
               const lines = decoder.decode(content).split(/\r?\n/).filter(l => l.trim().length > 0);
               finalContent = JSON.stringify({ splashes: lines }, null, 2);
@@ -310,9 +371,7 @@ export async function convertPack(
                 const flipbooks = JSON.parse(decoder.decode(content));
                 if (Array.isArray(flipbooks)) {
                   for (const entry of flipbooks) {
-                    // Bedrock usually omits 'textures/' and '.png' in flipbook_texture path sometimes?
-                    // According to animation.ts logic, flipbook_texture is usually e.g., 'blocks/stone' or 'items/apple'.
-                    // So Bedrock path is usually 'textures/' + entry.flipbook_texture + '.png'
+                    if (!entry || typeof entry.flipbook_texture !== 'string') continue;
                     let rawTex = entry.flipbook_texture;
                     if (!rawTex.endsWith('.png')) rawTex += '.png';
                     const bPath = rawTex.startsWith('textures/')
@@ -321,6 +380,7 @@ export async function convertPack(
                     const jPath = getTargetContext(bPath, 'bedrock-to-java');
                     if (jPath) {
                       const mcmetaPath = jPath + '.mcmeta';
+                      if (!isSafePath(mcmetaPath)) continue;
                       const mcmetaContent = generateJavaAnimation(entry);
                       targetZip.file(mcmetaPath, mcmetaContent, getZipFileOptions(mcmetaPath));
                       report.convertedCount++;
@@ -347,6 +407,66 @@ export async function convertPack(
             }
           } else {
             finalContent = content;
+          }
+        }
+
+        if (options.enableGuiConversion && direction === 'java-to-bedrock') {
+          try {
+            if (relativePath === 'assets/minecraft/textures/gui/icons.png') {
+              const rawBytes = await fileEntry.async('uint8array');
+              const uiFiles = await processGuiSpriteSheet(rawBytes, ICONS_MAPPINGS);
+              for (const [uiPath, uiData] of Object.entries(uiFiles)) {
+                targetZip.file(uiPath, uiData, getZipFileOptions(uiPath));
+                allTargetTextures.add(uiPath);
+                report.convertedCount++;
+                report.details.push({ filename: path, status: 'converted', outputPath: uiPath });
+              }
+              continue;
+            } else if (relativePath === 'assets/minecraft/textures/gui/widgets.png') {
+              const rawBytes = await fileEntry.async('uint8array');
+              const uiFiles = await processGuiSpriteSheet(rawBytes, WIDGETS_MAPPINGS);
+              for (const [uiPath, uiData] of Object.entries(uiFiles)) {
+                targetZip.file(uiPath, uiData, getZipFileOptions(uiPath));
+                allTargetTextures.add(uiPath);
+                report.convertedCount++;
+                report.details.push({ filename: path, status: 'converted', outputPath: uiPath });
+              }
+              continue;
+            }
+          } catch (e) {
+            console.warn("Failed to process GUI spritesheet:", e);
+            report.details.push({ filename: path, status: 'error', reason: 'GUI image processing failed' });
+          }
+        }
+
+        if (options.enableAudioReencode && targetPath.endsWith('.ogg')) {
+          try {
+            const resolved = finalContent instanceof Promise ? await finalContent : finalContent;
+            const rawBytes = typeof resolved === 'string' ? new TextEncoder().encode(resolved) : resolved;
+            const reencoded = await reencodeOgg(rawBytes);
+            if (reencoded) {
+              finalContent = reencoded;
+            } else {
+              report.details.push({ filename: path, status: 'skipped', reason: 'Audio re-encode failed, using original' });
+            }
+          } catch (e) {
+            console.warn("Audio re-encoding failed:", e);
+          }
+        }
+
+        if (options.enableTgaConversion && relativePath.toLowerCase().endsWith('.tga')) {
+          try {
+            const resolved = finalContent instanceof Promise ? await finalContent : finalContent;
+            const rawBytes = typeof resolved === 'string' ? new TextEncoder().encode(resolved) : resolved;
+            const pngBytes = await convertTgaToPng(rawBytes);
+            if (pngBytes) {
+              finalContent = pngBytes;
+              targetPath = targetPath.replace(/\.tga$/i, '.png');
+            } else {
+              report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed, keeping raw bytes' });
+            }
+          } catch (e) {
+            console.warn("TGA to PNG conversion failed:", e);
           }
         }
 
@@ -530,7 +650,7 @@ function generateManifest(
   report: PackReport,
   originalPath: string,
   name: string,
-  description: string,
+  description: unknown,
   headerUuid: string,
   moduleUuid: string,
   minEngineVersion: [number, number, number]
@@ -545,7 +665,7 @@ function generateManifest(
   });
 }
 
-function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: string, description: string, packFormat: number) {
+function generateMcmeta(targetZip: JSZip, report: PackReport, originalPath: string, description: unknown, packFormat: number) {
   const mcmetaStr = generateMcmetaContent(description, packFormat);
   targetZip.file('pack.mcmeta', mcmetaStr, getZipFileOptions('pack.mcmeta'));
   report.convertedCount++;

@@ -95,6 +95,8 @@ const zh: Translation = {
 	openSourceText: "本服务已作为开源项目公开。",
   betaFeatures: "Beta Features",
   enableGuiConversion: "Enable GUI Conversion",
+  enableModernGuiSprites: "启用 1.20.2+ 拆分 GUI 精灵转换",
+  enableTgaConversion: "将 TGA 纹理解码转换为 PNG",
   enableAnimationConversion: "Enable Animation Conversion",
   enableLanguageConversion: '启用语言转换',
   enableSoundConversion: '启用声音转换',

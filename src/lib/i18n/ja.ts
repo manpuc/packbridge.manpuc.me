@@ -96,9 +96,12 @@ const ja: Translation = {
 	openSourceText: "本サービスはオープンソースとして公開されています。",
   betaFeatures: "ベータ機能 (Beta)",
   enableGuiConversion: "GUI変換を有効にする",
+  enableModernGuiSprites: "1.20.2+ 分割GUIスプライト変換を有効にする",
+  enableTgaConversion: "TGA画像をPNGにデコード変換する",
   enableAnimationConversion: "アニメーション変換を有効にする",
   enableLanguageConversion: '言語・翻訳変換を有効にする',
   enableSoundConversion: 'サウンド変換を有効にする',
+  enableAudioReencode: '音声を再エンコードする (FFmpeg, 約20MB)',
 };
 
 export default ja;

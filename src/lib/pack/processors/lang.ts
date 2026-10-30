@@ -1,4 +1,5 @@
 import { getActiveMappings } from '../rules';
+import { isUnsafeObjectKey } from '../security';
 
 /**
  * Converts Java Edition language JSON to Bedrock Edition .lang format
@@ -6,14 +7,16 @@ import { getActiveMappings } from '../rules';
 export function javaToBedrockLang(jsonContent: string): string {
   try {
     const data = JSON.parse(jsonContent);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return jsonContent;
     const active = getActiveMappings();
     const keyMap = active.lang_java_to_bedrock || {};
 
     let output = "";
     for (const [key, value] of Object.entries(data)) {
-      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      if (isUnsafeObjectKey(key)) continue;
       // Map Java translation key to Bedrock equivalent if available
-      const mappedKey = keyMap[key] || key;
+      const mappedKey = (Object.hasOwn(keyMap, key) ? keyMap[key] : undefined) || key;
+      if (isUnsafeObjectKey(mappedKey)) continue;
       // Replace actual newlines with literal \n for Bedrock .lang
       const safeValue = String(value).replace(/\r?\n/g, "\\n");
       output += `${mappedKey}=${safeValue}\n`;
@@ -40,9 +43,10 @@ export function bedrockToJavaLang(langContent: string): string {
     const firstEquals = trimLine.indexOf('=');
     if (firstEquals !== -1) {
       const key = trimLine.substring(0, firstEquals).trim();
+      if (isUnsafeObjectKey(key)) continue;
       const value = trimLine.substring(firstEquals + 1).trim();
-      const mappedKey = keyMap[key] || key;
-      if (mappedKey === '__proto__' || mappedKey === 'constructor' || mappedKey === 'prototype') {
+      const mappedKey = (Object.hasOwn(keyMap, key) ? keyMap[key] : undefined) || key;
+      if (isUnsafeObjectKey(mappedKey)) {
         continue;
       }
       output[mappedKey] = value;

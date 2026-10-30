@@ -96,6 +96,8 @@ const es: Translation = {
 	openSourceText: "Este servicio es de código abierto.",
   betaFeatures: "Beta Features",
   enableGuiConversion: "Enable GUI Conversion",
+  enableModernGuiSprites: "Activar sprites GUI divididos (1.20.2+)",
+  enableTgaConversion: "Convertir texturas TGA a PNG",
   enableAnimationConversion: "Enable Animation Conversion",
   enableLanguageConversion: 'Enable Language Conversion',
   enableSoundConversion: 'Enable Sound Conversion',

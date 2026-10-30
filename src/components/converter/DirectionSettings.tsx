@@ -54,6 +54,10 @@ interface DirectionSettingsProps {
   hasFile?: boolean;
   enableGuiConversion: boolean;
   setEnableGuiConversion: (v: boolean) => void;
+  enableModernGuiSprites: boolean;
+  setEnableModernGuiSprites: (v: boolean) => void;
+  enableTgaConversion: boolean;
+  setEnableTgaConversion: (v: boolean) => void;
   enableAnimationConversion: boolean;
   setEnableAnimationConversion: (v: boolean) => void;
   enableLanguageConversion: boolean;
@@ -80,6 +84,10 @@ export function DirectionSettings({
   hasFile,
   enableGuiConversion,
   setEnableGuiConversion,
+  enableModernGuiSprites,
+  setEnableModernGuiSprites,
+  enableTgaConversion,
+  setEnableTgaConversion,
   enableAnimationConversion,
   setEnableAnimationConversion,
   enableLanguageConversion,
@@ -288,6 +296,14 @@ export function DirectionSettings({
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
                     <span style={{ color: 'var(--color-text)' }}>{t.enableGuiConversion || 'Enable GUI Conversion'}</span>
                     <IosSwitch checked={enableGuiConversion} onChange={setEnableGuiConversion} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ color: 'var(--color-text)' }}>{t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}</span>
+                    <IosSwitch checked={enableModernGuiSprites} onChange={setEnableModernGuiSprites} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                    <span style={{ color: 'var(--color-text)' }}>{t.enableTgaConversion || 'Convert TGA Textures to PNG'}</span>
+                    <IosSwitch checked={enableTgaConversion} onChange={setEnableTgaConversion} />
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
                     <span style={{ color: 'var(--color-text)' }}>{t.enableAnimationConversion || 'Enable Animation Conversion'}</span>

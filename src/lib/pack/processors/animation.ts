@@ -7,6 +7,9 @@ export interface FlipbookEntry {
   blend_frames?: boolean;
 }
 
+export const MAX_ANIMATION_FRAME_TIME = 1200; // Max 60 seconds per frame at 20 TPS
+export const MAX_TOTAL_EXPANDED_FRAMES = 4096;
+
 /**
  * Parses a Java .mcmeta file and returns a Bedrock Flipbook Entry if it contains animation.
  */
@@ -20,10 +23,15 @@ export function parseJavaAnimation(mcmetaContent: string, bedrockPath: string): 
     const shortName = bedrockPath.replace('textures/blocks/', '').replace('textures/items/', '').replace('.png', '');
     const texturePath = bedrockPath.replace('.png', '');
 
+    const rawFrametime = Number(data.animation.frametime);
+    const defaultTime = Number.isFinite(rawFrametime) && rawFrametime >= 1
+      ? Math.min(Math.floor(rawFrametime), MAX_ANIMATION_FRAME_TIME)
+      : 1;
+
     const entry: FlipbookEntry = {
       flipbook_texture: texturePath,
       atlas_tile: shortName,
-      ticks_per_frame: data.animation.frametime || 1
+      ticks_per_frame: defaultTime
     };
 
     if (data.animation.interpolate) {
@@ -32,21 +40,26 @@ export function parseJavaAnimation(mcmetaContent: string, bedrockPath: string): 
 
     if (data.animation.frames && Array.isArray(data.animation.frames)) {
       // Check for variable time frames
-      const hasVariableTime = data.animation.frames.some((f: any) => typeof f === 'object' && typeof f.time === 'number');
+      const hasVariableTime = data.animation.frames.some((f: any) => f && typeof f === 'object' && typeof f.time === 'number');
       if (hasVariableTime) {
         entry.ticks_per_frame = 1; // Force 1 tick per frame and duplicate frames
         const newFrames: number[] = [];
-        const defaultTime = data.animation.frametime || 1;
         for (const f of data.animation.frames) {
-          const idx = typeof f === 'number' ? f : f.index;
-          const time = (typeof f === 'object' && typeof f.time === 'number') ? f.time : defaultTime;
-          for (let i = 0; i < time; i++) {
+          const idx = typeof f === 'number' ? f : (f && typeof f === 'object' ? Number(f.index) : NaN);
+          if (!Number.isFinite(idx) || idx < 0) continue;
+          const rawTime = (f && typeof f === 'object' && typeof f.time === 'number') ? f.time : defaultTime;
+          const time = Math.min(Math.max(1, Math.floor(rawTime)), MAX_ANIMATION_FRAME_TIME);
+          for (let i = 0; i < time && newFrames.length < MAX_TOTAL_EXPANDED_FRAMES; i++) {
             newFrames.push(idx);
           }
+          if (newFrames.length >= MAX_TOTAL_EXPANDED_FRAMES) break;
         }
         entry.frames = newFrames;
       } else {
-        entry.frames = data.animation.frames.map((f: any) => typeof f === 'number' ? f : f.index);
+        entry.frames = data.animation.frames
+          .slice(0, MAX_TOTAL_EXPANDED_FRAMES)
+          .map((f: any) => typeof f === 'number' ? f : (f && typeof f === 'object' ? Number(f.index) : NaN))
+          .filter((n: number) => Number.isFinite(n) && n >= 0);
       }
     }
 

@@ -18,26 +18,42 @@ export function generateUUID(): string {
   });
 }
 
+export function normalizeDescriptionText(desc: unknown): string {
+  if (typeof desc === 'string') return desc;
+  if (typeof desc === 'number' || typeof desc === 'boolean') return String(desc);
+  if (Array.isArray(desc)) {
+    return desc.map(normalizeDescriptionText).join('');
+  }
+  if (desc && typeof desc === 'object') {
+    const obj = desc as Record<string, unknown>;
+    const base = typeof obj.text === 'string' ? obj.text : (typeof obj.translate === 'string' ? obj.translate : '');
+    const extra = Array.isArray(obj.extra) ? obj.extra.map(normalizeDescriptionText).join('') : '';
+    return base + extra;
+  }
+  return '';
+}
+
 export function generateManifestContent(
   name: string,
-  description: string,
+  description: unknown,
   headerUuid: string,
   moduleUuid: string,
   minEngineVersion: [number, number, number]
 ): string {
+  const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
   const credit = "\nConverted by PackBridge (packbridge.manpuc.me)";
   const manifest = {
     format_version: 2,
     header: {
-      description: description + credit,
-      name: name,
+      description: cleanDesc + credit,
+      name: String(name || "Pack"),
       uuid: headerUuid,
       version: [1, 0, 0],
       min_engine_version: minEngineVersion
     },
     modules: [
       {
-        description: description + credit,
+        description: cleanDesc + credit,
         type: "resources",
         uuid: moduleUuid,
         version: [1, 0, 0]
@@ -47,21 +63,28 @@ export function generateManifestContent(
   return JSON.stringify(manifest, null, 2);
 }
 
-export function generateMcmetaContent(description: string, packFormat: number): string {
-  let finalDescription: any = description;
+export function generateMcmetaContent(description: unknown, packFormat: number): string {
+  let finalDescription: any;
   try {
     let baseComp: any;
-    try {
-      baseComp = JSON.parse(description);
-    } catch {
-      baseComp = { text: description };
+    if (typeof description === 'string') {
+      try {
+        baseComp = JSON.parse(description);
+      } catch {
+        baseComp = { text: description };
+      }
+    } else if (description && typeof description === 'object') {
+      baseComp = structuredClone(description);
+    } else {
+      baseComp = { text: String(description ?? "Converted by PackBridge") };
     }
+
     if (typeof baseComp !== 'object' || baseComp === null) {
       baseComp = { text: String(baseComp) };
     } else if (Array.isArray(baseComp)) {
       baseComp = { text: "", extra: baseComp };
     }
-    if (!baseComp.extra) baseComp.extra = [];
+    if (!Array.isArray(baseComp.extra)) baseComp.extra = [];
     baseComp.extra.push({ text: "\nConverted with ", color: "gray" });
     baseComp.extra.push({
       text: "PackBridge",
@@ -71,7 +94,8 @@ export function generateMcmetaContent(description: string, packFormat: number): 
     });
     finalDescription = baseComp;
   } catch {
-    finalDescription = description + "\nConverted with PackBridge (https://packbridge.manpuc.me)";
+    const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
+    finalDescription = cleanDesc + "\nConverted with PackBridge (https://packbridge.manpuc.me)";
   }
 
   const packObj: any = {

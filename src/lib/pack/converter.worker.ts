@@ -10,7 +10,14 @@ import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from '.
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from './versions';
 import { normalizeLegacyPath, downgradeLegacyPath, migrateJavaPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
-import { processGuiSpriteSheet, ICONS_MAPPINGS, WIDGETS_MAPPINGS } from './processors/gui';
+import {
+  processGuiSpriteSheet,
+  ICONS_MAPPINGS,
+  WIDGETS_MAPPINGS,
+  MODERN_GUI_SPRITE_JAVA_TO_BEDROCK,
+  MODERN_GUI_SPRITE_BEDROCK_TO_JAVA
+} from './processors/gui';
+import { convertTgaToPng } from './processors/tga';
 import { reencodeOgg } from './processors/audio';
 import { javaToBedrockGeometry } from './processors/models';
 import { isSafePath, createZipSafetyFilter, type ZipSafetyTracker } from './security';
@@ -40,7 +47,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     const sourceFiles = unzipSync(new Uint8Array(fileBuffer), {
       filter: createZipSafetyFilter(tracker)
     });
-    const targetFiles: Zippable = {};
+    const targetFiles: Zippable = Object.create(null);
 
     const report: PackReport = {
       totalFiles: 0,
@@ -54,8 +61,8 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     const filePaths = Object.keys(sourceFiles).filter(p => !p.endsWith('/'));
     report.totalFiles = filePaths.length;
 
-    let packName = (fileName || "pack").replace(/\.(zip|mcpack)$/, '');
-    let packDescription = "Converted by PackBridge";
+    let packName = (fileName || "pack").replace(/\.(zip|mcpack)$/i, '');
+    let packDescription: unknown = "Converted by PackBridge";
     let headerUuid = generateUUID();
     let moduleUuid = generateUUID();
 
@@ -66,29 +73,36 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     const mergedLangs = new Map<string, string>();
     const flipbookEntries: FlipbookEntry[] = [];
 
-    // Pre-scan for metadata & pack root
+    // Pre-scan for metadata & pack root (prefer shallowest pack.mcmeta or manifest.json)
     let packRoot = "";
+    let bestRootDepth = Infinity;
     let detectedSourcePackFormat: number | null = null;
     for (const path of filePaths) {
       if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
 
-      if (path.endsWith('pack.mcmeta') || path.endsWith('manifest.json')) {
+      const isMcmeta = path === 'pack.mcmeta' || path.endsWith('/pack.mcmeta');
+      const isManifest = path === 'manifest.json' || path.endsWith('/manifest.json');
+      if (isMcmeta || isManifest) {
         const parts = path.split('/');
         parts.pop();
+        const depth = parts.length;
+        if (depth >= bestRootDepth) continue;
+        bestRootDepth = depth;
         packRoot = parts.join('/') + (parts.length > 0 ? '/' : '');
 
         try {
           const text = strFromU8(sourceFiles[path]);
           const data = JSON.parse(text);
-          if (path.endsWith('manifest.json')) {
-            if (data.header?.name) packName = data.header.name;
-            if (data.header?.description) packDescription = data.header.description;
-            if (data.header?.uuid) headerUuid = data.header.uuid;
-            if (data.modules?.[0]?.uuid) moduleUuid = data.modules[0].uuid;
-          } else if (path.endsWith('pack.mcmeta')) {
-            if (data.pack?.description) packDescription = data.pack.description;
-            if (typeof data.pack?.pack_format === 'number') {
-              detectedSourcePackFormat = data.pack.pack_format;
+          if (isManifest) {
+            if (data.header?.name) packName = String(data.header.name);
+            if (data.header?.description !== undefined) packDescription = data.header.description;
+            if (typeof data.header?.uuid === 'string') headerUuid = data.header.uuid;
+            if (typeof data.modules?.[0]?.uuid === 'string') moduleUuid = data.modules[0].uuid;
+          } else if (isMcmeta) {
+            if (data.pack?.description !== undefined) packDescription = data.pack.description;
+            const rawFormat = data.pack?.pack_format ?? (Array.isArray(data.pack?.min_format) ? data.pack.min_format[0] : data.pack?.min_format);
+            if (typeof rawFormat === 'number') {
+              detectedSourcePackFormat = rawFormat;
             }
           }
         } catch { }
@@ -136,16 +150,26 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
 
       if (direction === 'java-to-bedrock') {
         // Upgrade legacy Java source to modern layout so mappings can resolve
-        relativePath = normalizeLegacyPath(relativePath, targetJavaVersion.packFormat);
+        relativePath = normalizeLegacyPath(relativePath, sourcePackFormat);
       }
 
       try {
         let targetPath: string | null = null;
-        if (direction === 'java-to-java') {
-          // Perform version migration between Java versions
-          targetPath = migrateJavaPath(relativePath, sourcePackFormat, targetJavaVersion.packFormat);
-        } else {
-          targetPath = getTargetContext(relativePath, direction);
+        if (options.enableModernGuiSprites) {
+          if (direction === 'java-to-bedrock' && Object.hasOwn(MODERN_GUI_SPRITE_JAVA_TO_BEDROCK, relativePath)) {
+            targetPath = MODERN_GUI_SPRITE_JAVA_TO_BEDROCK[relativePath];
+          } else if (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18 && Object.hasOwn(MODERN_GUI_SPRITE_BEDROCK_TO_JAVA, relativePath)) {
+            targetPath = MODERN_GUI_SPRITE_BEDROCK_TO_JAVA[relativePath];
+          }
+        }
+
+        if (!targetPath) {
+          if (direction === 'java-to-java') {
+            // Perform version migration between Java versions
+            targetPath = migrateJavaPath(relativePath, sourcePackFormat, targetJavaVersion.packFormat);
+          } else {
+            targetPath = getTargetContext(relativePath, direction);
+          }
         }
 
         if (direction === 'bedrock-to-java' && targetPath) {
@@ -183,8 +207,12 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
         }
 
         if (targetPath) {
-          if (!options.enableGuiConversion && (direction === 'java-to-bedrock' || direction === 'bedrock-to-java')) {
-            if (relativePath.includes('/gui/') || targetPath.includes('/gui/')) {
+          const isModernSpriteHandled = options.enableModernGuiSprites && (
+            (direction === 'java-to-bedrock' && Object.hasOwn(MODERN_GUI_SPRITE_JAVA_TO_BEDROCK, relativePath)) ||
+            (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18 && Object.hasOwn(MODERN_GUI_SPRITE_BEDROCK_TO_JAVA, relativePath))
+          );
+          if (!options.enableGuiConversion && !isModernSpriteHandled && (direction === 'java-to-bedrock' || direction === 'bedrock-to-java')) {
+            if (relativePath.includes('/gui/') || targetPath.includes('/gui/') || targetPath.startsWith('textures/ui/')) {
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'GUI conversion disabled' });
               continue;
@@ -286,12 +314,14 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                   const flipbooks = JSON.parse(strFromU8(content));
                   if (Array.isArray(flipbooks)) {
                     for (const entry of flipbooks) {
+                      if (!entry || typeof entry.flipbook_texture !== 'string') continue;
                       let rawTex = entry.flipbook_texture;
                       if (!rawTex.endsWith('.png')) rawTex += '.png';
                       const bPath = rawTex.startsWith('textures/') ? rawTex : 'textures/' + rawTex;
                       const jPath = getTargetContext(bPath, 'bedrock-to-java');
                       if (jPath) {
                         const mcmetaPath = jPath + '.mcmeta';
+                        if (!isSafePath(mcmetaPath)) continue;
                         const mcmetaContent = generateJavaAnimation(entry);
                         targetFiles[mcmetaPath] = [strToU8(mcmetaContent), { level: getFileCompressionLevel(mcmetaPath) }];
                         report.convertedCount++;
@@ -313,12 +343,15 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 targetPath = 'assets/minecraft/sounds.json';
               }
             }
-          } else if (options.enableGuiConversion && direction === 'java-to-bedrock') {
+          }
+
+          if (options.enableGuiConversion && direction === 'java-to-bedrock') {
             try {
               if (relativePath === 'assets/minecraft/textures/gui/icons.png') {
                 const uiFiles = await processGuiSpriteSheet(content, ICONS_MAPPINGS);
                 for (const [uiPath, uiData] of Object.entries(uiFiles)) {
                   targetFiles[uiPath] = [uiData, { level: getFileCompressionLevel(uiPath) }];
+                  allTargetTextures.add(uiPath);
                   report.convertedCount++;
                   report.details.push({ filename: path, status: 'converted', outputPath: uiPath });
                 }
@@ -327,6 +360,7 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
                 const uiFiles = await processGuiSpriteSheet(content, WIDGETS_MAPPINGS);
                 for (const [uiPath, uiData] of Object.entries(uiFiles)) {
                   targetFiles[uiPath] = [uiData, { level: getFileCompressionLevel(uiPath) }];
+                  allTargetTextures.add(uiPath);
                   report.convertedCount++;
                   report.details.push({ filename: path, status: 'converted', outputPath: uiPath });
                 }
@@ -336,9 +370,11 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
               console.warn("Failed to process GUI spritesheet:", e);
               report.details.push({ filename: path, status: 'error', reason: 'GUI image processing failed' });
             }
-          } else if (options.enableAudioReencode && targetPath.endsWith('.ogg')) {
+          }
+
+          if (options.enableAudioReencode && targetPath.endsWith('.ogg')) {
             try {
-              const reencoded = await reencodeOgg(content);
+              const reencoded = await reencodeOgg(finalBytes);
               if (reencoded) {
                 finalBytes = reencoded;
               } else {
@@ -346,6 +382,20 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
               }
             } catch (e) {
               console.warn("Audio re-encoding failed:", e);
+            }
+          }
+
+          if (options.enableTgaConversion && relativePath.toLowerCase().endsWith('.tga')) {
+            try {
+              const pngBytes = await convertTgaToPng(finalBytes);
+              if (pngBytes) {
+                finalBytes = pngBytes;
+                targetPath = targetPath.replace(/\.tga$/i, '.png');
+              } else {
+                report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed, keeping raw bytes' });
+              }
+            } catch (e) {
+              console.warn("TGA to PNG conversion failed:", e);
             }
           }
 

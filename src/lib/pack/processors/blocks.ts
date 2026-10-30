@@ -1,4 +1,5 @@
-import { getActiveMappings, getFallbackMappings } from '../rules';
+import { getTargetContext } from '../rules';
+import { isUnsafeObjectKey } from '../security';
 
 /**
  * Generates Bedrock Edition terrain_texture.json content
@@ -10,19 +11,16 @@ export function generateTerrainTexture(convertedBlocks: Set<string>): string {
     texture_name: "atlas.terrain",
     num_mip_levels: 4,
     padding: 8,
-    texture_data: {}
+    texture_data: Object.create(null)
   };
 
-  const active = getActiveMappings();
-  const fallback = getFallbackMappings();
-
   for (const javaPath of convertedBlocks) {
-    const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
-    const bedrockPath = active.java_to_bedrock[javaPath] || fallback.java_to_bedrock[lookupPath];
+    const bedrockPath = getTargetContext(javaPath, 'java-to-bedrock');
     if (bedrockPath && bedrockPath.startsWith('textures/blocks/')) {
       // Remove textures/ prefix and .png extension for the short name
-      const shortName = bedrockPath.replace('textures/blocks/', '').replace('.png', '');
-      const texturePath = bedrockPath.replace('.png', ''); // Bedrock paths skip .png
+      const shortName = bedrockPath.replace('textures/blocks/', '').replace(/\.(png|tga)$/, '');
+      if (!shortName || isUnsafeObjectKey(shortName)) continue;
+      const texturePath = bedrockPath.replace(/\.(png|tga)$/, ''); // Bedrock paths skip extension
 
       terrainTexture.texture_data[shortName] = {
         textures: texturePath
@@ -38,18 +36,14 @@ export function generateTerrainTexture(convertedBlocks: Set<string>): string {
  * This maps block IDs to the texture short names defined in terrain_texture.json.
  */
 export function generateBlocksJson(convertedBlocks: Set<string>): string {
-  const blocksJson: Record<string, any> = {
-    format_version: "1.16.0"
-  };
-
-  const active = getActiveMappings();
-  const fallback = getFallbackMappings();
+  const blocksJson: Record<string, any> = Object.create(null);
+  blocksJson.format_version = "1.16.0";
 
   for (const javaPath of convertedBlocks) {
-    const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
-    const bedrockPath = active.java_to_bedrock[javaPath] || fallback.java_to_bedrock[lookupPath];
+    const bedrockPath = getTargetContext(javaPath, 'java-to-bedrock');
     if (bedrockPath && bedrockPath.startsWith('textures/blocks/')) {
-      const shortName = bedrockPath.replace('textures/blocks/', '').replace('.png', '');
+      const shortName = bedrockPath.replace('textures/blocks/', '').replace(/\.(png|tga)$/, '');
+      if (!shortName || isUnsafeObjectKey(shortName) || shortName === 'format_version') continue;
 
       // Use texture short name directly as block ID
       blocksJson[shortName] = {

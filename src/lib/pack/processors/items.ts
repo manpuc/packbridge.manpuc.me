@@ -1,4 +1,5 @@
-import { getActiveMappings, getFallbackMappings } from '../rules';
+import { getTargetContext } from '../rules';
+import { isUnsafeObjectKey } from '../security';
 
 /**
  * Generates Bedrock Edition item_texture.json content
@@ -8,20 +9,17 @@ export function generateItemTexture(convertedItems: Set<string>): string {
   const itemTexture: any = {
     resource_pack_name: "pack.name",
     texture_name: "atlas.items",
-    texture_data: {}
+    texture_data: Object.create(null)
   };
 
-  const active = getActiveMappings();
-  const fallback = getFallbackMappings();
-
   for (const javaPath of convertedItems) {
-    const lookupPath = javaPath.replace(/^assets\/minecraft\//, 'assets/');
-    const bedrockPath = active.java_to_bedrock[javaPath] || fallback.java_to_bedrock[lookupPath];
+    const bedrockPath = getTargetContext(javaPath, 'java-to-bedrock');
     if (bedrockPath && bedrockPath.startsWith('textures/items/')) {
       // Remove textures/items/ prefix and .png extension for the short name
       // e.g. textures/items/apple.png -> apple
-      const shortName = bedrockPath.replace('textures/items/', '').replace('.png', '');
-      const texturePath = bedrockPath.replace('.png', '');
+      const shortName = bedrockPath.replace('textures/items/', '').replace(/\.(png|tga)$/, '');
+      if (!shortName || isUnsafeObjectKey(shortName)) continue;
+      const texturePath = bedrockPath.replace(/\.(png|tga)$/, '');
 
       itemTexture.texture_data[shortName] = {
         textures: texturePath

@@ -21,7 +21,7 @@ import {
   categorizeError,
   analyzeReportSafety
 } from '@/lib/analytics';
-import { LARGE_FILE_WARN_THRESHOLD_BYTES } from '@/lib/pack/security';
+import { LARGE_FILE_WARN_THRESHOLD_BYTES, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES } from '@/lib/pack/security';
 
 // Sub-components
 import { DirectionSettings } from './converter/DirectionSettings';
@@ -49,6 +49,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [warning, setWarning] = useState<string | null>(null);
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
+  const [enableModernGuiSprites, setEnableModernGuiSprites] = useState(true);
+  const [enableTgaConversion, setEnableTgaConversion] = useState(true);
   const [enableAnimationConversion, setEnableAnimationConversion] = useState(true);
   const [enableLanguageConversion, setEnableLanguageConversion] = useState(true);
   const [enableSoundConversion, setEnableSoundConversion] = useState(true);
@@ -59,6 +61,12 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     try {
       const savedGui = localStorage.getItem('pb_beta_gui');
       if (savedGui) setEnableGuiConversion(savedGui === 'true');
+
+      const savedModernGui = localStorage.getItem('pb_beta_modern_gui');
+      if (savedModernGui) setEnableModernGuiSprites(savedModernGui === 'true');
+
+      const savedTga = localStorage.getItem('pb_beta_tga');
+      if (savedTga) setEnableTgaConversion(savedTga === 'true');
 
       const savedAnim = localStorage.getItem('pb_beta_anim');
       if (savedAnim) setEnableAnimationConversion(savedAnim === 'true');
@@ -80,6 +88,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   useEffect(() => {
     try {
       localStorage.setItem('pb_beta_gui', String(enableGuiConversion));
+      localStorage.setItem('pb_beta_modern_gui', String(enableModernGuiSprites));
+      localStorage.setItem('pb_beta_tga', String(enableTgaConversion));
       localStorage.setItem('pb_beta_anim', String(enableAnimationConversion));
       localStorage.setItem('pb_beta_lang', String(enableLanguageConversion));
       localStorage.setItem('pb_beta_sound', String(enableSoundConversion));
@@ -87,7 +97,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     } catch (e) {
       // Ignore
     }
-  }, [enableGuiConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode]);
+  }, [enableGuiConversion, enableModernGuiSprites, enableTgaConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode]);
 
   const handleFile = useCallback((selectedFile: File, inputMethod: 'drop' | 'file_picker' = 'drop') => {
     if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
@@ -145,7 +155,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     };
   }, [file, report, isProcessing, warning]);
 
-  // Preview and Content Analysis
+  // Load ZIP once when file changes (with safety limits against Zip Bombs)
   useEffect(() => {
     if (!file) {
       setIconUrl(null);
@@ -157,17 +167,68 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     let isMounted = true;
     let currentIconUrl: string | null = null;
 
-    const analyzeFile = async () => {
+    const loadZipAndIcon = async () => {
       try {
         const jszip = new JSZip();
         const zip = await jszip.loadAsync(file);
         if (!isMounted) return;
 
+        const fileKeys = Object.keys(zip.files).filter(k => !zip.files[k].dir && !k.endsWith('/'));
+        if (fileKeys.length > MAX_SAFE_FILE_COUNT) {
+          setError(t.errorConversion);
+          return;
+        }
+
+        let totalUncompressed = 0;
+        for (const k of fileKeys) {
+          const rawData = (zip.files[k] as any)._data;
+          const uncompressedSize = typeof rawData?.uncompressedSize === 'number' ? rawData.uncompressedSize : 0;
+          if (uncompressedSize > 0) {
+            totalUncompressed += uncompressedSize;
+            if (totalUncompressed > MAX_SAFE_UNCOMPRESSED_BYTES) {
+              setError(t.errorConversion);
+              return;
+            }
+          }
+        }
+
         setZipInstance(zip);
 
-        // Logic-based warning
-        const packMcmetaEntry = zip.file('pack.mcmeta') || zip.file(/pack\.mcmeta$/)[0];
-        const manifestEntry = zip.file('manifest.json') || zip.file(/manifest\.json$/)[0];
+        // Icon extraction ( max 10MB guard )
+        try {
+          const iconEntry = zip.file('pack.png') || zip.file('pack_icon.png') || zip.file(/\/(pack\.png|pack_icon\.png)$/)[0];
+          const iconSize = (iconEntry as any)?._data?.uncompressedSize ?? 0;
+          if (iconEntry && iconSize <= 10 * 1024 * 1024) {
+            const blob = await iconEntry.async('blob');
+            if (!isMounted) return;
+            currentIconUrl = URL.createObjectURL(blob);
+            setIconUrl(currentIconUrl);
+          }
+        } catch (iconError) {
+          console.warn("Failed to extract pack icon", iconError);
+        }
+      } catch (e) {
+        console.error("Failed to process file", e);
+      }
+    };
+
+    loadZipAndIcon();
+    return () => {
+      isMounted = false;
+      if (currentIconUrl) URL.revokeObjectURL(currentIconUrl);
+    };
+  }, [file, t.errorConversion]);
+
+  // Content Analysis & Version Detection (re-evaluates on direction change without re-unzipping)
+  useEffect(() => {
+    if (!file || !zipInstance) return;
+
+    let isMounted = true;
+
+    const analyzeZipMetadata = async () => {
+      try {
+        const packMcmetaEntry = zipInstance.file('pack.mcmeta') || zipInstance.file(/(^|\/)pack\.mcmeta$/)[0];
+        const manifestEntry = zipInstance.file('manifest.json') || zipInstance.file(/(^|\/)manifest\.json$/)[0];
 
         const isVersionUpdate = direction === 'java-to-java' || direction === 'bedrock-to-bedrock';
         let actualSource = direction.startsWith('java') ? 'java' : 'bedrock';
@@ -213,15 +274,16 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         try {
           if (sourceEdition === 'java' && packMcmetaEntry) {
             const content = await packMcmetaEntry.async('string');
+            if (!isMounted) return;
             const json = JSON.parse(content);
-            if (json?.pack?.pack_format) {
-              const detected = getJavaVersionByPackFormat(json.pack.pack_format);
+            const rawFormat = json?.pack?.pack_format ?? (Array.isArray(json?.pack?.min_format) ? json.pack.min_format[0] : json?.pack?.min_format);
+            if (typeof rawFormat === 'number') {
+              const detected = getJavaVersionByPackFormat(rawFormat);
               if (detected) {
                 setSourceJavaVersion(detected);
                 if (direction === 'java-to-bedrock') {
                   setSelectedJavaVersion(detected);
                 } else if (direction === 'java-to-java') {
-                  // In version-update, if target was pointing to old default or same as detected, point to latest version
                   setSelectedJavaVersion(JAVA_VERSIONS[0].id);
                 }
                 setIsAutoDetected(true);
@@ -229,15 +291,15 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             }
           } else if (sourceEdition === 'bedrock' && manifestEntry) {
             const content = await manifestEntry.async('string');
+            if (!isMounted) return;
             const json = JSON.parse(content);
-            if (json?.header?.min_engine_version) {
+            if (Array.isArray(json?.header?.min_engine_version)) {
               const detected = getBedrockVersionByEngineVersion(json.header.min_engine_version);
               if (detected) {
                 setSourceBedrockVersion(detected);
                 if (direction === 'bedrock-to-java') {
                   setSelectedBedrockVersion(detected);
                 } else if (direction === 'bedrock-to-bedrock') {
-                  // In version-update, default target to latest version
                   setSelectedBedrockVersion(BEDROCK_VERSIONS[0].id);
                 }
                 setIsAutoDetected(true);
@@ -247,29 +309,16 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         } catch (verError) {
           console.warn("Failed to detect version from file", verError);
         }
-
-        // Icon extraction
-        try {
-          const iconEntry = zip.file('pack.png') || zip.file('pack_icon.png') || zip.file(/\/(pack\.png|pack_icon\.png)$/)[0];
-          if (iconEntry) {
-            const blob = await iconEntry.async('blob');
-            currentIconUrl = URL.createObjectURL(blob);
-            setIconUrl(currentIconUrl);
-          }
-        } catch (iconError) {
-          console.warn("Failed to extract pack icon", iconError);
-        }
       } catch (e) {
-        console.error("Failed to process file", e);
+        console.error("Failed to analyze metadata", e);
       }
     };
 
-    analyzeFile();
+    analyzeZipMetadata();
     return () => {
       isMounted = false;
-      if (currentIconUrl) URL.revokeObjectURL(currentIconUrl);
     };
-  }, [file, direction, t]);
+  }, [file, zipInstance, direction, t, initialLang]);
 
   const startConversion = async () => {
     if (!file) return;
@@ -302,6 +351,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         sourceJavaVersionId: sourceJavaVersion,
         sourceBedrockVersionId: sourceBedrockVersion,
         enableGuiConversion,
+        enableModernGuiSprites,
+        enableTgaConversion,
         enableAnimationConversion,
         enableLanguageConversion,
         enableSoundConversion,
@@ -421,6 +472,10 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         hasFile={!!file}
         enableGuiConversion={enableGuiConversion}
         setEnableGuiConversion={setEnableGuiConversion}
+        enableModernGuiSprites={enableModernGuiSprites}
+        setEnableModernGuiSprites={setEnableModernGuiSprites}
+        enableTgaConversion={enableTgaConversion}
+        setEnableTgaConversion={setEnableTgaConversion}
         enableAnimationConversion={enableAnimationConversion}
         setEnableAnimationConversion={setEnableAnimationConversion}
         enableLanguageConversion={enableLanguageConversion}

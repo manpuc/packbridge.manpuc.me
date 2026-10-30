@@ -96,6 +96,8 @@ const ko: Translation = {
 	openSourceText: "이 서비스는 오픈 소스로 공개되어 있습니다.",
   betaFeatures: "Beta Features",
   enableGuiConversion: "Enable GUI Conversion",
+  enableModernGuiSprites: "1.20.2+ 분할 GUI 스프라이트 변환",
+  enableTgaConversion: "TGA 이미지를 PNG로 변환",
   enableAnimationConversion: "Enable Animation Conversion",
   enableLanguageConversion: '언어 변환 활성화',
   enableSoundConversion: '사운드 변환 활성화',
