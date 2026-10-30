@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Copy, Check, ExternalLink, Lock, Send, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Copy, Check, ExternalLink, Lock, Send, AlertTriangle, ArrowLeft } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
+import { getTranslation } from '@/lib/i18n';
 import { getReportStrings, LAST_CONVERSION_KEY, APP_VERSION } from '@/lib/i18n/report';
+import { FluidSegmentedControl } from '@/components/ui/FluidSegmentedControl';
 
 const FORMSPREE_ENDPOINT = 'https://formspree.io/f/moejyrpk';
 const REPO = 'manpuc/packbridge.manpuc.me';
@@ -26,6 +28,8 @@ const spring = { type: 'spring', stiffness: 300, damping: 30 } as const;
 
 export default function ReportForm({ lang }: { lang: Language }) {
   const s = getReportStrings(lang);
+  const t = getTranslation(lang);
+  const homeHref = lang === 'ja' ? '/' : `/${lang}`;
   const [ctx, setCtx] = useState<LastConversion | null>(null);
   const [env, setEnv] = useState('');
   const [kind, setKind] = useState<Kind>('other');
@@ -228,18 +232,24 @@ export default function ReportForm({ lang }: { lang: Language }) {
         </div>
         <h2 style={{ fontSize: '22px', fontWeight: 700 }}>{s.sentDirectTitle}</h2>
         <p style={{ color: 'var(--color-text-muted)', maxWidth: '440px', lineHeight: 1.6 }}>{s.sentDirectBody}</p>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => {
-            setSentMode(null);
-            setSummary('');
-            setExpected('');
-            setSteps('');
-          }}
-        >
-          {s.again}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              setSentMode(null);
+              setSummary('');
+              setExpected('');
+              setSteps('');
+            }}
+          >
+            {s.again}
+          </button>
+          <a href={homeHref} className="btn-link primary">
+            <ArrowLeft size={16} />
+            {t.backToHome}
+          </a>
+        </div>
       </motion.section>
     );
   }
@@ -257,7 +267,13 @@ export default function ReportForm({ lang }: { lang: Language }) {
         <div className="report-sent-icon"><ExternalLink size={22} /></div>
         <h2>{s.sentTitle}</h2>
         <p>{s.sentBody}</p>
-        <button type="button" className="secondary" onClick={() => setSentMode(null)}>{s.again}</button>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button type="button" className="secondary" onClick={() => setSentMode(null)}>{s.again}</button>
+          <a href={homeHref} className="btn-link primary">
+            <ArrowLeft size={16} />
+            {t.backToHome}
+          </a>
+        </div>
       </motion.section>
     );
   }
@@ -286,21 +302,17 @@ export default function ReportForm({ lang }: { lang: Language }) {
       <section className="card report-fields">
         <div className="report-field">
           <span className="report-label" id="report-kind-label">{s.kind}</span>
-          <div className="segmented-control" role="radiogroup" aria-labelledby="report-kind-label">
-            {(['conversion', 'ui', 'other'] as Kind[]).map((k) => (
-              <button
-                key={k}
-                id={`report-kind-${k}`}
-                type="button"
-                role="radio"
-                aria-checked={kind === k}
-                className={kind === k ? 'active' : ''}
-                onClick={() => setKind(k)}
-              >
-                {{ conversion: s.kindConversion, ui: s.kindUi, other: s.kindOther }[k]}
-              </button>
-            ))}
-          </div>
+          <FluidSegmentedControl
+            value={kind}
+            onChange={setKind}
+            ariaLabelledBy="report-kind-label"
+            role="radiogroup"
+            options={[
+              { value: 'conversion', label: s.kindConversion, id: 'report-kind-conversion' },
+              { value: 'ui', label: s.kindUi, id: 'report-kind-ui' },
+              { value: 'other', label: s.kindOther, id: 'report-kind-other' },
+            ]}
+          />
         </div>
 
         <div className="report-field">

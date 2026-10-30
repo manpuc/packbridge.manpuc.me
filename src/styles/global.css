@@ -227,29 +227,193 @@ button.icon-btn {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
-/* Segmented Control */
+/* Segmented Control (Fluid Squeeze / Liquid Pill) */
 .segmented-control {
   display: flex;
   background: var(--color-border);
   padding: 3px;
   border-radius: 12px;
   gap: 2px;
+  position: relative;
 }
 
-.segmented-control button {
+.segmented-control.fluid-segmented-control {
+  display: grid;
+  padding: 3px;
+  border-radius: 12px;
+  gap: 0;
+  isolation: isolate;
+  user-select: none;
+  overflow: hidden;
+}
+
+.fluid-segmented-track {
+  position: absolute;
+  inset: 3px;
+  display: grid;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.fluid-segmented-thumb-carrier {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  will-change: transform;
+}
+
+.fluid-segmented-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  background: var(--color-surface-hover);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.35);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+[data-theme='dark'] .fluid-segmented-thumb {
+  background: rgba(58, 58, 62, 0.92);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.45),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
+}
+
+.segmented-control button,
+.segmented-control .fluid-segmented-btn {
   flex: 1;
-  padding: 8px 12px;
+  position: relative;
+  z-index: 1;
+  padding: 9px 10px;
   font-size: 14px;
+  font-weight: 600;
   border-radius: 9px;
   background: transparent;
   color: var(--color-text-muted);
   box-shadow: none;
+  transform: none;
+  transition: color 0.22s var(--spring-smooth), opacity 0.2s;
+  min-width: 0;
 }
 
-.segmented-control button.active {
-  background: var(--color-surface);
+.segmented-control .fluid-segmented-btn:hover:not(:disabled) {
+  transform: none;
   color: var(--color-text);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  opacity: 0.92;
+}
+
+.segmented-control .fluid-segmented-btn:active:not(:disabled) {
+  transform: none;
+}
+
+.segmented-control .fluid-segmented-btn:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: -2px;
+}
+
+.segmented-control .fluid-segmented-btn.active {
+  background: transparent;
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+.fluid-segmented-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.25;
+  will-change: transform;
+}
+
+/* Back to Home Navigation Pill & Link */
+.page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: -12px;
+}
+
+.back-home-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.35s var(--spring-bounce),
+    color 0.2s var(--spring-smooth),
+    background-color 0.2s var(--spring-smooth),
+    border-color 0.2s var(--spring-smooth);
+}
+
+.back-home-pill svg {
+  transition: transform 0.3s var(--spring-bounce);
+}
+
+.back-home-pill:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  transform: translateX(-2px);
+}
+
+.back-home-pill:hover svg {
+  transform: translateX(-2px);
+}
+
+.back-home-pill:active {
+  transform: scale(0.96);
+}
+
+.report-bottom-nav {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.back-home-footer-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.btn-link {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-weight: 600;
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+  text-decoration: none;
+  transition: transform 0.35s var(--spring-bounce), background-color 0.2s, opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.btn-link:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+.btn-link:active {
+  transform: scale(0.96);
 }
 
 /* Select Input */
@@ -295,28 +459,62 @@ button.icon-btn {
 /* Dropzone */
 .dropzone {
   border: 2px dashed var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 48px 24px;
   text-align: center;
-  transition: all 0.3s var(--spring-bounce);
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s var(--spring-smooth);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   background: rgba(255, 255, 255, 0.02);
+  position: relative;
+  overflow: hidden;
+}
+
+.dropzone:hover {
+  border-color: rgba(0, 122, 255, 0.4);
+  background: rgba(0, 122, 255, 0.02);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-accent-blue);
+  background: rgba(0, 122, 255, 0.08);
+  transform: scale(1.015);
 }
 
 .dropzone.active {
-  border-color: var(--color-accent-blue);
-  background: rgba(0, 122, 255, 0.05);
-  transform: scale(1.01);
+  border-color: rgba(0, 122, 255, 0.5);
+  background: rgba(0, 122, 255, 0.04);
+}
+
+.dropzone-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: rgba(0, 122, 255, 0.08);
+  transition: transform 0.3s var(--spring-bounce), background-color 0.25s ease;
+}
+
+.dropzone:hover .dropzone-icon-container {
+  transform: translateY(-2px);
+  background: rgba(0, 122, 255, 0.12);
+}
+
+.dropzone.dragover .dropzone-icon-container {
+  transform: translateY(-4px) scale(1.05);
+  background: rgba(0, 122, 255, 0.18);
 }
 
 .dropzone-icon {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   color: var(--color-accent-blue);
+  transition: transform 0.3s var(--spring-bounce);
 }
 
 /* List Style */
@@ -492,33 +690,57 @@ footer {
 /* Drag Overlay */
 .drag-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999;
-  background: var(--color-surface);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s var(--spring-smooth) both;
   pointer-events: none;
+  padding: 24px;
+}
+
+[data-theme='light'] .drag-overlay {
+  background: rgba(242, 242, 247, 0.7);
 }
 
 .drag-content {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  padding: 48px 32px;
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--color-accent-blue);
+  background: var(--color-surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  animation: scaleIn 0.4s var(--spring-bounce) both;
+  gap: 16px;
+}
+
+.drag-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--color-accent-blue);
+  margin-bottom: 4px;
 }
 
 .drag-icon {
+  width: 40px;
+  height: 40px;
   color: var(--color-accent-blue);
-  animation: bounce 1.5s infinite var(--spring-bounce);
 }
 
 @keyframes fadeIn {
@@ -938,5 +1160,16 @@ footer {
   .report-check-value {
     grid-column: 2;
     text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -439,18 +439,25 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className="drag-overlay"
-            style={{ zIndex: 99999 }}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.92, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
               className="drag-content"
             >
-              <Upload size={64} className="drag-icon" />
-              <h2 style={{ fontSize: '32px', fontWeight: 800 }}>{t.dropzoneTitle}</h2>
-              <p style={{ fontSize: '18px', opacity: 0.8 }}>{t.dropzoneSubtitle}</p>
+              <motion.div
+                className="drag-icon-wrapper"
+                animate={{ y: [-3, 3, -3] }}
+                transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+              >
+                <Upload size={38} className="drag-icon" />
+              </motion.div>
+              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>{t.dropzoneTitle}</h2>
+              <p style={{ fontSize: '15px', color: 'var(--color-text-muted)' }}>{t.dropzoneSubtitle}</p>
             </motion.div>
           </motion.div>,
           document.body

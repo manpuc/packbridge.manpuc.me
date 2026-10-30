@@ -4,40 +4,56 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ConversionDirection } from '@/lib/pack/types';
 import type { Translation } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from '@/lib/pack/versions';
+import { FluidSegmentedControl } from '@/components/ui/FluidSegmentedControl';
 
-const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: boolean) => void }) => (
-  <button
-    type="button"
-    onClick={() => onChange(!checked)}
-    style={{
-      width: '40px',
-      height: '24px',
-      borderRadius: '12px',
-      backgroundColor: checked ? 'var(--color-success)' : 'var(--color-border)',
-      border: 'none',
-      padding: '2px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: checked ? 'flex-end' : 'flex-start',
-      cursor: 'pointer',
-      transition: 'background-color var(--transition-normal)',
-      flexShrink: 0,
-      transform: 'none'
-    }}
-  >
-    <motion.div
-      layout
-      transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: boolean) => void }) => {
+  const [isPressed, setIsPressed] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onPointerDown={() => setIsPressed(true)}
+      onPointerUp={() => setIsPressed(false)}
+      onPointerLeave={() => setIsPressed(false)}
+      onPointerCancel={() => setIsPressed(false)}
+      onClick={() => onChange(!checked)}
       style={{
-        width: '20px',
-        height: '20px',
-        backgroundColor: '#ffffff',
-        borderRadius: '50%',
-        boxShadow: 'var(--shadow-sm)'
+        width: '42px',
+        height: '24px',
+        borderRadius: '12px',
+        backgroundColor: checked ? 'var(--color-success)' : 'var(--color-border)',
+        border: 'none',
+        padding: '2px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: checked ? 'flex-end' : 'flex-start',
+        cursor: 'pointer',
+        transition: 'background-color var(--transition-normal)',
+        flexShrink: 0,
+        transform: 'none',
+        overflow: 'hidden'
       }}
-    />
-  </button>
-);
+    >
+      <motion.div
+        layout
+        key={String(checked)}
+        initial={{ scaleX: 1.24, scaleY: 0.84 }}
+        animate={{
+          scaleX: isPressed ? 1.22 : 1,
+          scaleY: isPressed ? 0.88 : 1
+        }}
+        transition={{ type: 'spring', stiffness: 580, damping: 28, mass: 0.7 }}
+        style={{
+          width: '20px',
+          height: '20px',
+          backgroundColor: '#ffffff',
+          borderRadius: '10px',
+          boxShadow: 'var(--shadow-sm)'
+        }}
+      />
+    </button>
+  );
+};
 
 interface DirectionSettingsProps {
   direction: ConversionDirection;
@@ -125,29 +141,16 @@ export function DirectionSettings({
       animate={{ opacity: 1, y: 0 }}
       className="card"
     >
-      <div className="segmented-control" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap' }}>
-        <button
-          className={uiDirection === 'java-to-bedrock' ? 'active' : ''}
-          onClick={() => handleUiDirectionChange('java-to-bedrock')}
-          style={{ flex: 1, minWidth: '30%' }}
-        >
-          {t.directionJavaToBedrock}
-        </button>
-        <button
-          className={uiDirection === 'bedrock-to-java' ? 'active' : ''}
-          onClick={() => handleUiDirectionChange('bedrock-to-java')}
-          style={{ flex: 1, minWidth: '30%' }}
-        >
-          {t.directionBedrockToJava}
-        </button>
-        <button
-          className={uiDirection === 'version-update' ? 'active' : ''}
-          onClick={() => handleUiDirectionChange('version-update')}
-          style={{ flex: 1, minWidth: '30%' }}
-        >
-          {t.directionVersionUpdate || 'Version Update'}
-        </button>
-      </div>
+      <FluidSegmentedControl
+        value={uiDirection}
+        onChange={handleUiDirectionChange}
+        style={{ marginBottom: '16px' }}
+        options={[
+          { value: 'java-to-bedrock', label: t.directionJavaToBedrock },
+          { value: 'bedrock-to-java', label: t.directionBedrockToJava },
+          { value: 'version-update', label: t.directionVersionUpdate || 'Version Update' },
+        ]}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
         <AnimatePresence initial={false}>
