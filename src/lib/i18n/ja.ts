@@ -41,7 +41,7 @@ const ja: Translation = {
 	statusSkipped: "スキップ",
 	statusError: "エラー",
 
-	summaryTitle: "サマリー",
+	summaryTitle: "変換完了！",
 	countTotal: "合計ファイル数",
 	countConverted: "変換成功",
 	countSkipped: "スキップ",
@@ -53,8 +53,10 @@ const ja: Translation = {
 	errorNoFile: "ファイルを選択してください。",
 	errorInvalidFile: "無効なファイル形式です。.zip または .mcpack を選択してください。",
 	errorConversion: "変換中にエラーが発生しました。",
+	errorZeroConverted: "変換可能なファイルが見つかりませんでした。MinecraftリソースパックのZIPファイルであることをご確認ください。",
 	warnPossibleBedrock: "選択されたファイル (.mcpack) は、すでに統合版用のリソースパック（テクスチャパック）である可能性があります。Java版から変換する場合は、通常 Java版の .zip ファイルを選択します。",
 	warnPossibleJava: "選択されたファイルは、すでにJava版用のリソースパック（テクスチャパック）である可能性があります。統合版から変換する場合は、統合版用の .mcpack または .zip ファイルを選択してください。",
+	warnNotMinecraftPack: "Minecraftのリソースパックではない可能性があります（pack.mcmeta や manifest.json、テクスチャフォルダが見つかりません）。",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "利用規約",
@@ -94,14 +96,14 @@ const ja: Translation = {
 	backToHome: "トップページへ戻る",
 	viewSourceCode: "GitHub でソースコードを見る",
 	openSourceText: "本サービスはオープンソースとして公開されています。",
-  betaFeatures: "ベータ機能 (Beta)",
-  enableGuiConversion: "GUI変換を有効にする",
-  enableModernGuiSprites: "1.20.2+ 分割GUIスプライト変換を有効にする",
-  enableTgaConversion: "TGA画像をPNGにデコード変換する",
-  enableAnimationConversion: "アニメーション変換を有効にする",
-  enableLanguageConversion: '言語・翻訳変換を有効にする',
-  enableSoundConversion: 'サウンド変換を有効にする',
-  enableAudioReencode: '音声を再エンコードする (FFmpeg, 約20MB)',
+	betaFeatures: "ベータ機能 (Beta)",
+	enableGuiConversion: "GUI変換を有効にする",
+	enableModernGuiSprites: "1.20.2+ 分割GUIスプライト変換を有効にする",
+	enableTgaConversion: "TGA画像をPNGにデコード変換する",
+	enableAnimationConversion: "アニメーション変換を有効にする",
+	enableLanguageConversion: '言語・翻訳変換を有効にする',
+	enableSoundConversion: 'サウンド変換を有効にする',
+	enableAudioReencode: '音声を再エンコードする (FFmpeg, 約20MB)',
 };
 
 export default ja;

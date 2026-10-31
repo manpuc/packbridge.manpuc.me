@@ -41,7 +41,7 @@ const tl: Translation = {
 	statusSkipped: "Nilaktawan",
 	statusError: "Error",
 
-	summaryTitle: "Buod",
+	summaryTitle: "Kumpleto na ang Conversion!",
 	countTotal: "Kabuuang mga File",
 	countConverted: "Na-convert",
 	countSkipped: "Nilaktawan",
@@ -53,8 +53,10 @@ const tl: Translation = {
 	errorNoFile: "Mangyaring pumili ng file.",
 	errorInvalidFile: "Maling format ng file. Pumili ng .zip o .mcpack na file.",
 	errorConversion: "Nagkaroon ng error habang nagko-convert.",
+	errorZeroConverted: "Walang nakitang maikokumberteng file. Pakitiyak na ito ay isang wastong Minecraft resource pack archive.",
 	warnPossibleBedrock: "Maaaring ang napiling file (.mcpack) ay isa nang Bedrock Edition resource pack. Kapag nag-convert mula sa Java, karaniwan kang pumipili ng Java Edition .zip file.",
 	warnPossibleJava: "Maaaring ang napiling file ay isa nang Java Edition resource pack. Kapag nag-convert mula sa Bedrock, siguraduhing pumili ng Bedrock Edition na .mcpack o .zip file.",
+	warnNotMinecraftPack: "Maaaring hindi ito Minecraft resource pack (walang natagpuang pack.mcmeta, manifest.json, o folder ng texture).",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Kasunduan sa Serbisyo",
@@ -94,13 +96,13 @@ const tl: Translation = {
 	backToHome: "Bumalik sa Home",
 	viewSourceCode: "Tingnan ang Source Code sa GitHub",
 	openSourceText: "Ang serbisyong ito ay open source.",
-  betaFeatures: "Beta Features",
-  enableGuiConversion: "Enable GUI Conversion",
-  enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
-  enableTgaConversion: "I-convert ang TGA Textures sa PNG",
-  enableAnimationConversion: "Enable Animation Conversion",
-  enableLanguageConversion: 'Enable Language Conversion',
-  enableSoundConversion: 'Enable Sound Conversion',
+	betaFeatures: "Beta Features",
+	enableGuiConversion: "Enable GUI Conversion",
+	enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
+	enableTgaConversion: "I-convert ang TGA Textures sa PNG",
+	enableAnimationConversion: "Enable Animation Conversion",
+	enableLanguageConversion: 'Enable Language Conversion',
+	enableSoundConversion: 'Enable Sound Conversion',
 };
 
 export default tl;

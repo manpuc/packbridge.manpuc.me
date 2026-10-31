@@ -1,5 +1,6 @@
 ---
 import "@/styles/global.css";
+import { ClientRouter } from 'astro:transitions';
 import { SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n/config";
 
 interface Props {
@@ -266,6 +267,7 @@ const webSiteStructuredData = {
 			defer
 			src="https://cloud.manpuc.me/script.js"
 			data-website-id="2a52c3db-b2b2-4863-9bcb-736adb8780ca"></script>
+			<ClientRouter />
 	</head>
 	<body>
 		<slot />

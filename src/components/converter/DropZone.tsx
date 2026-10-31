@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, RefreshCw, FileArchive } from 'lucide-react';
+import { Upload, X, RefreshCw, FileArchive, AlertCircle } from 'lucide-react';
 import type { Translation } from '@/lib/i18n';
 
 interface DropZoneProps {
@@ -9,6 +9,7 @@ interface DropZoneProps {
   error: string | null;
   warning: string | null;
   isProcessing: boolean;
+  progress?: { processed: number; total: number } | null;
   onFileSelect: (file: File, inputMethod?: 'drop' | 'file_picker') => void;
   onConvert: () => void;
   onReset: () => void;
@@ -23,6 +24,7 @@ export function DropZone({
   error,
   warning,
   isProcessing,
+  progress,
   onFileSelect,
   onConvert,
   onReset,
@@ -53,24 +55,29 @@ export function DropZone({
     if (droppedFile) onFileSelect(droppedFile, 'drop');
   };
 
+  const progressPercent = progress && progress.total > 0
+    ? Math.min(100, Math.round((progress.processed / progress.total) * 100))
+    : null;
+
   return (
     <motion.div
-      key="input"
+      key={error ? `input-error-${error}` : 'input'}
       layout
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
+      exit={{ opacity: 0, scale: 0.96, y: -10 }}
       transition={springTransition}
-      className="card"
+      className={`card ${error ? 'animate-shake' : ''}`}
     >
       <motion.div
         layout
-        className={`dropzone ${file ? 'active' : ''} ${isDragOver ? 'dragover' : ''}`}
+        className={`dropzone ${file ? 'active' : ''} ${isDragOver ? 'dragover' : ''} ${error ? 'has-error' : ''}`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
-        whileTap={{ scale: 0.99 }}
+        onClick={() => !isProcessing && fileInputRef.current?.click()}
+        whileTap={isProcessing ? undefined : { scale: 0.99 }}
+        style={{ cursor: isProcessing ? 'default' : 'pointer' }}
       >
         <input
           type="file"
@@ -78,10 +85,34 @@ export function DropZone({
           onChange={handleFileChange}
           accept=".zip,.mcpack"
           style={{ display: 'none' }}
+          disabled={isProcessing}
         />
         <motion.div layout>
           <AnimatePresence mode="wait">
-            {iconUrl ? (
+            {isProcessing ? (
+              <motion.div
+                key="processing-icon"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={springTransition}
+                className="dropzone-icon-container"
+              >
+                <RefreshCw className="dropzone-icon spin" />
+              </motion.div>
+            ) : error ? (
+              <motion.div
+                key="error-icon"
+                initial={{ scale: 0.7, opacity: 0, rotate: -10 }}
+                animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                className="dropzone-icon-container"
+                style={{ background: 'rgba(255, 59, 48, 0.12)', color: 'var(--color-danger)' }}
+              >
+                <AlertCircle className="dropzone-icon" style={{ color: 'var(--color-danger)' }} />
+              </motion.div>
+            ) : iconUrl ? (
               <motion.img
                 key="pack-icon"
                 initial={{ scale: 0.7, opacity: 0, y: 10, rotate: -4 }}
@@ -128,11 +159,11 @@ export function DropZone({
         <motion.div layout style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '100%' }}>
           <AnimatePresence mode="wait">
             <motion.p
-              key={file ? file.name : 'empty-title'}
+              key={isProcessing ? 'processing' : file ? file.name : 'empty-title'}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
               style={{
                 fontWeight: 700,
                 fontSize: '18px',
@@ -140,20 +171,38 @@ export function DropZone({
                 padding: '0 8px'
               }}
             >
-              {file ? file.name : t.dropzoneTitle}
+              {isProcessing
+                ? t.dropzoneProcessing
+                : file
+                  ? file.name
+                  : t.dropzoneTitle}
             </motion.p>
           </AnimatePresence>
 
           <AnimatePresence mode="wait">
             <motion.p
-              key={error || warning || (file ? 'has-file' : 'no-file')}
+              key={
+                isProcessing
+                  ? 'processing-sub'
+                  : error
+                    ? `err-${error}`
+                    : warning
+                      ? `warn-${warning}`
+                      : (file ? 'has-file' : 'no-file')
+              }
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.15 }}
               style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}
             >
-              {error ? (
+              {isProcessing ? (
+                progress && progress.total > 0 ? (
+                  <span>{`${progress.processed} / ${progress.total} (${progressPercent}%)`}</span>
+                ) : (
+                  <span>{t.dropzoneProcessing}</span>
+                )
+              ) : error ? (
                 <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</span>
               ) : warning ? (
                 <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{warning}</span>
@@ -165,13 +214,35 @@ export function DropZone({
         </motion.div>
 
         <AnimatePresence>
-          {file && !isProcessing && (
+          {isProcessing ? (
             <motion.div
-              layout
-              initial={{ opacity: 0, y: 12, scale: 0.94 }}
+              key="processing-bar-wrapper"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}
+            >
+              <div className="dropzone-progress-bar">
+                {progressPercent !== null ? (
+                  <motion.div
+                    className="dropzone-progress-indicator"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ ease: "easeOut", duration: 0.15 }}
+                  />
+                ) : (
+                  <div className="dropzone-progress-indeterminate" />
+                )}
+              </div>
+            </motion.div>
+          ) : file ? (
+            <motion.div
+              key="action-buttons"
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92, y: 8 }}
-              transition={springTransition}
+              exit={{ opacity: 0, scale: 0.95, y: 4 }}
+              transition={{ duration: 0.15 }}
               style={{ display: 'flex', gap: '10px', marginTop: '14px', justifyContent: 'center' }}
             >
               <motion.button
@@ -200,18 +271,7 @@ export function DropZone({
                 {t.btnConvert}
               </motion.button>
             </motion.div>
-          )}
-          {isProcessing && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <RefreshCw className="spin" size={20} />
-              <span>{t.dropzoneProcessing}</span>
-            </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
       </motion.div>
     </motion.div>

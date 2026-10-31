@@ -48,7 +48,7 @@ const s = getReportStrings(lang);
 			<h1>{s.pageTitle}</h1>
 			<p class="description">{s.pageDescription}</p>
 		</header>
-		<ReportForm client:load lang={lang} />
+		<ReportForm client:load lang={lang} backToHome={t.backToHome} />
 		<div class="report-bottom-nav">
 			<a href={`/${lang}`} class="footer-link back-home-footer-link">
 				← {t.backToHome}

@@ -41,7 +41,7 @@ const en: Translation = {
 	statusSkipped: "Skipped",
 	statusError: "Error",
 
-	summaryTitle: "Summary",
+	summaryTitle: "Conversion Complete!",
 	countTotal: "Total Files",
 	countConverted: "Converted",
 	countSkipped: "Skipped",
@@ -53,8 +53,10 @@ const en: Translation = {
 	errorNoFile: "Please select a file.",
 	errorInvalidFile: "Invalid file format. Please select a .zip or .mcpack file.",
 	errorConversion: "An error occurred during conversion.",
+	errorZeroConverted: "No convertible files found. Please ensure this is a valid Minecraft resource pack archive.",
 	warnPossibleBedrock: "The selected file (.mcpack) may already be a Bedrock Edition resource pack. When converting from Java, you usually select a Java Edition .zip file.",
 	warnPossibleJava: "The selected file may already be a Java Edition resource pack. When converting from Bedrock, please ensure you select a Bedrock Edition .mcpack or .zip file.",
+	warnNotMinecraftPack: "This archive might not be a Minecraft resource pack (no pack.mcmeta, manifest.json, or texture folders found).",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Terms of Service",
@@ -94,14 +96,14 @@ const en: Translation = {
 	backToHome: "Back to Home",
 	viewSourceCode: "View Source Code on GitHub",
 	openSourceText: "This service is open source.",
-  betaFeatures: "Beta Features",
-  enableGuiConversion: "Enable GUI Conversion",
-  enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
-  enableTgaConversion: "Convert TGA Textures to PNG",
-  enableAnimationConversion: "Enable Animation Conversion",
-  enableLanguageConversion: 'Enable Language Conversion',
-  enableSoundConversion: 'Enable Sound Conversion',
-  enableAudioReencode: 'Re-encode Audio (FFmpeg, ~20MB)',
+	betaFeatures: "Beta Features",
+	enableGuiConversion: "Enable GUI Conversion",
+	enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
+	enableTgaConversion: "Convert TGA Textures to PNG",
+	enableAnimationConversion: "Enable Animation Conversion",
+	enableLanguageConversion: 'Enable Language Conversion',
+	enableSoundConversion: 'Enable Sound Conversion',
+	enableAudioReencode: 'Re-encode Audio (FFmpeg, ~20MB)',
 };
 
 export default en;

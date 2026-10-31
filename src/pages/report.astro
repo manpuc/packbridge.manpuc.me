@@ -50,7 +50,7 @@ const s = getReportStrings("ja");
 			<h1>{s.pageTitle}</h1>
 			<p class="description">{s.pageDescription}</p>
 		</header>
-		<ReportForm client:load lang="ja" />
+		<ReportForm client:load lang="ja" backToHome={t.backToHome} />
 		<div class="report-bottom-nav">
 			<a href="/" class="footer-link back-home-footer-link">
 				← {t.backToHome}

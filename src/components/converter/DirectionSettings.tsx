@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { ConversionDirection } from '@/lib/pack/types';
 import type { Translation } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS } from '@/lib/pack/versions';
@@ -12,43 +12,49 @@ const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: bool
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onPointerDown={() => setIsPressed(true)}
       onPointerUp={() => setIsPressed(false)}
       onPointerLeave={() => setIsPressed(false)}
       onPointerCancel={() => setIsPressed(false)}
       onClick={() => onChange(!checked)}
       style={{
-        width: '42px',
+        boxSizing: 'border-box',
+        width: '44px',
         height: '24px',
         borderRadius: '12px',
         backgroundColor: checked ? 'var(--color-success)' : 'var(--color-border)',
         border: 'none',
         padding: '2px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: checked ? 'flex-end' : 'flex-start',
+        display: 'block',
+        position: 'relative',
         cursor: 'pointer',
-        transition: 'background-color var(--transition-normal)',
+        transition: 'background-color 0.25s var(--spring-smooth)',
         flexShrink: 0,
         transform: 'none',
-        overflow: 'hidden'
+        WebkitTapHighlightColor: 'transparent'
       }}
     >
       <motion.div
-        layout
-        key={String(checked)}
-        initial={{ scaleX: 1.24, scaleY: 0.84 }}
+        initial={false}
         animate={{
-          scaleX: isPressed ? 1.22 : 1,
-          scaleY: isPressed ? 0.88 : 1
+          x: checked ? 20 : 0,
+          scaleX: isPressed ? 1.2 : 1,
+          scaleY: isPressed ? 0.88 : 1,
         }}
-        transition={{ type: 'spring', stiffness: 580, damping: 28, mass: 0.7 }}
+        transition={{
+          type: 'spring',
+          stiffness: 450,
+          damping: 28,
+        }}
         style={{
           width: '20px',
           height: '20px',
           backgroundColor: '#ffffff',
-          borderRadius: '10px',
-          boxShadow: 'var(--shadow-sm)'
+          borderRadius: '50%',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+          transformOrigin: checked ? 'right center' : 'left center'
         }}
       />
     </button>
@@ -273,54 +279,79 @@ export function DirectionSettings({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <button
             type="button"
+            className="beta-toggle-btn"
             onClick={() => setIsBetaExpanded(!isBetaExpanded)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '4px',
-              fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)',
-              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              fontFamily: 'inherit', textAlign: 'left', width: '100%',
-              transform: 'none'
-            }}
           >
-            {isBetaExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            {t.betaFeatures || 'Beta Features'}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                display: 'inline-block',
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: '6px',
+                backgroundColor: 'var(--color-border)',
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.02em'
+              }}>BETA</span>
+              <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{t.betaFeatures || 'Beta Features'}</span>
+            </span>
+            <motion.div
+              animate={{ rotate: isBetaExpanded ? 180 : 0 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="beta-toggle-chevron"
+            >
+              <ChevronDown size={17} />
+            </motion.div>
           </button>
 
           <AnimatePresence initial={false}>
             {isBetaExpanded && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
+                initial={{ height: 0, opacity: 0 }}
+                animate={{
+                  height: 'auto',
+                  opacity: 1,
+                  transition: {
+                    height: { type: 'spring', stiffness: 350, damping: 30 },
+                    opacity: { duration: 0.22, ease: 'easeOut' }
+                  }
+                }}
+                exit={{
+                  height: 0,
+                  opacity: 0,
+                  transition: {
+                    height: { duration: 0.24, ease: [0.25, 1, 0.5, 1] },
+                    opacity: { duration: 0.18, ease: 'easeIn' }
+                  }
+                }}
                 style={{ overflow: 'hidden' }}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '6px' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableGuiConversion || 'Enable GUI Conversion'}</span>
                     <IosSwitch checked={enableGuiConversion} onChange={setEnableGuiConversion} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}</span>
                     <IosSwitch checked={enableModernGuiSprites} onChange={setEnableModernGuiSprites} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableTgaConversion || 'Convert TGA Textures to PNG'}</span>
                     <IosSwitch checked={enableTgaConversion} onChange={setEnableTgaConversion} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableAnimationConversion || 'Enable Animation Conversion'}</span>
                     <IosSwitch checked={enableAnimationConversion} onChange={setEnableAnimationConversion} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableLanguageConversion || 'Enable Language Conversion'}</span>
                     <IosSwitch checked={enableLanguageConversion} onChange={setEnableLanguageConversion} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableSoundConversion || 'Enable Sound Conversion'}</span>
                     <IosSwitch checked={enableSoundConversion} onChange={setEnableSoundConversion} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', cursor: 'pointer', padding: '4px 0' }}>
+                  <label className="beta-option-row">
                     <span style={{ color: 'var(--color-text)' }}>{t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}</span>
                     <IosSwitch checked={enableAudioReencode} onChange={setEnableAudioReencode} />
                   </label>

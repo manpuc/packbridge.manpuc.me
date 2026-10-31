@@ -4,6 +4,10 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'viewport',
+  },
   integrations: [react(), sitemap({
     serialize(item) {
       if (item.url.endsWith('/terms')) {

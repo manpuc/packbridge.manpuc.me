@@ -41,7 +41,7 @@ const fr: Translation = {
 	statusSkipped: "Ignoré",
 	statusError: "Erreur",
 
-	summaryTitle: "Résumé",
+	summaryTitle: "Conversion terminée !",
 	countTotal: "Total des fichiers",
 	countConverted: "Réussis",
 	countSkipped: "Ignorés",
@@ -53,8 +53,10 @@ const fr: Translation = {
 	errorNoFile: "Veuillez sélectionner un fichier.",
 	errorInvalidFile: "Format de fichier non valide. Veuillez sélectionner un fichier .zip ou .mcpack.",
 	errorConversion: "Une erreur s'est produite lors de la conversion.",
+	errorZeroConverted: "Aucun fichier convertible trouvé. Veuillez vous assurer qu'il s'agit d'une archive de pack de ressources Minecraft valide.",
 	warnPossibleBedrock: "Le fichier sélectionné (.mcpack) est peut-être déjà un pack Bedrock. Pour une conversion depuis Java, sélectionnez un fichier .zip de la version Java.",
 	warnPossibleJava: "Le fichier sélectionné est peut-être déjà un pack Java. Pour une conversion depuis Bedrock, assurez-vous de sélectionner un fichier .mcpack ou .zip de la version Bedrock.",
+	warnNotMinecraftPack: "Ce fichier ne semble pas être un pack de ressources Minecraft (aucun pack.mcmeta, manifest.json ou dossier de textures trouvé).",
 
 	footer: "PackBridge | Convertisseur de packs de ressources et de textures Minecraft",
 	terms: "Conditions d'utilisation",
@@ -94,13 +96,13 @@ const fr: Translation = {
 	backToHome: "Retour à l'accueil",
 	viewSourceCode: "Voir le code source sur GitHub",
 	openSourceText: "Ce service est open source.",
-  betaFeatures: "Beta Features",
-  enableGuiConversion: "Enable GUI Conversion",
-  enableModernGuiSprites: "Activer les sprites GUI séparés (1.20.2+)",
-  enableTgaConversion: "Convertir les textures TGA en PNG",
-  enableAnimationConversion: "Enable Animation Conversion",
-  enableLanguageConversion: 'Enable Language Conversion',
-  enableSoundConversion: 'Enable Sound Conversion',
+	betaFeatures: "Beta Features",
+	enableGuiConversion: "Enable GUI Conversion",
+	enableModernGuiSprites: "Activer les sprites GUI séparés (1.20.2+)",
+	enableTgaConversion: "Convertir les textures TGA en PNG",
+	enableAnimationConversion: "Enable Animation Conversion",
+	enableLanguageConversion: 'Enable Language Conversion',
+	enableSoundConversion: 'Enable Sound Conversion',
 };
 
 export default fr;

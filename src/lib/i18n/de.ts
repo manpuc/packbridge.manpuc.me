@@ -41,7 +41,7 @@ const de: Translation = {
 	statusSkipped: "Übersprungen",
 	statusError: "Fehler",
 
-	summaryTitle: "Zusammenfassung",
+	summaryTitle: "Konvertierung abgeschlossen!",
 	countTotal: "Dateien insgesamt",
 	countConverted: "Erfolgreich",
 	countSkipped: "Übersprungen",
@@ -53,8 +53,10 @@ const de: Translation = {
 	errorNoFile: "Bitte wählen Sie eine Datei aus.",
 	errorInvalidFile: "Ungültiges Dateiformat. Bitte wählen Sie eine .zip oder .mcpack Datei.",
 	errorConversion: "Bei der Konvertierung ist ein Fehler aufgetreten.",
+	errorZeroConverted: "Keine konvertierbaren Dateien gefunden. Bitte stellen Sie sicher, dass es sich um ein gültiges Minecraft-Ressourcenpaket-Archiv handelt.",
 	warnPossibleBedrock: "Die gewählte Datei (.mcpack) ist möglicherweise bereits ein Bedrock-Paket. Für eine Konvertierung von Java wählen Sie normalerweise eine .zip-Datei der Java Edition.",
 	warnPossibleJava: "Die gewählte Datei ist möglicherweise bereits ein Java-Paket. Für eine Konvertierung von Bedrock stellen Sie sicher, dass Sie eine .mcpack oder .zip der Bedrock Edition wählen.",
+	warnNotMinecraftPack: "Dies ist möglicherweise kein Minecraft-Ressourcenpaket (keine pack.mcmeta, manifest.json oder Texturordner gefunden).",
 
 	footer: "PackBridge | Minecraft Ressourcenpaket- & Texturenpaket-Konverter",
 	terms: "Nutzungsbedingungen",
@@ -94,13 +96,13 @@ const de: Translation = {
 	backToHome: "Zurück zur Startseite",
 	viewSourceCode: "Quellcode auf GitHub ansehen",
 	openSourceText: "Dieser Dienst ist Open Source.",
-  betaFeatures: "Beta Features",
-  enableGuiConversion: "Enable GUI Conversion",
-  enableModernGuiSprites: "1.20.2+ geteilte GUI-Sprites aktivieren",
-  enableTgaConversion: "TGA-Texturen in PNG umwandeln",
-  enableAnimationConversion: "Enable Animation Conversion",
-  enableLanguageConversion: 'Enable Language Conversion',
-  enableSoundConversion: 'Enable Sound Conversion',
+	betaFeatures: "Beta Features",
+	enableGuiConversion: "Enable GUI Conversion",
+	enableModernGuiSprites: "1.20.2+ geteilte GUI-Sprites aktivieren",
+	enableTgaConversion: "TGA-Texturen in PNG umwandeln",
+	enableAnimationConversion: "Enable Animation Conversion",
+	enableLanguageConversion: 'Enable Language Conversion',
+	enableSoundConversion: 'Enable Sound Conversion',
 };
 
 export default de;

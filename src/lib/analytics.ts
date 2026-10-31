@@ -50,7 +50,7 @@ export type AnalyticsEventMap = {
   };
   conversion_failed: {
     direction: ConversionDirection;
-    error_category: 'INVALID_ARCHIVE' | 'OUT_OF_MEMORY' | 'WORKER_CRASH' | 'FFMPEG_ERROR' | 'UNKNOWN';
+    error_category: 'INVALID_ARCHIVE' | 'OUT_OF_MEMORY' | 'WORKER_CRASH' | 'FFMPEG_ERROR' | 'ZERO_CONVERTED' | 'UNKNOWN';
     opt_audio_reencode: boolean;
     size_tier: '<10MB' | '10-50MB' | '50-100MB' | '>100MB';
   };

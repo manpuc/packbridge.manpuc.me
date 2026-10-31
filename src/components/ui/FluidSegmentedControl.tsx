@@ -134,20 +134,21 @@ export function FluidSegmentedControl<T extends string>({
             onPointerCancel={() => setPressedValue(null)}
             onClick={() => onChange(opt.value)}
           >
-            <motion.span
+            <span
               className="fluid-segmented-label"
-              animate={
-                prefersReducedMotion
-                  ? { scale: 1 }
-                  : {
-                      scaleX: isPressed ? 0.94 : isActive ? 1.02 : 1,
-                      scaleY: isPressed ? 0.93 : isActive ? 1.02 : 1,
-                    }
-              }
-              transition={{ type: 'spring', stiffness: 520, damping: 26 }}
+              style={{
+                transform: prefersReducedMotion
+                  ? 'none'
+                  : isPressed
+                    ? 'scale(0.96)'
+                    : isActive
+                      ? 'scale(1.01)'
+                      : 'scale(1)',
+                transition: 'transform 0.18s cubic-bezier(0.25, 1, 0.5, 1)'
+              }}
             >
               {opt.label}
-            </motion.span>
+            </span>
           </button>
         );
       })}

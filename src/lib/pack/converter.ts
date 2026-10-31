@@ -575,67 +575,70 @@ export async function convertPack(
   }
 
   // Finalization Phase (Metadata Generation)
-  if (direction === 'java-to-bedrock') {
-    const terrainTextureJson = convertedBlockTextures.size > 0 ? generateTerrainTexture(convertedBlockTextures) : null;
-    if (terrainTextureJson) {
-      targetZip.file('textures/terrain_texture.json', terrainTextureJson, getZipFileOptions('textures/terrain_texture.json'));
-      report.convertedCount++;
-    }
-
-    const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
-    if (itemTextureJson) {
-      targetZip.file('textures/item_texture.json', itemTextureJson, getZipFileOptions('textures/item_texture.json'));
-      report.convertedCount++;
-    }
-
-    if (flipbookEntries.length > 0) {
-      const validAtlasTiles = new Set<string>();
+  // Only synthesize and append metadata if there was at least one legitimately converted pack file
+  if (report.convertedCount > 0) {
+    if (direction === 'java-to-bedrock') {
+      const terrainTextureJson = convertedBlockTextures.size > 0 ? generateTerrainTexture(convertedBlockTextures) : null;
       if (terrainTextureJson) {
-        try {
-          const parsed = JSON.parse(terrainTextureJson);
-          Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
-        } catch { }
-      }
-      if (itemTextureJson) {
-        try {
-          const parsed = JSON.parse(itemTextureJson);
-          Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
-        } catch { }
-      }
-
-      const safeFlipbooks = flipbookEntries.filter(entry => {
-        return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
-      });
-
-      if (safeFlipbooks.length > 0) {
-        targetZip.file('textures/flipbook_textures.json', JSON.stringify(safeFlipbooks, null, 2), getZipFileOptions('textures/flipbook_textures.json'));
+        targetZip.file('textures/terrain_texture.json', terrainTextureJson, getZipFileOptions('textures/terrain_texture.json'));
         report.convertedCount++;
       }
-    }
-    if (allTargetTextures.size > 0) {
-      targetZip.file('textures/textures_list.json', JSON.stringify(Array.from(allTargetTextures), null, 2), getZipFileOptions('textures/textures_list.json'));
-      report.convertedCount++;
-    }
-    if (supportedLanguages.size > 0) {
-      targetZip.file('texts/languages.json', JSON.stringify(Array.from(supportedLanguages), null, 2), getZipFileOptions('texts/languages.json'));
-      report.convertedCount++;
-    }
 
-    // Write merged languages
-    for (const [tPath, content] of mergedLangs.entries()) {
-      targetZip.file(tPath, content, getZipFileOptions(tPath));
-    }
+      const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
+      if (itemTextureJson) {
+        targetZip.file('textures/item_texture.json', itemTextureJson, getZipFileOptions('textures/item_texture.json'));
+        report.convertedCount++;
+      }
 
-    // Ensure manifest.json exists
-    if (!targetZip.file('manifest.json')) {
-      const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
-      generateManifest(targetZip, report, 'pack.mcmeta', packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
-    }
-  } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
-    // Ensure pack.mcmeta exists in output zip
-    if (!targetZip.file('pack.mcmeta')) {
-      const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
-      generateMcmeta(targetZip, report, 'manifest.json', packDescription, jVersion.packFormat);
+      if (flipbookEntries.length > 0) {
+        const validAtlasTiles = new Set<string>();
+        if (terrainTextureJson) {
+          try {
+            const parsed = JSON.parse(terrainTextureJson);
+            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+          } catch { }
+        }
+        if (itemTextureJson) {
+          try {
+            const parsed = JSON.parse(itemTextureJson);
+            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+          } catch { }
+        }
+
+        const safeFlipbooks = flipbookEntries.filter(entry => {
+          return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
+        });
+
+        if (safeFlipbooks.length > 0) {
+          targetZip.file('textures/flipbook_textures.json', JSON.stringify(safeFlipbooks, null, 2), getZipFileOptions('textures/flipbook_textures.json'));
+          report.convertedCount++;
+        }
+      }
+      if (allTargetTextures.size > 0) {
+        targetZip.file('textures/textures_list.json', JSON.stringify(Array.from(allTargetTextures), null, 2), getZipFileOptions('textures/textures_list.json'));
+        report.convertedCount++;
+      }
+      if (supportedLanguages.size > 0) {
+        targetZip.file('texts/languages.json', JSON.stringify(Array.from(supportedLanguages), null, 2), getZipFileOptions('texts/languages.json'));
+        report.convertedCount++;
+      }
+
+      // Write merged languages
+      for (const [tPath, content] of mergedLangs.entries()) {
+        targetZip.file(tPath, content, getZipFileOptions(tPath));
+      }
+
+      // Ensure manifest.json exists
+      if (!targetZip.file('manifest.json')) {
+        const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+        generateManifest(targetZip, report, 'pack.mcmeta', packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
+      }
+    } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
+      // Ensure pack.mcmeta exists in output zip
+      if (!targetZip.file('pack.mcmeta')) {
+        const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+        generateMcmeta(targetZip, report, 'manifest.json', packDescription, jVersion.packFormat);
+      }
     }
   }
 

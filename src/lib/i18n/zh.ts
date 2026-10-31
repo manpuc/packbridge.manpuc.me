@@ -40,7 +40,7 @@ const zh: Translation = {
 	statusSkipped: "已跳过",
 	statusError: "错误",
 
-	summaryTitle: "摘要",
+	summaryTitle: "转换完成！",
 	countTotal: "总文件数",
 	countConverted: "转换成功",
 	countSkipped: "已跳过",
@@ -52,8 +52,10 @@ const zh: Translation = {
 	errorNoFile: "请选择一个文件。",
 	errorInvalidFile: "无效的文件格式。请选择 .zip 或 .mcpack 文件。",
 	errorConversion: "转换过程中发生错误。",
+	errorZeroConverted: "未找到可转换的文件。请确保这是有效的 Minecraft 材质包压缩包。",
 	warnPossibleBedrock: "所选文件 (.mcpack) 可能已经是基岩版资源包。从 Java 版转换时，通常应选择 Java 版的 .zip 文件。",
 	warnPossibleJava: "所选文件可能已经是 Java 版资源包。从基岩版转换时，请确保选择基岩版的 .mcpack 或 .zip 文件。",
+	warnNotMinecraftPack: "可能不是 Minecraft 材质包（未找到 pack.mcmeta、manifest.json 或材质文件夹）。",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "服务条款",
@@ -93,13 +95,13 @@ const zh: Translation = {
 	backToHome: "回到首页",
 	viewSourceCode: "在 GitHub 上查看源代码",
 	openSourceText: "本服务已作为开源项目公开。",
-  betaFeatures: "Beta Features",
-  enableGuiConversion: "Enable GUI Conversion",
-  enableModernGuiSprites: "启用 1.20.2+ 拆分 GUI 精灵转换",
-  enableTgaConversion: "将 TGA 纹理解码转换为 PNG",
-  enableAnimationConversion: "Enable Animation Conversion",
-  enableLanguageConversion: '启用语言转换',
-  enableSoundConversion: '启用声音转换',
+	betaFeatures: "Beta Features",
+	enableGuiConversion: "Enable GUI Conversion",
+	enableModernGuiSprites: "启用 1.20.2+ 拆分 GUI 精灵转换",
+	enableTgaConversion: "将 TGA 纹理解码转换为 PNG",
+	enableAnimationConversion: "Enable Animation Conversion",
+	enableLanguageConversion: '启用语言转换',
+	enableSoundConversion: '启用声音转换',
 };
 
 export default zh;

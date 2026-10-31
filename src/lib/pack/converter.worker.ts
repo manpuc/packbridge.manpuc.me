@@ -492,73 +492,76 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     }
 
     // Finalization Phase
-    if (direction === 'java-to-bedrock') {
-      const terrainTextureJson = convertedBlockTextures.size > 0 ? generateTerrainTexture(convertedBlockTextures) : null;
-      if (terrainTextureJson) {
-        targetFiles['textures/terrain_texture.json'] = [strToU8(terrainTextureJson), { level: 1 }];
-        report.convertedCount++;
-      }
-
-      const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
-      if (itemTextureJson) {
-        targetFiles['textures/item_texture.json'] = [strToU8(itemTextureJson), { level: 1 }];
-        report.convertedCount++;
-      }
-
-      // Validating flipbook textures: Bedrock crashes if atlas_tile is not in terrain_texture or item_texture
-      if (flipbookEntries.length > 0) {
-        const validAtlasTiles = new Set<string>();
+    // Only synthesize and append metadata if there was at least one legitimately converted pack file
+    if (report.convertedCount > 0) {
+      if (direction === 'java-to-bedrock') {
+        const terrainTextureJson = convertedBlockTextures.size > 0 ? generateTerrainTexture(convertedBlockTextures) : null;
         if (terrainTextureJson) {
-          try {
-            const parsed = JSON.parse(terrainTextureJson);
-            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
-          } catch { }
-        }
-        if (itemTextureJson) {
-          try {
-            const parsed = JSON.parse(itemTextureJson);
-            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
-          } catch { }
-        }
-
-        const safeFlipbooks = flipbookEntries.filter(entry => {
-          // If atlas_tile exists in texture atlases or the texture path is present in output
-          return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
-        });
-
-        if (safeFlipbooks.length > 0) {
-          targetFiles['textures/flipbook_textures.json'] = [strToU8(JSON.stringify(safeFlipbooks, null, 2)), { level: 1 }];
+          targetFiles['textures/terrain_texture.json'] = [strToU8(terrainTextureJson), { level: 1 }];
           report.convertedCount++;
         }
-      }
 
-      if (allTargetTextures.size > 0) {
-        targetFiles['textures/textures_list.json'] = [strToU8(JSON.stringify(Array.from(allTargetTextures), null, 2)), { level: 1 }];
-        report.convertedCount++;
-      }
-      if (supportedLanguages.size > 0) {
-        targetFiles['texts/languages.json'] = [strToU8(JSON.stringify(Array.from(supportedLanguages), null, 2)), { level: 1 }];
-        report.convertedCount++;
-      }
-      for (const [tPath, content] of mergedLangs.entries()) {
-        targetFiles[tPath] = [strToU8(content), { level: 1 }];
-      }
+        const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
+        if (itemTextureJson) {
+          targetFiles['textures/item_texture.json'] = [strToU8(itemTextureJson), { level: 1 }];
+          report.convertedCount++;
+        }
 
-      // Ensure manifest.json exists
-      if (!targetFiles['manifest.json']) {
-        const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
-        const manifestStr = generateManifestContent(packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
-        targetFiles['manifest.json'] = [strToU8(manifestStr), { level: getFileCompressionLevel('manifest.json') }];
-        report.convertedCount++;
-        report.details.push({ filename: 'pack.mcmeta', status: 'converted', outputPath: 'manifest.json', reason: 'Generated fallback manifest' });
-      }
-    } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
-      if (!targetFiles['pack.mcmeta']) {
-        const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
-        const mcmetaStr = generateMcmetaContent(packDescription, jVersion.packFormat);
-        targetFiles['pack.mcmeta'] = [strToU8(mcmetaStr), { level: getFileCompressionLevel('pack.mcmeta') }];
-        report.convertedCount++;
-        report.details.push({ filename: 'manifest.json', status: 'converted', outputPath: 'pack.mcmeta' });
+        // Validating flipbook textures: Bedrock crashes if atlas_tile is not in terrain_texture or item_texture
+        if (flipbookEntries.length > 0) {
+          const validAtlasTiles = new Set<string>();
+          if (terrainTextureJson) {
+            try {
+              const parsed = JSON.parse(terrainTextureJson);
+              Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+            } catch { }
+          }
+          if (itemTextureJson) {
+            try {
+              const parsed = JSON.parse(itemTextureJson);
+              Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
+            } catch { }
+          }
+
+          const safeFlipbooks = flipbookEntries.filter(entry => {
+            // If atlas_tile exists in texture atlases or the texture path is present in output
+            return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
+          });
+
+          if (safeFlipbooks.length > 0) {
+            targetFiles['textures/flipbook_textures.json'] = [strToU8(JSON.stringify(safeFlipbooks, null, 2)), { level: 1 }];
+            report.convertedCount++;
+          }
+        }
+
+        if (allTargetTextures.size > 0) {
+          targetFiles['textures/textures_list.json'] = [strToU8(JSON.stringify(Array.from(allTargetTextures), null, 2)), { level: 1 }];
+          report.convertedCount++;
+        }
+        if (supportedLanguages.size > 0) {
+          targetFiles['texts/languages.json'] = [strToU8(JSON.stringify(Array.from(supportedLanguages), null, 2)), { level: 1 }];
+          report.convertedCount++;
+        }
+        for (const [tPath, content] of mergedLangs.entries()) {
+          targetFiles[tPath] = [strToU8(content), { level: 1 }];
+        }
+
+        // Ensure manifest.json exists
+        if (!targetFiles['manifest.json']) {
+          const bVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+          const manifestStr = generateManifestContent(packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
+          targetFiles['manifest.json'] = [strToU8(manifestStr), { level: getFileCompressionLevel('manifest.json') }];
+          report.convertedCount++;
+          report.details.push({ filename: 'pack.mcmeta', status: 'converted', outputPath: 'manifest.json', reason: 'Generated fallback manifest' });
+        }
+      } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
+        if (!targetFiles['pack.mcmeta']) {
+          const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+          const mcmetaStr = generateMcmetaContent(packDescription, jVersion.packFormat);
+          targetFiles['pack.mcmeta'] = [strToU8(mcmetaStr), { level: getFileCompressionLevel('pack.mcmeta') }];
+          report.convertedCount++;
+          report.details.push({ filename: 'manifest.json', status: 'converted', outputPath: 'pack.mcmeta' });
+        }
       }
     }
 

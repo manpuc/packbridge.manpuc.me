@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Copy, Check, ExternalLink, Lock, Send, AlertTriangle, ArrowLeft } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
-import { getTranslation } from '@/lib/i18n';
 import { getReportStrings, LAST_CONVERSION_KEY, APP_VERSION } from '@/lib/i18n/report';
 import { FluidSegmentedControl } from '@/components/ui/FluidSegmentedControl';
 
@@ -26,9 +25,8 @@ type SentMode = 'formspree' | 'github' | null;
 
 const spring = { type: 'spring', stiffness: 300, damping: 30 } as const;
 
-export default function ReportForm({ lang }: { lang: Language }) {
+export default function ReportForm({ lang, backToHome }: { lang: Language; backToHome: string }) {
   const s = getReportStrings(lang);
-  const t = getTranslation(lang);
   const homeHref = lang === 'ja' ? '/' : `/${lang}`;
   const [ctx, setCtx] = useState<LastConversion | null>(null);
   const [env, setEnv] = useState('');
@@ -247,7 +245,7 @@ export default function ReportForm({ lang }: { lang: Language }) {
           </button>
           <a href={homeHref} className="btn-link primary">
             <ArrowLeft size={16} />
-            {t.backToHome}
+            {backToHome}
           </a>
         </div>
       </motion.section>
@@ -271,7 +269,7 @@ export default function ReportForm({ lang }: { lang: Language }) {
           <button type="button" className="secondary" onClick={() => setSentMode(null)}>{s.again}</button>
           <a href={homeHref} className="btn-link primary">
             <ArrowLeft size={16} />
-            {t.backToHome}
+            {backToHome}
           </a>
         </div>
       </motion.section>

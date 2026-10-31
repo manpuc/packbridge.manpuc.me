@@ -41,7 +41,7 @@ const ko: Translation = {
 	statusSkipped: "건너뜀",
 	statusError: "오류",
 
-	summaryTitle: "요약",
+	summaryTitle: "변환 완료!",
 	countTotal: "총 파일 수",
 	countConverted: "변환 성공",
 	countSkipped: "건너뜀",
@@ -53,8 +53,10 @@ const ko: Translation = {
 	errorNoFile: "파일을 선택해 주세요.",
 	errorInvalidFile: "유효하지 않은 파일 형식입니다. .zip 또는 .mcpack을 선택해 주세요.",
 	errorConversion: "변환 중 오류가 발생했습니다.",
+	errorZeroConverted: "변환할 수 있는 파일이 없습니다. 마인크래프트 리소스 팩 아카이브인지 확인해 주세요.",
 	warnPossibleBedrock: "선택된 파일(.mcpack)은 이미 베드락 에디션용 리소스 팩일 가능성이 있습니다. 자바 에디션에서 변환하려면 일반적으로 자바 에디션용 .zip 파일을 선택합니다.",
 	warnPossibleJava: "선택된 파일은 이미 자바 에디션용 리소스 팩일 가능성이 있습니다. 베드락 에디션에서 변환하려면 베드락 에디션용 .mcpack 또는 .zip 파일을 선택해 주세요.",
+	warnNotMinecraftPack: "마인크래프트 리소스 팩이 아닐 수 있습니다 (pack.mcmeta, manifest.json 또는 텍스처 폴더를 찾을 수 없음).",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "이용약관",
@@ -94,13 +96,13 @@ const ko: Translation = {
 	backToHome: "홈으로 돌아가기",
 	viewSourceCode: "GitHub에서 소스 코드 보기",
 	openSourceText: "이 서비스는 오픈 소스로 공개되어 있습니다.",
-  betaFeatures: "Beta Features",
-  enableGuiConversion: "Enable GUI Conversion",
-  enableModernGuiSprites: "1.20.2+ 분할 GUI 스프라이트 변환",
-  enableTgaConversion: "TGA 이미지를 PNG로 변환",
-  enableAnimationConversion: "Enable Animation Conversion",
-  enableLanguageConversion: '언어 변환 활성화',
-  enableSoundConversion: '사운드 변환 활성화',
+	betaFeatures: "Beta Features",
+	enableGuiConversion: "Enable GUI Conversion",
+	enableModernGuiSprites: "1.20.2+ 분할 GUI 스프라이트 변환",
+	enableTgaConversion: "TGA 이미지를 PNG로 변환",
+	enableAnimationConversion: "Enable Animation Conversion",
+	enableLanguageConversion: '언어 변환 활성화',
+	enableSoundConversion: '사운드 변환 활성화',
 };
 
 export default ko;

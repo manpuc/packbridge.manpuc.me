@@ -47,6 +47,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
   const [enableModernGuiSprites, setEnableModernGuiSprites] = useState(true);
@@ -260,12 +261,23 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
           editionWarn = t.warnPossibleJava;
         }
 
-        if (largeFileWarn && editionWarn) {
-          setWarning(`${largeFileWarn} ${editionWarn}`);
-        } else if (largeFileWarn) {
-          setWarning(largeFileWarn);
-        } else if (editionWarn) {
-          setWarning(editionWarn);
+        // Check if archive seems to contain any Minecraft pack structure
+        let notPackWarn: string | null = null;
+        const hasPackFiles = packMcmetaEntry || manifestEntry || Object.keys(zipInstance.files).some(p => {
+          const lower = p.toLowerCase();
+          return lower.includes('assets/') || lower.includes('textures/') || lower.includes('sounds/') || lower.includes('texts/');
+        });
+        if (!hasPackFiles) {
+          notPackWarn = t.warnNotMinecraftPack;
+        }
+
+        const warnings: string[] = [];
+        if (largeFileWarn) warnings.push(largeFileWarn);
+        if (editionWarn) warnings.push(editionWarn);
+        if (notPackWarn) warnings.push(notPackWarn);
+
+        if (warnings.length > 0) {
+          setWarning(warnings.join(' '));
         } else {
           setWarning(null);
         }
@@ -323,6 +335,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const startConversion = async () => {
     if (!file) return;
     setIsProcessing(true);
+    setProgress(null);
     setError(null);
     const startTime = Date.now();
 
@@ -358,7 +371,26 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         enableSoundConversion,
         enableAudioReencode
       };
-      const result = await convertPackWithWorker(file, options);
+      const result = await convertPackWithWorker(file, options, (processed, total) => {
+        setProgress({ processed, total });
+      });
+
+      // Zero-converted guard: if no files were converted, prevent producing an empty pack
+      if (result.report.convertedCount === 0) {
+        setError(t.errorZeroConverted);
+        saveContext(result.report.details
+          .filter((d) => d.status !== 'converted')
+          .map((d) => `[${d.status}] ${d.filename}: ${d.reason ?? ''}`)
+          .join('\n'));
+        trackEvent('conversion_failed', {
+          direction,
+          error_category: 'ZERO_CONVERTED',
+          opt_audio_reencode: enableAudioReencode,
+          size_tier: getSizeTier(file.size),
+        });
+        return;
+      }
+
       setReport(result.report);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       const url = URL.createObjectURL(result.blob);
@@ -422,6 +454,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
     setZipInstance(null);
     setIconUrl(null);
     setReport(null);
+    setProgress(null);
     setDownloadUrl(null);
     setError(null);
     setWarning(null);
@@ -502,6 +535,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             error={error}
             warning={warning}
             isProcessing={isProcessing}
+            progress={progress}
             onFileSelect={handleFile}
             onConvert={startConversion}
             onReset={reset}
@@ -525,6 +559,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           href={`${reportHref(initialLang)}?from=conversion`}
+          data-astro-prefetch="tap"
           className="report-entry"
           id="report-entry"
           onClick={() => {

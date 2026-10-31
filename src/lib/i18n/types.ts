@@ -56,8 +56,10 @@ export interface Translation {
 	errorNoFile: string;
 	errorInvalidFile: string;
 	errorConversion: string;
+	errorZeroConverted: string;
 	warnPossibleBedrock: string;
 	warnPossibleJava: string;
+	warnNotMinecraftPack: string;
 
 	footer: string;
 	terms: string;
