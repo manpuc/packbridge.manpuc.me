@@ -1,26 +1,42 @@
-PackBridge License
+MIT License (with Brand Protection)
 
-Copyright (c) 2024 manpuc (https://www.manpuc.me)
+Copyright (c) 2026 manpuc (https://www.manpuc.me)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, provided that the following conditions are met:
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. Attribution:
-   Any use of the source code, logic, or scripts must include clear and visible 
-   attribution to the original creator, manpuc (https://www.manpuc.me).
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-2. Non-Replication Policy:
-   Creating an identical or near-identical replica of this application's design, 
-   brand, or entire codebase for redistribution or commercial use is strictly prohibited. 
-   Significant modifications and original value-add are required for any derived works.
+---
 
-3. Disclaimer (Self-Responsibility):
-   The software is provided "as is", without warranty of any kind. 
-   Use of this software, its source code, or any derivative works is strictly 
-   at your own risk. manpuc shall not be held liable for any damages, 
-   data loss, or issues arising from the use of this code. 
-   By using this software, you agree to take full responsibility for any 
-   outcomes or consequences.
+Attribution Requirement:
+If you use, copy, modify, or integrate the source code, conversion logic, or core scripts of this 
+Software into another project or service (whether in whole or significant part), you MUST include 
+clear and visible attribution to the original author, manpuc, and link back to this project:
+- Author: manpuc (https://www.manpuc.me)
+- Project: PackBridge (e.g., "Powered by PackBridge / Original logic by manpuc")
+
+---
+
+Brand & Trademark Restrictions:
+The names "PackBridge", "manpuc", associated logos, and the unique visual design 
+(look and feel) of the service are trademarks and intellectual property of manpuc. 
+This license does NOT grant permission to:
+1. Use the brand names, logos, or domain identity for any public or commercial service.
+2. Host a publicly accessible clone or identical mirror of the website/service 
+   using the original design without explicit permission.
+
+---
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

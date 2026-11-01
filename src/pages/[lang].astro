@@ -14,15 +14,15 @@ export function getStaticPaths() {
 	}));
 }
 
-const { lang } = Astro.params;
-const t = getTranslation(lang as Language);
+const lang = Astro.params.lang as Language;
+const t = getTranslation(lang);
 ---
 
 <Layout
 	title={t.title}
 	description={t.metaDescription}
 	keywords={t.keywords}
-	lang={lang as Language}
+	lang={lang}
 >
 	<div class="top-controls">
 		<LangToggle client:load />
@@ -36,14 +36,12 @@ const t = getTranslation(lang as Language);
 			<p class="description">{t.description}</p>
 		</header>
 
-		<Converter client:load t={t} lang={lang as Language} />
+		<Converter client:load t={t} lang={lang} />
 
-				<IntroAccordion client:load t={t} />
+		<IntroAccordion client:load t={t} />
 
-		<PopularConversions lang={lang as Language} />
+		<PopularConversions lang={lang} />
 
-		<Footer t={t} lang={lang as string} />
+		<Footer t={t} lang={lang} />
 	</main>
 </Layout>
-
-

@@ -67,7 +67,7 @@ const softwareAppStructuredData = {
 	operatingSystem: "Windows, macOS, Linux, Android, iOS",
 	description: description,
 	url: siteUrl,
-	screenshot: `${siteUrl}/og-image-ja.png`,
+	screenshot: `${siteUrl}/og-image-${lang}.png`,
 	offers: {
 		"@type": "Offer",
 		price: "0",
@@ -79,7 +79,7 @@ const softwareAppStructuredData = {
 		"Resource Pack & Texture Pack Conversion",
 		"Local Processing",
 		"Fast Conversion",
-		"No File Size Limit",
+		"Up to 2 GB Packs",
 	],
 };
 
@@ -140,7 +140,9 @@ const faqStructuredData = {
 					text: f.answer,
 				},
 			}))
-		: defaultFaqEntities,
+		: lang === "ja" || lang === "en"
+			? defaultFaqEntities
+			: [], // default FAQ only has ja/en text; other languages would get the wrong language
 };
 
 const baseBreadcrumbItems = [
@@ -293,10 +295,7 @@ const webSiteStructuredData = {
 	</head>
 	<body>
 		<slot />
-	</body>
-</html>
-
-<script is:inline>
+<script is:inline define:vars={{ supportedLangs: SUPPORTED_LANGUAGES }}>
 	// Theme handling
 	const getTheme = () => {
 		if (
@@ -313,8 +312,10 @@ const webSiteStructuredData = {
 
 	// Initial Redirect handling (Root only)
 	if (location.pathname === "/") {
-		const supportedLangs = ["ja", "en", "ko", "zh", "tl", "es", "fr", "de"];
-		const savedLang = localStorage.getItem("lang");
+		let savedLang = null;
+		try {
+			savedLang = localStorage.getItem("lang");
+		} catch {}
 		if (savedLang && savedLang !== "ja" && supportedLangs.includes(savedLang)) {
 			location.href = "/" + savedLang;
 		}
@@ -338,3 +339,6 @@ const webSiteStructuredData = {
 		}
 	});
 </script>
+
+	</body>
+</html>

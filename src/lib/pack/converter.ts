@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { ConversionDirection, PackReport, ConversionResult, ConversionOptions } from './types';
+import type { PackReport, ConversionOptions } from './types';
 import { getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import { javaToBedrockLang, bedrockToJavaLang } from './processors/lang';
@@ -33,40 +33,6 @@ function getZipFileOptions(path: string): JSZip.JSZipFileOptions {
     }
   }
   return { compression: 'DEFLATE', compressionOptions: { level: 1 } };
-}
-
-export async function convertPackWithWorker(
-  file: File,
-  options: ConversionOptions,
-  onProgress?: (processed: number, total: number) => void
-): Promise<{ blob: Blob; report: PackReport }> {
-  return new Promise((resolve, reject) => {
-    try {
-      const worker = new Worker(new URL('./converter.worker.ts', import.meta.url), { type: 'module' });
-      file.arrayBuffer().then(fileBuffer => {
-        worker.onmessage = (e) => {
-          const data = e.data;
-          if (data.type === 'progress') {
-            if (onProgress) onProgress(data.processedCount, data.totalFiles);
-          } else if (data.type === 'complete') {
-            const blob = new Blob([data.buffer], { type: 'application/zip' });
-            worker.terminate();
-            resolve({ blob, report: data.report });
-          } else if (data.type === 'error') {
-            worker.terminate();
-            reject(new Error(data.error));
-          }
-        };
-        worker.onerror = (err) => {
-          worker.terminate();
-          reject(err);
-        };
-        worker.postMessage({ fileBuffer, fileName: file.name, options }, [fileBuffer]);
-      }).catch(reject);
-    } catch (err) {
-      convertPack(file, options, file.name).then(resolve).catch(reject);
-    }
-  });
 }
 
 export async function convertPack(

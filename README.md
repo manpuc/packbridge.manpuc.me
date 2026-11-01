@@ -97,9 +97,11 @@ Vercel や Cloudflare Pages にデプロイする際、`pnpm run update-mappings
 
 ## ライセンスと著作権
 
-このプロジェクトのソースコードおよびデザインの著作権は **manpuc** に帰属します。
+このプロジェクトは **MIT License (with Brand Protection)** のもとで公開されています。
 
-- ソースコードの利用時は [manpuc.me](https://www.manpuc.me) への帰属を明記してください。
-- デザインの完全な複製、および微細な変更のみを加えた状態での再配布は禁止されています。
+- **コード・ロジックの利用**: ソースコードや変換ロジックを他のプロジェクトやサービスで利用・派生させる場合は、原作者（[manpuc.me](https://www.manpuc.me)）および PackBridge への明確な帰属（クレジット表記・リンク）が**必須**です。
+- **ブランド・デザインの保護**: 「PackBridge」の名称・ロゴ、および独自デザイン（UI/見た目）をそのまま複製したクローンサイトの公開や商用利用は禁止されています。
+
+詳細は [LICENSE](./LICENSE) ファイルをご確認ください。
 
 Developed by [manpuc](https://www.manpuc.me)
