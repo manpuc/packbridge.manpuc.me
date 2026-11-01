@@ -19,7 +19,7 @@ export const JAVA_VERSIONS: JavaVersion[] = [
   { id: '1.21.7', name: '1.21.7 - 1.21.8', packFormat: 64 },
   { id: '1.21.6', name: '1.21.6', packFormat: 63 },
   { id: '1.21.5', name: '1.21.5', packFormat: 55 },
-  { id: '1.21.4', name: '1.21.4', packFormat: 48 },
+  { id: '1.21.4', name: '1.21.4', packFormat: 46 },
   { id: '1.21.2', name: '1.21.2 - 1.21.3', packFormat: 42 },
   { id: '1.21.0', name: '1.21.0 - 1.21.1', packFormat: 34 },
   { id: '1.20.5', name: '1.20.5 - 1.20.6', packFormat: 32 },

@@ -6,6 +6,7 @@ import ReportForm from "@/components/ReportForm";
 import Footer from "@/components/Footer.astro";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 import { getReportStrings } from "@/lib/i18n/report";
+import { getConvertHubCopy } from "@/lib/seo/version-pages-i18n";
 
 export function getStaticPaths() {
 	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
@@ -16,44 +17,40 @@ export function getStaticPaths() {
 const lang = Astro.params.lang as Language;
 const t = getTranslation(lang);
 const s = getReportStrings(lang);
+const hubCopy = getConvertHubCopy(lang);
 ---
 
-<Layout title={`${s.pageTitle} - PackBridge`} description={s.pageDescription} keywords={t.keywords} lang={lang}>
+<Layout
+	title={`${s.pageTitle} - PackBridge`}
+	description={s.pageDescription}
+	keywords={t.keywords}
+	lang={lang}
+	breadcrumbs={[{ name: s.pageTitle, path: `/${lang}/report` }]}
+>
 	<div class="top-controls">
 		<LangToggle client:load />
 		<ThemeToggle client:load />
 	</div>
+
 	<main class="container">
-		<div class="page-nav">
-			<a href={`/${lang}`} class="back-home-pill">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2.2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-				>
-					<path d="m15 18-6-6 6-6" />
-				</svg>
-				<span>{t.backToHome}</span>
-			</a>
-		</div>
-		<header>
-			<a href={`/${lang}`} class="brand-name" style="text-decoration:none;display:inline-block">{t.heading}</a>
+		<nav class="breadcrumb-nav animate-fade-up" aria-label="Breadcrumb">
+			<a href={`/${lang}`} data-astro-prefetch="tap">{hubCopy.breadcrumbHome}</a>
+			<span class="sep">/</span>
+			<span aria-current="page">{s.pageTitle}</span>
+		</nav>
+
+		<header class="animate-fade-up stagger-1">
+			<div class="brand-name">{t.heading}</div>
 			<h1>{s.pageTitle}</h1>
 			<p class="description">{s.pageDescription}</p>
 		</header>
-		<ReportForm client:load lang={lang} backToHome={t.backToHome} />
-		<div class="report-bottom-nav">
-			<a href={`/${lang}`} class="footer-link back-home-footer-link">
-				← {t.backToHome}
-			</a>
+
+		<div class="animate-fade-up stagger-2">
+			<ReportForm client:load lang={lang} backToHome={t.backToHome} />
 		</div>
-		<Footer t={t} lang={lang} />
+
+		<div class="animate-fade-up stagger-4">
+			<Footer t={t} lang={lang} />
+		</div>
 	</main>
 </Layout>

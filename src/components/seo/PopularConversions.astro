@@ -1,0 +1,195 @@
+---
+import type { Language } from "@/lib/i18n/config";
+import {
+	getAllVersionPages,
+	getConvertHubHref,
+	getVersionPageHref,
+} from "@/lib/seo/version-pages";
+import { getConvertHubCopy } from "@/lib/seo/version-pages-i18n";
+
+interface Props {
+	lang: Language;
+}
+
+const { lang } = Astro.props;
+const hubCopy = getConvertHubCopy(lang);
+const allPages = getAllVersionPages();
+const j2bPages = allPages.filter((p) => p.direction === "java-to-bedrock");
+const b2jPages = allPages.filter((p) => p.direction === "bedrock-to-java");
+const hubHref = getConvertHubHref(lang);
+---
+
+<section class="popular-conversions" aria-labelledby="popular-conversions-heading">
+	<div class="popular-header">
+		<h2 id="popular-conversions-heading" class="popular-title">
+			{hubCopy.popularSectionTitle}
+		</h2>
+		<p class="popular-desc">{hubCopy.popularSectionDesc}</p>
+	</div>
+
+	<div class="popular-groups">
+		<div class="popular-group">
+			<div class="group-label">Java → Bedrock</div>
+			<div class="pill-grid">
+				{
+					j2bPages.map((spec) => (
+						<a
+							href={getVersionPageHref(lang, spec)}
+							class="version-pill"
+							data-astro-prefetch="tap"
+						>
+							<span class="pill-main">
+								Java {spec.slugFrom} → Bedrock {spec.slugTo}
+							</span>
+							<span class="pill-meta">format {spec.javaPackFormat}</span>
+						</a>
+					))
+				}
+			</div>
+		</div>
+
+		<div class="popular-group">
+			<div class="group-label">Bedrock → Java</div>
+			<div class="pill-grid">
+				{
+					b2jPages.map((spec) => (
+						<a
+							href={getVersionPageHref(lang, spec)}
+							class="version-pill"
+							data-astro-prefetch="tap"
+						>
+							<span class="pill-main">
+								Bedrock {spec.slugFrom} → Java {spec.slugTo}
+							</span>
+							<span class="pill-meta">format {spec.javaPackFormat}</span>
+						</a>
+					))
+				}
+			</div>
+		</div>
+	</div>
+
+	<div class="popular-footer">
+		<a href={hubHref} class="hub-link" data-astro-prefetch="tap">
+			{hubCopy.popularViewAll}
+		</a>
+	</div>
+</section>
+
+<style>
+	.popular-conversions {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 4px 14px;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+	}
+
+	.popular-header {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.popular-title {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--color-text);
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		opacity: 0.7;
+		margin: 0;
+	}
+
+	.popular-desc {
+		font-size: 13.5px;
+		color: var(--color-text-muted);
+		line-height: 1.6;
+		font-weight: 500;
+	}
+
+	.popular-groups {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	@media (min-width: 600px) {
+		.popular-groups {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 20px;
+		}
+	}
+
+	.popular-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.group-label {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		padding: 0 8px;
+	}
+
+	.pill-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.version-pill {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 8px 10px;
+		border-radius: var(--radius-sm);
+		border: none;
+		background: transparent;
+		color: var(--color-text-muted);
+		text-decoration: none;
+		font-size: 13.5px;
+		font-weight: 500;
+		transition: background-color 0.15s ease, color 0.15s ease;
+	}
+
+	.version-pill:hover {
+		background-color: var(--color-surface);
+		color: var(--color-text);
+	}
+
+	.pill-meta {
+		font-size: 11.5px;
+		font-weight: 500;
+		color: var(--color-text-muted);
+		opacity: 0.75;
+		white-space: nowrap;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	}
+
+	.popular-footer {
+		padding-top: 2px;
+	}
+
+	.hub-link {
+		display: inline-block;
+		padding: 6px 8px;
+		margin-left: -8px;
+		border-radius: var(--radius-sm);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		text-decoration: none;
+		transition: color 0.15s ease, background-color 0.15s ease;
+	}
+
+	.hub-link:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface);
+	}
+</style>

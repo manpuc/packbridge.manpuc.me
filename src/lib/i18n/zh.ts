@@ -65,7 +65,7 @@ const zh: Translation = {
 	error404Description: "抱歉，您访问的页面不存在或已被移动。",
 
 	// Terms of Use
-	termsLastUpdated: "2026年6月17日",
+	termsLastUpdated: "2026年11月1日",
 	termsSections: [
 		{
 			title: "1. 服务使用",
@@ -89,7 +89,7 @@ const zh: Translation = {
 		},
 		{
 			title: "6. 隐私政策",
-			content: "• 数据处理：通过本服务转换的所有数据均在用户的浏览器本地处理。文件内容绝不会发送到服务器或被服务器收集。\n• 网站分析：本网站使用 Cloudflare Web Analytics 和 Umami 来了解使用情况。这些工具仅收集统计数据，不会识别个人身份。\n• 本地存储：我们使用浏览器的 localStorage 来保存您的语言和主题（深色模式）首选项。",
+			content: "• 数据处理：通过本服务转换的所有数据均在用户的浏览器本地处理。文件内容绝不会发送到服务器或被服务器收集。\n• 网站分析：本网站使用 Umami 来了解使用情况。该工具仅收集统计数据，不会识别个人身份。\n• 本地存储：我们使用浏览器的 localStorage 来保存您的语言和主题（深色模式）首选项。",
 		},
 	],
 	backToHome: "回到首页",

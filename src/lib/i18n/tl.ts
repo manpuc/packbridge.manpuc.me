@@ -66,7 +66,7 @@ const tl: Translation = {
 	error404Description: "Paumanhin, ang pahinang hinahanap mo ay hindi umiiral o nailipat na.",
 
 	// Terms of Use
-	termsLastUpdated: "Hunyo 17, 2026",
+	termsLastUpdated: "Nobyembre 1, 2026",
 	termsSections: [
 		{
 			title: "1. Paggamit ng Serbisyo",
@@ -90,7 +90,7 @@ const tl: Translation = {
 		},
 		{
 			title: "6. Privacy Policy",
-			content: "• Pagproseso ng Data: Ang lahat ng data na kino-convert gamit ang serbisyong ito ay pinoproseso nang lokal sa browser ng user. Ang mga content ay hindi kailanman ipinapadala o kinokolekta ng mga server.\n• Analytics: Ang site na ito ay gumagamit ng Cloudflare Web Analytics at Umami upang maunawaan ang paggamit ng site. Ang mga ito ay nangongolekta ng statistical data at hindi tumutukoy sa mga indibidwal na user.\n• Local Storage: Ginagamit namin ang browser localStorage upang i-save ang iyong mga kagustuhan sa wika at theme (dark mode).",
+			content: "• Pagproseso ng Data: Ang lahat ng data na kino-convert gamit ang serbisyong ito ay pinoproseso nang lokal sa browser ng user. Ang mga content ay hindi kailanman ipinapadala o kinokolekta ng mga server.\n• Analytics: Ang site na ito ay gumagamit ng Umami upang maunawaan ang paggamit ng site. Ito ay nangongolekta ng statistical data at hindi tumutukoy sa mga indibidwal na user.\n• Local Storage: Ginagamit namin ang browser localStorage upang i-save ang iyong mga kagustuhan sa wika at theme (dark mode).",
 		},
 	],
 	backToHome: "Bumalik sa Home",

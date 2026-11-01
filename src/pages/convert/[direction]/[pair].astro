@@ -1,0 +1,23 @@
+---
+import VersionPageContent from "@/components/seo/VersionPageContent.astro";
+import { getAllVersionPages, type VersionPageSpec } from "@/lib/seo/version-pages";
+
+export function getStaticPaths() {
+	return getAllVersionPages().map((spec) => ({
+		params: {
+			direction: spec.direction,
+			pair: spec.pairSlug,
+		},
+		props: { spec },
+	}));
+}
+
+interface Props {
+	spec: VersionPageSpec;
+}
+
+const { spec } = Astro.props;
+---
+
+<VersionPageContent lang="ja" spec={spec} />
+

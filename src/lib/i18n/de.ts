@@ -66,7 +66,7 @@ const de: Translation = {
 	error404Description: "Entschuldigung, die gesuchte Seite existiert nicht oder wurde verschoben.",
 
 	// Terms of Use
-	termsLastUpdated: "17. Juni 2026",
+	termsLastUpdated: "1. November 2026",
 	termsSections: [
 		{
 			title: "1. Dienstnutzung",
@@ -90,7 +90,7 @@ const de: Translation = {
 		},
 		{
 			title: "6. Datenschutzrichtlinie",
-			content: "• Datenverarbeitung: Alle Daten werden lokal im Browser verarbeitet. Inhalte werden niemals an Server gesendet oder dort gespeichert.\n• Analyse: Diese Website nutzt Cloudflare Web Analytics und Umami, um Nutzungsmuster zu verstehen. Die gesammelten Daten sind statistisch und anonym.\n• Lokale Speicherung: Wir verwenden den localStorage des Browsers, um Ihre Sprach- und Designeinstellungen zu speichern.",
+			content: "• Datenverarbeitung: Alle Daten werden lokal im Browser verarbeitet. Inhalte werden niemals an Server gesendet oder dort gespeichert.\n• Analyse: Diese Website nutzt Umami, um Nutzungsmuster zu verstehen. Die gesammelten Daten sind statistisch und anonym.\n• Lokale Speicherung: Wir verwenden den localStorage des Browsers, um Ihre Sprach- und Designeinstellungen zu speichern.",
 		},
 	],
 	backToHome: "Zurück zur Startseite",

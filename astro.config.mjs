@@ -10,9 +10,12 @@ export default defineConfig({
   },
   integrations: [react(), sitemap({
     serialize(item) {
-      if (item.url.endsWith('/terms')) {
+      if (item.url.endsWith('/terms') || item.url.endsWith('/terms/')) {
         item.changefreq = 'monthly';
         item.priority = 0.5;
+      } else if (item.url.includes('/convert')) {
+        item.changefreq = 'monthly';
+        item.priority = 0.8;
       } else {
         item.changefreq = 'weekly';
         item.priority = 1.0;

@@ -1,0 +1,287 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
+import Footer from "@/components/Footer.astro";
+import { getTranslation, type Language } from "@/lib/i18n";
+import {
+	getAllVersionPages,
+	getConvertHubHref,
+	getMappingCounts,
+	getVersionPageHref,
+} from "@/lib/seo/version-pages";
+import {
+	getConvertHubCopy,
+	getVersionPageCopy,
+} from "@/lib/seo/version-pages-i18n";
+
+interface Props {
+	lang: Language;
+}
+
+const { lang } = Astro.props;
+const t = getTranslation(lang);
+const hubCopy = getConvertHubCopy(lang);
+const allPages = getAllVersionPages();
+const j2bPages = allPages.filter((p) => p.direction === "java-to-bedrock");
+const b2jPages = allPages.filter((p) => p.direction === "bedrock-to-java");
+const homeHref = lang === "ja" ? "/" : `/${lang}`;
+const hubHref = getConvertHubHref(lang);
+---
+
+<Layout
+	title={hubCopy.title}
+	description={hubCopy.metaDescription}
+	keywords={t.keywords}
+	lang={lang}
+	breadcrumbs={[{ name: hubCopy.breadcrumbConvert, path: hubHref }]}
+>
+	<div class="top-controls">
+		<LangToggle client:load />
+		<ThemeToggle client:load />
+	</div>
+
+	<main class="container">
+		<nav class="breadcrumb-nav animate-fade-up" aria-label="Breadcrumb">
+			<a href={homeHref} data-astro-prefetch="tap">{hubCopy.breadcrumbHome}</a>
+			<span class="sep">/</span>
+			<span aria-current="page">{hubCopy.breadcrumbConvert}</span>
+		</nav>
+
+		<header class="animate-fade-up stagger-1">
+			<div class="brand-name">{t.heading}</div>
+			<h1>{hubCopy.h1}</h1>
+			<p class="description">{hubCopy.lead}</p>
+		</header>
+
+		<div class="hub-body animate-fade-up stagger-2">
+			<section class="hub-section">
+				<div class="hub-section-header">
+					<h2 class="hub-section-title">{hubCopy.j2bHeading}</h2>
+					<p class="hub-section-sub">{hubCopy.j2bSub}</p>
+				</div>
+				<div class="pair-list">
+					{
+						j2bPages.map((spec) => {
+							const counts = getMappingCounts(spec);
+							const copy = getVersionPageCopy(lang, spec, counts);
+							return (
+								<a
+									href={getVersionPageHref(lang, spec)}
+									class="pair-item"
+									data-astro-prefetch="tap"
+								>
+									<div class="pair-item-top">
+										<span class="pair-badge">
+											Java {spec.slugFrom} → Bedrock {spec.slugTo}
+										</span>
+										<span class="pair-format">
+											pack_format {spec.javaPackFormat} ·{" "}
+											{counts.total.toLocaleString()} {hubCopy.assetsMappedUnit}
+										</span>
+									</div>
+									<p class="pair-note">{copy.notes[0]}</p>
+								</a>
+							);
+						})
+					}
+				</div>
+			</section>
+
+			<div class="flat-divider" role="separator"></div>
+
+			<section class="hub-section">
+				<div class="hub-section-header">
+					<h2 class="hub-section-title">{hubCopy.b2jHeading}</h2>
+					<p class="hub-section-sub">{hubCopy.b2jSub}</p>
+				</div>
+				<div class="pair-list">
+					{
+						b2jPages.map((spec) => {
+							const counts = getMappingCounts(spec);
+							const copy = getVersionPageCopy(lang, spec, counts);
+							return (
+								<a
+									href={getVersionPageHref(lang, spec)}
+									class="pair-item"
+									data-astro-prefetch="tap"
+								>
+									<div class="pair-item-top">
+										<span class="pair-badge">
+											Bedrock {spec.slugFrom} → Java {spec.slugTo}
+										</span>
+										<span class="pair-format">
+											pack_format {spec.javaPackFormat} ·{" "}
+											{counts.total.toLocaleString()} {hubCopy.assetsMappedUnit}
+										</span>
+									</div>
+									<p class="pair-note">{copy.notes[0]}</p>
+								</a>
+							);
+						})
+					}
+				</div>
+			</section>
+
+			<div class="flat-divider" role="separator"></div>
+
+			<section class="generic-cta-section">
+				<h2 class="hub-section-title">{hubCopy.backToGenericTitle}</h2>
+				<p class="hub-section-sub">{hubCopy.backToGenericDesc}</p>
+				<a href={homeHref} class="flat-inline-link" data-astro-prefetch="tap">
+					{hubCopy.backToGenericCta} →
+				</a>
+			</section>
+		</div>
+
+		<div class="animate-fade-up stagger-4">
+			<Footer t={t} lang={lang} />
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.breadcrumb-nav {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 13px;
+		color: var(--color-text-muted);
+		padding: 0 14px;
+	}
+
+	.breadcrumb-nav a {
+		color: var(--color-text-muted);
+		text-decoration: none;
+		transition: color 0.15s ease;
+	}
+
+	.breadcrumb-nav a:hover {
+		color: var(--color-text);
+	}
+
+	.breadcrumb-nav .sep {
+		opacity: 0.5;
+	}
+
+	.hub-body {
+		display: flex;
+		flex-direction: column;
+		gap: 22px;
+		padding: 4px 14px;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+	}
+
+	.flat-divider {
+		height: 1px;
+		background: var(--color-border);
+		width: 100%;
+		opacity: 0.8;
+	}
+
+	.hub-section {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.hub-section-header {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.hub-section-title {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--color-text);
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		opacity: 0.7;
+		margin: 0;
+	}
+
+	.hub-section-sub {
+		font-size: 13.5px;
+		color: var(--color-text-muted);
+		line-height: 1.6;
+		font-weight: 500;
+	}
+
+	.pair-list {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.pair-item {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 10px 12px;
+		margin: 0 -12px;
+		border-radius: var(--radius-sm);
+		border: none;
+		background: transparent;
+		color: var(--color-text);
+		text-decoration: none;
+		transition: background-color 0.15s ease;
+	}
+
+	.pair-item:hover {
+		background-color: var(--color-surface);
+	}
+
+	.pair-item-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.pair-badge {
+		font-size: 14.5px;
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.pair-format {
+		font-size: 12px;
+		color: var(--color-text-muted);
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	}
+
+	.pair-note {
+		font-size: 13px;
+		color: var(--color-text-muted);
+		line-height: 1.55;
+		font-weight: 500;
+	}
+
+	.generic-cta-section {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.flat-inline-link {
+		display: inline-block;
+		padding: 6px 10px;
+		margin-left: -10px;
+		border-radius: var(--radius-sm);
+		font-size: 13.5px;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		text-decoration: none;
+		transition: color 0.15s ease, background-color 0.15s ease;
+	}
+
+	.flat-inline-link:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface);
+	}
+</style>

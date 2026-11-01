@@ -4,6 +4,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
 import Converter from "@/components/Converter";
 import IntroAccordion from "@/components/IntroAccordion";
+import PopularConversions from "@/components/seo/PopularConversions.astro";
 import Footer from "@/components/Footer.astro";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
@@ -38,6 +39,8 @@ const t = getTranslation(lang as Language);
 		<Converter client:load t={t} lang={lang as Language} />
 
 				<IntroAccordion client:load t={t} />
+
+		<PopularConversions lang={lang as Language} />
 
 		<Footer t={t} lang={lang as string} />
 	</main>

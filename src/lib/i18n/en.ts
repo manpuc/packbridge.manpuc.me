@@ -66,7 +66,7 @@ const en: Translation = {
 	error404Description: "We're sorry, the page you're looking for doesn't exist or has been moved.",
 
 	// Terms of Use
-	termsLastUpdated: "June 17, 2026",
+	termsLastUpdated: "November 1, 2026",
 	termsSections: [
 		{
 			title: "1. Service Usage",
@@ -90,7 +90,7 @@ const en: Translation = {
 		},
 		{
 			title: "6. Privacy Policy",
-			content: "• Data Processing: All data converted via this service is processed locally within the user's browser. Content is never sent to or collected by servers.\n• Analytics: This site uses Cloudflare Web Analytics and Umami to understand usage patterns. These collect statistical data and do not identify individual users.\n• Local Storage: We use browser localStorage to save your language and theme (dark mode) preferences.",
+			content: "• Data Processing: All data converted via this service is processed locally within the user's browser. Content is never sent to or collected by servers.\n• Analytics: This site uses Umami to understand usage patterns. It collects statistical data and does not identify individual users.\n• Local Storage: We use browser localStorage to save your language and theme (dark mode) preferences.",
 		},
 	],
 	backToHome: "Back to Home",

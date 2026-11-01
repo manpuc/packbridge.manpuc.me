@@ -1,0 +1,31 @@
+---
+import VersionPageContent from "@/components/seo/VersionPageContent.astro";
+import { SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
+import { getAllVersionPages, type VersionPageSpec } from "@/lib/seo/version-pages";
+
+export function getStaticPaths() {
+	const langs = SUPPORTED_LANGUAGES.filter((l) => l !== "ja");
+	const pages = getAllVersionPages();
+
+	return langs.flatMap((lang) =>
+		pages.map((spec) => ({
+			params: {
+				lang,
+				direction: spec.direction,
+				pair: spec.pairSlug,
+			},
+			props: { spec },
+		}))
+	);
+}
+
+interface Props {
+	spec: VersionPageSpec;
+}
+
+const { lang } = Astro.params;
+const { spec } = Astro.props;
+---
+
+<VersionPageContent lang={lang as Language} spec={spec} />
+

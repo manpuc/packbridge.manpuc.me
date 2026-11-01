@@ -4,6 +4,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
 import Converter from "@/components/Converter";
 import IntroAccordion from "@/components/IntroAccordion";
+import PopularConversions from "@/components/seo/PopularConversions.astro";
 import Footer from "@/components/Footer.astro";
 import { getTranslation } from "@/lib/i18n";
 
@@ -35,6 +36,10 @@ const t = getTranslation(lang);
 
 				<div class="animate-fade-up stagger-3">
 			<IntroAccordion client:load t={t} />
+		</div>
+
+		<div class="animate-fade-up stagger-3">
+			<PopularConversions lang={lang} />
 		</div>
 
 		<div class="animate-fade-up stagger-4">

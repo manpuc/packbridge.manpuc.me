@@ -4,6 +4,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LangToggle from "@/components/LangToggle";
 import Footer from "@/components/Footer.astro";
 import { getTranslation, SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
+import { getConvertHubCopy } from "@/lib/seo/version-pages-i18n";
 
 export function getStaticPaths() {
 	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
@@ -12,14 +13,17 @@ export function getStaticPaths() {
 }
 
 const { lang } = Astro.params;
-const t = getTranslation(lang as Language);
+const typedLang = lang as Language;
+const t = getTranslation(typedLang);
+const hubCopy = getConvertHubCopy(typedLang);
 ---
 
 <Layout
 	title={`${t.terms} - PackBridge`}
 	description={t.description}
 	keywords={t.keywords}
-	lang={lang as Language}
+	lang={typedLang}
+	breadcrumbs={[{ name: t.terms, path: `/${typedLang}/terms` }]}
 >
 	<div class="top-controls">
 		<LangToggle client:load />
@@ -27,23 +31,33 @@ const t = getTranslation(lang as Language);
 	</div>
 
 	<main class="container">
-		<header>
+		<nav class="breadcrumb-nav animate-fade-up" aria-label="Breadcrumb">
+			<a href={`/${typedLang}`} data-astro-prefetch="tap">{hubCopy.breadcrumbHome}</a>
+			<span class="sep">/</span>
+			<span aria-current="page">{t.terms}</span>
+		</nav>
+
+		<header class="animate-fade-up stagger-1">
+			<div class="brand-name">{t.heading}</div>
 			<h1>{t.terms}</h1>
 			<p class="description">Last Updated: {t.termsLastUpdated}</p>
 		</header>
 
-		<div class="terms-grid">
+		<div class="terms-grid animate-fade-up stagger-2">
 			{
-				t.termsSections.map((item) => (
-					<section class="card terms-section">
-						<h2>{item.title}</h2>
-						<p>{item.content}</p>
-					</section>
+				t.termsSections.map((item, idx) => (
+					<>
+						{idx > 0 && <div class="flat-divider" role="separator" />}
+						<section class="terms-section">
+							<h2>{item.title}</h2>
+							<p>{item.content}</p>
+						</section>
+					</>
 				))
 			}
 		</div>
 
-		<div class="terms-footer">
+		<div class="terms-footer animate-fade-up stagger-3">
 			<p class="os-text">
 				{t.openSourceText}
 			</p>
@@ -56,24 +70,69 @@ const t = getTranslation(lang as Language);
 				>
 					{t.viewSourceCode}
 				</a>
-				<a href={`/${lang}`} class="footer-link">
+				<a href={`/${typedLang}`} class="footer-link" data-astro-prefetch="tap">
 					{t.backToHome}
 				</a>
 			</div>
 		</div>
 
-		<Footer t={t} lang={lang as string} />
+		<div class="animate-fade-up stagger-4">
+			<Footer t={t} lang={typedLang} />
+		</div>
 	</main>
 </Layout>
 
 <style>
+	.terms-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 22px;
+		padding: 4px 14px;
+	}
+
+	.flat-divider {
+		height: 1px;
+		background: var(--color-border);
+		width: 100%;
+		opacity: 0.8;
+	}
+
+	.terms-section {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+	}
+
+	.terms-section h2 {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--color-text);
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		opacity: 0.7;
+		margin: 0;
+	}
+
+	.terms-section p {
+		font-size: 13.5px;
+		line-height: 1.65;
+		font-weight: 500;
+		color: var(--color-text-muted);
+		white-space: pre-wrap;
+		margin: 0;
+	}
+
 	.terms-footer {
-		margin-top: 60px;
+		margin-top: 12px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 20px;
-		padding-top: 40px;
+		gap: 16px;
+		padding: 28px 14px 0;
 		border-top: 1px solid var(--color-border);
 	}
 
@@ -94,34 +153,5 @@ const t = getTranslation(lang as Language);
 	.footer-buttons .footer-link {
 		font-weight: 600;
 		color: var(--color-text);
-	}
-
-	.terms-grid {
-		display: flex;
-		flex-direction: column;
-		gap: 20px;
-	}
-
-	.terms-section h2 {
-		font-size: 18px;
-		font-weight: 700;
-		margin-bottom: 12px;
-		color: var(--color-text);
-	}
-
-	.terms-section p {
-		font-size: 15px;
-		line-height: 1.6;
-		color: var(--color-text-muted);
-		white-space: pre-wrap;
-	}
-
-	header .description {
-		margin-top: 8px;
-		font-size: 14px;
-	}
-
-	footer {
-		margin-top: 40px;
 	}
 </style>

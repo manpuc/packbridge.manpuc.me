@@ -19,7 +19,8 @@ import {
   incrementLocalConversionCount,
   getUsageTier,
   categorizeError,
-  analyzeReportSafety
+  analyzeReportSafety,
+  getExtClass
 } from '@/lib/analytics';
 import { LARGE_FILE_WARN_THRESHOLD_BYTES, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES } from '@/lib/pack/security';
 
@@ -31,19 +32,28 @@ import { ConversionReport } from './converter/ConversionReport';
 interface ConverterProps {
   t: Translation;
   lang: Language;
+  initialDirection?: ConversionDirection;
+  initialJavaVersion?: string;
+  initialBedrockVersion?: string;
 }
 
-export default function Converter({ t, lang: initialLang }: ConverterProps) {
-  const [direction, setDirection] = useState<ConversionDirection>('java-to-bedrock');
+export default function Converter({
+  t,
+  lang: initialLang,
+  initialDirection = 'java-to-bedrock',
+  initialJavaVersion = JAVA_VERSIONS[0].id,
+  initialBedrockVersion = BEDROCK_VERSIONS[0].id,
+}: ConverterProps) {
+  const [direction, setDirection] = useState<ConversionDirection>(initialDirection);
   const [file, setFile] = useState<File | null>(null);
   const [zipInstance, setZipInstance] = useState<JSZip | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [report, setReport] = useState<PackReport | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [selectedJavaVersion, setSelectedJavaVersion] = useState(JAVA_VERSIONS[0].id);
-  const [selectedBedrockVersion, setSelectedBedrockVersion] = useState(BEDROCK_VERSIONS[0].id);
-  const [sourceJavaVersion, setSourceJavaVersion] = useState(JAVA_VERSIONS[0].id);
-  const [sourceBedrockVersion, setSourceBedrockVersion] = useState(BEDROCK_VERSIONS[0].id);
+  const [selectedJavaVersion, setSelectedJavaVersion] = useState(initialJavaVersion);
+  const [selectedBedrockVersion, setSelectedBedrockVersion] = useState(initialBedrockVersion);
+  const [sourceJavaVersion, setSourceJavaVersion] = useState(initialJavaVersion);
+  const [sourceBedrockVersion, setSourceBedrockVersion] = useState(initialBedrockVersion);
   const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -56,6 +66,18 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   const [enableLanguageConversion, setEnableLanguageConversion] = useState(true);
   const [enableSoundConversion, setEnableSoundConversion] = useState(true);
   const [enableAudioReencode, setEnableAudioReencode] = useState(false);
+
+  const hasTrackedInteractRef = useRef(false);
+  const lastInputMethodRef = useRef<'drop' | 'file_picker'>('drop');
+
+  const trackUploadInteract = useCallback((action: 'picker_open' | 'drag_enter') => {
+    if (hasTrackedInteractRef.current) return;
+    hasTrackedInteractRef.current = true;
+    trackEvent('upload_interact', {
+      action,
+      ui_lang: initialLang,
+    });
+  }, [initialLang]);
 
   // Load saved beta preferences on mount
   useEffect(() => {
@@ -101,7 +123,10 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
   }, [enableGuiConversion, enableModernGuiSprites, enableTgaConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode]);
 
   const handleFile = useCallback((selectedFile: File, inputMethod: 'drop' | 'file_picker' = 'drop') => {
-    if (selectedFile.name.endsWith('.zip') || selectedFile.name.endsWith('.mcpack')) {
+    lastInputMethodRef.current = inputMethod;
+    const lowerName = selectedFile.name.toLowerCase();
+
+    if (lowerName.endsWith('.zip') || lowerName.endsWith('.mcpack')) {
       setFile(selectedFile);
       setZipInstance(null); // Reset instance, will be loaded in preview useEffect
       setReport(null);
@@ -120,24 +145,48 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       }
 
       trackEvent('file_selected', {
-        format: selectedFile.name.endsWith('.mcpack') ? 'mcpack' : 'zip',
+        format: lowerName.endsWith('.mcpack') ? 'mcpack' : 'zip',
         size_tier: getSizeTier(selectedFile.size),
         input_method: inputMethod,
       });
     } else {
       setError(t.errorInvalidFile);
       setWarning(null);
+      trackEvent('file_rejected', {
+        stage: 'extension_check',
+        reason: 'unsupported_extension',
+        ext_class: getExtClass(selectedFile.name),
+        input_method: inputMethod,
+        ...(selectedFile.size > 0 ? { size_tier: getSizeTier(selectedFile.size) } : {}),
+      });
     }
   }, [t, initialLang]);
+
+  const handleEmptyDrop = useCallback(() => {
+    setError(t.errorInvalidFile);
+    setWarning(null);
+    trackEvent('file_rejected', {
+      stage: 'extension_check',
+      reason: 'empty_drop',
+      ext_class: 'folder_or_none',
+      input_method: 'drop',
+    });
+  }, [t.errorInvalidFile]);
 
   // Window-wide drag and drop hook
   const onFileDrop = useCallback((files: FileList) => {
     const droppedFile = files[0];
-    if (droppedFile) handleFile(droppedFile, 'drop');
-  }, [handleFile]);
+    if (droppedFile) {
+      handleFile(droppedFile, 'drop');
+    } else {
+      handleEmptyDrop();
+    }
+  }, [handleFile, handleEmptyDrop]);
 
   const { isDragging } = useFileDrop({
-    onDrop: onFileDrop
+    onDrop: onFileDrop,
+    onEmptyDrop: handleEmptyDrop,
+    onDragStartFiles: () => trackUploadInteract('drag_enter'),
   });
 
   // Track abandonment on page unload if file is loaded but not converted
@@ -177,6 +226,14 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         const fileKeys = Object.keys(zip.files).filter(k => !zip.files[k].dir && !k.endsWith('/'));
         if (fileKeys.length > MAX_SAFE_FILE_COUNT) {
           setError(t.errorConversion);
+          setFile(null);
+          trackEvent('file_rejected', {
+            stage: 'safety_limit',
+            reason: 'too_many_files',
+            ext_class: getExtClass(file.name),
+            input_method: lastInputMethodRef.current,
+            size_tier: getSizeTier(file.size),
+          });
           return;
         }
 
@@ -188,6 +245,14 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             totalUncompressed += uncompressedSize;
             if (totalUncompressed > MAX_SAFE_UNCOMPRESSED_BYTES) {
               setError(t.errorConversion);
+              setFile(null);
+              trackEvent('file_rejected', {
+                stage: 'safety_limit',
+                reason: 'uncompressed_too_large',
+                ext_class: getExtClass(file.name),
+                input_method: lastInputMethodRef.current,
+                size_tier: getSizeTier(file.size),
+              });
               return;
             }
           }
@@ -210,6 +275,17 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         }
       } catch (e) {
         console.error("Failed to process file", e);
+        if (!isMounted) return;
+        setError(t.errorInvalidFile);
+        setWarning(null);
+        setFile(null);
+        trackEvent('file_rejected', {
+          stage: 'archive_parse',
+          reason: 'corrupt_or_unreadable',
+          ext_class: getExtClass(file.name),
+          input_method: lastInputMethodRef.current,
+          size_tier: getSizeTier(file.size),
+        });
       }
     };
 
@@ -218,7 +294,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
       isMounted = false;
       if (currentIconUrl) URL.revokeObjectURL(currentIconUrl);
     };
-  }, [file, t.errorConversion]);
+  }, [file, t.errorConversion, t.errorInvalidFile]);
 
   // Content Analysis & Version Detection (re-evaluates on direction change without re-unzipping)
   useEffect(() => {
@@ -235,7 +311,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
         let actualSource = direction.startsWith('java') ? 'java' : 'bedrock';
 
         if (isVersionUpdate) {
-          if (manifestEntry || file.name.endsWith('.mcpack')) {
+          if (manifestEntry || file.name.toLowerCase().endsWith('.mcpack')) {
             actualSource = 'bedrock';
             if (direction !== 'bedrock-to-bedrock') setDirection('bedrock-to-bedrock');
           } else if (packMcmetaEntry) {
@@ -255,7 +331,7 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
           : null;
 
         let editionWarn: string | null = null;
-        if (sourceEdition === 'java' && (manifestEntry || file.name.endsWith('.mcpack'))) {
+        if (sourceEdition === 'java' && (manifestEntry || file.name.toLowerCase().endsWith('.mcpack'))) {
           editionWarn = t.warnPossibleBedrock;
         } else if (sourceEdition === 'bedrock' && packMcmetaEntry) {
           editionWarn = t.warnPossibleJava;
@@ -537,6 +613,8 @@ export default function Converter({ t, lang: initialLang }: ConverterProps) {
             isProcessing={isProcessing}
             progress={progress}
             onFileSelect={handleFile}
+            onEmptyDrop={handleEmptyDrop}
+            onPickerOpen={() => trackUploadInteract('picker_open')}
             onConvert={startConversion}
             onReset={reset}
             t={t}

@@ -11,6 +11,8 @@ interface DropZoneProps {
   isProcessing: boolean;
   progress?: { processed: number; total: number } | null;
   onFileSelect: (file: File, inputMethod?: 'drop' | 'file_picker') => void;
+  onEmptyDrop?: () => void;
+  onPickerOpen?: () => void;
   onConvert: () => void;
   onReset: () => void;
   t: Translation;
@@ -26,6 +28,8 @@ export function DropZone({
   isProcessing,
   progress,
   onFileSelect,
+  onEmptyDrop,
+  onPickerOpen,
   onConvert,
   onReset,
   t
@@ -35,7 +39,11 @@ export function DropZone({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) onFileSelect(selectedFile, 'file_picker');
+    if (selectedFile) {
+      onFileSelect(selectedFile, 'file_picker');
+    }
+    // 同じファイルを連続選択した場合でも onChange が発火するようクリア
+    e.target.value = '';
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -50,9 +58,20 @@ export function DropZone({
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    (e.nativeEvent as unknown as { _pbHandled?: boolean })._pbHandled = true;
     setIsDragOver(false);
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile) onFileSelect(droppedFile, 'drop');
+    if (droppedFile) {
+      onFileSelect(droppedFile, 'drop');
+    } else {
+      const hasFilesType = Boolean(
+        e.dataTransfer?.types && Array.from(e.dataTransfer.types).some(type => type.toLowerCase() === 'files')
+      );
+      if (hasFilesType) {
+        onEmptyDrop?.();
+      }
+    }
   };
 
   const progressPercent = progress && progress.total > 0
@@ -71,11 +90,17 @@ export function DropZone({
     >
       <motion.div
         layout
+        transition={springTransition}
         className={`dropzone ${file ? 'active' : ''} ${isDragOver ? 'dragover' : ''} ${error ? 'has-error' : ''}`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => !isProcessing && fileInputRef.current?.click()}
+        onClick={() => {
+          if (!isProcessing) {
+            onPickerOpen?.();
+            fileInputRef.current?.click();
+          }
+        }}
         whileTap={isProcessing ? undefined : { scale: 0.99 }}
         style={{ cursor: isProcessing ? 'default' : 'pointer' }}
       >
@@ -87,14 +112,14 @@ export function DropZone({
           style={{ display: 'none' }}
           disabled={isProcessing}
         />
-        <motion.div layout>
+        <motion.div layout="position" transition={springTransition}>
           <AnimatePresence mode="wait">
             {isProcessing ? (
               <motion.div
                 key="processing-icon"
-                initial={{ scale: 0.8, opacity: 0 }}
+                initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
+                exit={{ scale: 0.85, opacity: 0, transition: { duration: 0.14, ease: "easeIn" } }}
                 transition={springTransition}
                 className="dropzone-icon-container"
               >
@@ -103,9 +128,9 @@ export function DropZone({
             ) : error ? (
               <motion.div
                 key="error-icon"
-                initial={{ scale: 0.7, opacity: 0, rotate: -10 }}
+                initial={{ scale: 0.75, opacity: 0, rotate: -10 }}
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                exit={{ scale: 0.8, opacity: 0 }}
+                exit={{ scale: 0.85, opacity: 0, transition: { duration: 0.14, ease: "easeIn" } }}
                 transition={{ type: "spring", stiffness: 450, damping: 20 }}
                 className="dropzone-icon-container"
                 style={{ background: 'rgba(255, 59, 48, 0.12)', color: 'var(--color-danger)' }}
@@ -115,9 +140,9 @@ export function DropZone({
             ) : iconUrl ? (
               <motion.img
                 key="pack-icon"
-                initial={{ scale: 0.7, opacity: 0, y: 10, rotate: -4 }}
+                initial={{ scale: 0.75, opacity: 0, y: 10, rotate: -4 }}
                 animate={{ scale: 1, opacity: 1, y: 0, rotate: 0 }}
-                exit={{ scale: 0.8, opacity: 0 }}
+                exit={{ scale: 0.85, opacity: 0, y: 4, transition: { duration: 0.15, ease: "easeIn" } }}
                 transition={springTransition}
                 src={iconUrl}
                 alt="Pack Icon"
@@ -133,9 +158,9 @@ export function DropZone({
             ) : file ? (
               <motion.div
                 key="file-icon"
-                initial={{ scale: 0.8, opacity: 0, y: 8 }}
+                initial={{ scale: 0.85, opacity: 0, y: 8 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.8, opacity: 0 }}
+                exit={{ scale: 0.85, opacity: 0, y: 4, transition: { duration: 0.14, ease: "easeIn" } }}
                 transition={springTransition}
                 className="dropzone-icon-container"
               >
@@ -144,10 +169,10 @@ export function DropZone({
             ) : (
               <motion.div
                 key="upload-icon"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                initial={{ scale: 0.88, opacity: 0, y: -4 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.88, opacity: 0, transition: { duration: 0.12, ease: "easeIn" } }}
+                transition={springTransition}
                 className="dropzone-icon-container"
               >
                 <Upload className="dropzone-icon" />
@@ -156,10 +181,15 @@ export function DropZone({
           </AnimatePresence>
         </motion.div>
 
-        <motion.div layout style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '100%' }}>
+        <motion.div
+          layout="position"
+          transition={springTransition}
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', alignItems: 'center' }}
+        >
           <AnimatePresence mode="wait">
             <motion.p
               key={isProcessing ? 'processing' : file ? file.name : 'empty-title'}
+              layout="position"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -179,8 +209,8 @@ export function DropZone({
             </motion.p>
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
-            <motion.p
+          <AnimatePresence initial={false}>
+            <motion.div
               key={
                 isProcessing
                   ? 'processing-sub'
@@ -190,89 +220,157 @@ export function DropZone({
                       ? `warn-${warning}`
                       : (file ? 'has-file' : 'no-file')
               }
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.15 }}
-              style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}
+              initial={{ opacity: 0, height: 0, y: 4 }}
+              animate={{
+                opacity: 1,
+                height: 'auto',
+                y: 0,
+                transition: {
+                  height: { type: 'spring', stiffness: 400, damping: 32 },
+                  opacity: { duration: 0.2, ease: 'easeOut' },
+                  y: { duration: 0.2, ease: 'easeOut' }
+                }
+              }}
+              exit={{
+                opacity: 0,
+                height: 0,
+                y: -4,
+                transition: {
+                  height: { duration: 0.18, ease: [0.25, 1, 0.5, 1] },
+                  opacity: { duration: 0.12, ease: 'easeIn' },
+                  y: { duration: 0.12, ease: 'easeIn' }
+                }
+              }}
+              style={{ overflow: 'hidden', maxWidth: '100%' }}
             >
-              {isProcessing ? (
-                progress && progress.total > 0 ? (
-                  <span>{`${progress.processed} / ${progress.total} (${progressPercent}%)`}</span>
+              <p
+                style={{
+                  color: 'var(--color-text-muted)',
+                  fontSize: '14px',
+                  lineHeight: 1.5,
+                  padding: '2px 8px'
+                }}
+              >
+                {isProcessing ? (
+                  progress && progress.total > 0 ? (
+                    <span>{`${progress.processed} / ${progress.total} (${progressPercent}%)`}</span>
+                  ) : (
+                    <span>{t.dropzoneProcessing}</span>
+                  )
+                ) : error ? (
+                  <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</span>
+                ) : warning ? (
+                  <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{warning}</span>
                 ) : (
-                  <span>{t.dropzoneProcessing}</span>
-                )
-              ) : error ? (
-                <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</span>
-              ) : warning ? (
-                <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{warning}</span>
-              ) : (
-                file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : t.dropzoneSubtitle
-              )}
-            </motion.p>
+                  file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : t.dropzoneSubtitle
+                )}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            {isProcessing ? (
+              <motion.div
+                key="processing-bar-wrapper"
+                initial={{ opacity: 0, height: 0, scale: 0.96 }}
+                animate={{
+                  opacity: 1,
+                  height: 'auto',
+                  scale: 1,
+                  transition: {
+                    height: { type: 'spring', stiffness: 400, damping: 32 },
+                    opacity: { duration: 0.18, ease: 'easeOut' },
+                    scale: { duration: 0.18, ease: 'easeOut' }
+                  }
+                }}
+                exit={{
+                  opacity: 0,
+                  height: 0,
+                  scale: 0.96,
+                  transition: {
+                    height: { duration: 0.2, ease: [0.25, 1, 0.5, 1] },
+                    opacity: { duration: 0.14, ease: 'easeIn' },
+                    scale: { duration: 0.14, ease: 'easeIn' }
+                  }
+                }}
+                style={{ overflow: 'hidden', width: '100%' }}
+              >
+                <div style={{ paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
+                  <div className="dropzone-progress-bar">
+                    {progressPercent !== null ? (
+                      <motion.div
+                        className="dropzone-progress-indicator"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPercent}%` }}
+                        transition={{ ease: "easeOut", duration: 0.15 }}
+                      />
+                    ) : (
+                      <div className="dropzone-progress-indeterminate" />
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ) : file ? (
+              <motion.div
+                key="action-buttons"
+                initial={{ opacity: 0, height: 0, y: 6, scale: 0.96 }}
+                animate={{
+                  opacity: 1,
+                  height: 'auto',
+                  y: 0,
+                  scale: 1,
+                  transition: {
+                    height: { type: 'spring', stiffness: 400, damping: 32 },
+                    opacity: { duration: 0.2, ease: 'easeOut' },
+                    y: { type: 'spring', stiffness: 400, damping: 30 },
+                    scale: { type: 'spring', stiffness: 400, damping: 30 }
+                  }
+                }}
+                exit={{
+                  opacity: 0,
+                  height: 0,
+                  y: -4,
+                  scale: 0.95,
+                  transition: {
+                    height: { duration: 0.22, ease: [0.25, 1, 0.5, 1] },
+                    opacity: { duration: 0.15, ease: 'easeIn' },
+                    y: { duration: 0.18, ease: 'easeOut' },
+                    scale: { duration: 0.18, ease: 'easeOut' }
+                  }
+                }}
+                style={{ overflow: 'hidden', width: '100%' }}
+              >
+                <div style={{ display: 'flex', gap: '10px', paddingTop: '16px', paddingBottom: '4px', justifyContent: 'center' }}>
+                  <motion.button
+                    whileHover={{
+                      backgroundColor: 'var(--color-danger)',
+                      color: 'white',
+                      scale: 1.05,
+                      transition: { duration: 0.1 }
+                    }}
+                    transition={{ duration: 0.15 }}
+                    whileTap={{ scale: 0.94 }}
+                    className="secondary"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); onReset(); }}
+                    style={{ padding: '12px', minWidth: '46px', width: '46px', justifyContent: 'center' }}
+                    aria-label="Reset selection"
+                  >
+                    <X size={20} />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={springTransition}
+                    className="primary"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); onConvert(); }}
+                  >
+                    {t.btnConvert}
+                  </motion.button>
+                </div>
+              </motion.div>
+            ) : null}
           </AnimatePresence>
         </motion.div>
-
-        <AnimatePresence>
-          {isProcessing ? (
-            <motion.div
-              key="processing-bar-wrapper"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.15 }}
-              style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}
-            >
-              <div className="dropzone-progress-bar">
-                {progressPercent !== null ? (
-                  <motion.div
-                    className="dropzone-progress-indicator"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ ease: "easeOut", duration: 0.15 }}
-                  />
-                ) : (
-                  <div className="dropzone-progress-indeterminate" />
-                )}
-              </div>
-            </motion.div>
-          ) : file ? (
-            <motion.div
-              key="action-buttons"
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95, y: 4 }}
-              transition={{ duration: 0.15 }}
-              style={{ display: 'flex', gap: '10px', marginTop: '14px', justifyContent: 'center' }}
-            >
-              <motion.button
-                whileHover={{
-                  backgroundColor: 'var(--color-danger)',
-                  color: 'white',
-                  scale: 1.05,
-                  transition: { duration: 0.1 }
-                }}
-                transition={{ duration: 0.15 }}
-                whileTap={{ scale: 0.94 }}
-                className="secondary"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); onReset(); }}
-                style={{ padding: '12px', minWidth: '46px', width: '46px', justifyContent: 'center' }}
-                aria-label="Reset selection"
-              >
-                <X size={20} />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                transition={springTransition}
-                className="primary"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); onConvert(); }}
-              >
-                {t.btnConvert}
-              </motion.button>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
       </motion.div>
     </motion.div>
   );

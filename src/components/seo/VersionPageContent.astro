@@ -1,0 +1,478 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
+import Converter from "@/components/Converter";
+import Footer from "@/components/Footer.astro";
+import { getTranslation, type Language } from "@/lib/i18n";
+import {
+	getConvertHubHref,
+	getMappingCounts,
+	getRelatedVersionPages,
+	getVersionPageHref,
+	type VersionPageSpec,
+} from "@/lib/seo/version-pages";
+import { getVersionPageCopy } from "@/lib/seo/version-pages-i18n";
+
+interface Props {
+	lang: Language;
+	spec: VersionPageSpec;
+}
+
+const { lang, spec } = Astro.props;
+const t = getTranslation(lang);
+const counts = getMappingCounts(spec);
+const copy = getVersionPageCopy(lang, spec, counts);
+const { reversePair, sameDirectionPairs } = getRelatedVersionPages(spec);
+
+const homeHref = lang === "ja" ? "/" : `/${lang}`;
+const hubHref = getConvertHubHref(lang);
+const currentHref = getVersionPageHref(lang, spec);
+const isJ2B = spec.direction === "java-to-bedrock";
+const mevFormatted = `[${spec.bedrockMinEngineVersion.join(", ")}]`;
+---
+
+<Layout
+	title={copy.title}
+	description={copy.metaDescription}
+	keywords={copy.keywords}
+	lang={lang}
+	faqItems={copy.faqs}
+	breadcrumbs={[
+		{ name: copy.breadcrumbConvert, path: hubHref },
+		{ name: copy.breadcrumbCurrent, path: currentHref },
+	]}
+>
+	<div class="top-controls">
+		<LangToggle client:load />
+		<ThemeToggle client:load />
+	</div>
+
+	<main class="container">
+		<nav class="breadcrumb-nav animate-fade-up" aria-label="Breadcrumb">
+			<a href={homeHref} data-astro-prefetch="tap">{copy.breadcrumbHome}</a>
+			<span class="sep">/</span>
+			<a href={hubHref} data-astro-prefetch="tap">{copy.breadcrumbConvert}</a>
+			<span class="sep">/</span>
+			<span aria-current="page">{copy.breadcrumbCurrent}</span>
+		</nav>
+
+		<header class="animate-fade-up stagger-1">
+			<div class="brand-name">{t.heading}</div>
+			<h1>{copy.h1}</h1>
+			<p class="description">{copy.lead}</p>
+		</header>
+
+		<div class="animate-fade-up stagger-2">
+			<Converter
+				client:load
+				t={t}
+				lang={lang}
+				initialDirection={spec.direction}
+				initialJavaVersion={spec.javaVersionId}
+				initialBedrockVersion={spec.bedrockVersionId}
+			/>
+		</div>
+
+		<div class="flat-details animate-fade-up stagger-3">
+			<!-- 1 & 2. Pair-specific Technical Specs & Mapping Counts -->
+			<section class="flat-section" aria-labelledby="specs-heading">
+				<h2 id="specs-heading" class="flat-section-title">{copy.specsHeading}</h2>
+
+				<div class="specs-grid">
+					<div class="spec-item">
+						<span class="spec-label">{copy.sourceLabel}</span>
+						<span class="spec-value">
+							{isJ2B ? `Java ${spec.javaDisplayVersion}` : `Bedrock ${spec.bedrockDisplayVersion}`}
+						</span>
+						<span class="spec-sub">
+							{isJ2B
+								? `${copy.packFormatLabel}: ${spec.javaPackFormat}`
+								: `${copy.minEngineLabel}: ${mevFormatted}`}
+						</span>
+					</div>
+
+					<div class="spec-item">
+						<span class="spec-label">{copy.targetLabel}</span>
+						<span class="spec-value">
+							{isJ2B ? `Bedrock ${spec.bedrockDisplayVersion}` : `Java ${spec.javaDisplayVersion}`}
+						</span>
+						<span class="spec-sub">
+							{isJ2B
+								? `${copy.minEngineLabel}: ${mevFormatted}`
+								: `${copy.packFormatLabel}: ${spec.javaPackFormat}`}
+						</span>
+					</div>
+				</div>
+
+				<div class="mapping-block">
+					<div class="mapping-header">
+						<h3 class="flat-subtitle">{copy.mappingHeading}</h3>
+						<p class="flat-subdesc">{copy.mappingSubtitle}</p>
+					</div>
+					<div class="mapping-stats">
+						<div class="stat-item">
+							<span class="stat-num">{counts.textures.toLocaleString()}</span>
+							<span class="stat-label">{copy.texturesLabel}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-num">{counts.sounds.toLocaleString()}</span>
+							<span class="stat-label">{copy.soundsLabel}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-num">{counts.lang.toLocaleString()}</span>
+							<span class="stat-label">{copy.langKeysLabel}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-num">{counts.total.toLocaleString()}</span>
+							<span class="stat-label">{copy.totalAssetsLabel}</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="flat-divider" role="separator"></div>
+
+			<!-- 3. Version-specific Notes -->
+			<section class="flat-section" aria-labelledby="notes-heading">
+				<h2 id="notes-heading" class="flat-section-title">{copy.notesHeading}</h2>
+				<div class="notes-grid">
+					{copy.notes.map((note) => <p class="note-item">{note}</p>)}
+				</div>
+			</section>
+
+			<div class="flat-divider" role="separator"></div>
+
+			<!-- 4. Pair-specific FAQ -->
+			<section class="flat-section" aria-labelledby="faq-heading">
+				<h2 id="faq-heading" class="flat-section-title">{copy.faqHeading}</h2>
+				<div class="faq-list">
+					{
+						copy.faqs.map((faq) => (
+							<div class="faq-item">
+								<h3 class="faq-q">{faq.question}</h3>
+								<p class="faq-a">{faq.answer}</p>
+							</div>
+						))
+					}
+				</div>
+			</section>
+
+			<div class="flat-divider" role="separator"></div>
+
+			<!-- 5. Internal Links to Related Pairs -->
+			<nav class="flat-section" aria-labelledby="related-heading">
+				<h2 id="related-heading" class="flat-section-title">{copy.relatedHeading}</h2>
+
+				{
+					reversePair && (
+						<a
+							href={getVersionPageHref(lang, reversePair)}
+							class="flat-link-row reverse-row"
+							data-astro-prefetch="tap"
+						>
+							<span>⇄ {copy.reverseLinkLabel}</span>
+							<span class="arrow">→</span>
+						</a>
+					)
+				}
+
+				<div class="other-versions-block">
+					<h3 class="flat-subtitle">{copy.otherVersionsHeading}</h3>
+					<div class="related-grid">
+						{
+							sameDirectionPairs.map((other) => (
+								<a
+									href={getVersionPageHref(lang, other)}
+									class="flat-link-row"
+									data-astro-prefetch="tap"
+								>
+									<span>
+										{other.direction === "java-to-bedrock"
+											? `Java ${other.slugFrom} → Bedrock ${other.slugTo}`
+											: `Bedrock ${other.slugFrom} → Java ${other.slugTo}`}
+									</span>
+									<span class="pill-tag">format {other.javaPackFormat}</span>
+								</a>
+							))
+						}
+					</div>
+				</div>
+
+				<div class="hub-footer-link">
+					<a href={hubHref} class="flat-inline-link" data-astro-prefetch="tap">
+						{copy.allVersionsHubLink} →
+					</a>
+				</div>
+			</nav>
+		</div>
+
+		<div class="animate-fade-up stagger-4">
+			<Footer t={t} lang={lang} />
+		</div>
+	</main>
+</Layout>
+
+<style>
+	.breadcrumb-nav {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px;
+		font-size: 13px;
+		color: var(--color-text-muted);
+		padding: 0 14px;
+	}
+
+	.breadcrumb-nav a {
+		color: var(--color-text-muted);
+		text-decoration: none;
+		transition: color 0.15s ease;
+	}
+
+	.breadcrumb-nav a:hover {
+		color: var(--color-text);
+	}
+
+	.breadcrumb-nav .sep {
+		opacity: 0.5;
+	}
+
+	.flat-details {
+		display: flex;
+		flex-direction: column;
+		gap: 22px;
+		padding: 8px 14px 4px;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+	}
+
+	.flat-divider {
+		height: 1px;
+		background: var(--color-border);
+		width: 100%;
+		opacity: 0.8;
+	}
+
+	.flat-section {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+	}
+
+	.flat-section-title {
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--color-text);
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		opacity: 0.7;
+		margin: 0;
+	}
+
+	.flat-subtitle {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-text);
+		opacity: 0.85;
+		margin: 0;
+	}
+
+	.flat-subdesc {
+		font-size: 12.5px;
+		color: var(--color-text-muted);
+		margin-top: 2px;
+	}
+
+	.specs-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 14px 20px;
+	}
+
+	.spec-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 0;
+		background: transparent;
+		border: none;
+	}
+
+	.spec-label {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--color-text-muted);
+	}
+
+	.spec-value {
+		font-size: 16px;
+		font-weight: 700;
+		color: var(--color-text);
+	}
+
+	.spec-sub {
+		font-size: 12px;
+		color: var(--color-text-muted);
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	}
+
+	.mapping-block {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-top: 4px;
+	}
+
+	.mapping-stats {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 12px 20px;
+	}
+
+	@media (min-width: 540px) {
+		.mapping-stats {
+			grid-template-columns: repeat(4, 1fr);
+		}
+	}
+
+	.stat-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 0;
+		background: transparent;
+		border: none;
+	}
+
+	.stat-num {
+		font-size: 16px;
+		font-weight: 700;
+		color: var(--color-text);
+	}
+
+	.stat-label {
+		font-size: 12px;
+		color: var(--color-text-muted);
+		font-weight: 500;
+	}
+
+	.notes-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.note-item {
+		font-size: 13.5px;
+		color: var(--color-text-muted);
+		line-height: 1.6;
+		font-weight: 500;
+		margin: 0;
+	}
+
+	.faq-list {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.faq-item {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 0;
+		background: transparent;
+		border: none;
+	}
+
+	.faq-q {
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.faq-a {
+		font-size: 13.5px;
+		color: var(--color-text-muted);
+		line-height: 1.6;
+		font-weight: 500;
+	}
+
+	.other-versions-block {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.related-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2px;
+	}
+
+	@media (min-width: 540px) {
+		.related-grid {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 4px 12px;
+		}
+	}
+
+	.flat-link-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 8px 10px;
+		margin: 0 -10px;
+		border-radius: var(--radius-sm);
+		border: none;
+		background: transparent;
+		color: var(--color-text-muted);
+		text-decoration: none;
+		font-size: 13.5px;
+		font-weight: 500;
+		transition: background-color 0.15s ease, color 0.15s ease;
+	}
+
+	.flat-link-row:hover {
+		background-color: var(--color-surface);
+		color: var(--color-text);
+	}
+
+	.reverse-row {
+		color: var(--color-text);
+		font-weight: 600;
+	}
+
+	.pill-tag {
+		font-size: 11.5px;
+		color: var(--color-text-muted);
+		opacity: 0.75;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	}
+
+	.hub-footer-link {
+		padding-top: 2px;
+	}
+
+	.flat-inline-link {
+		display: inline-block;
+		padding: 6px 10px;
+		margin-left: -10px;
+		border-radius: var(--radius-sm);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		text-decoration: none;
+		transition: color 0.15s ease, background-color 0.15s ease;
+	}
+
+	.flat-inline-link:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface);
+	}
+</style>

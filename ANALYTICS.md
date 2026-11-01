@@ -115,14 +115,39 @@ Triggered when the user clicks a bug reporting link.
 
 ---
 
+### Event 8: `upload_interact`
+Triggered once per page view on the first user action indicating intent to upload a pack (opening the file picker or dragging files over the window).
+
+| Property | Type / Enum | Definition & AI Interpretation |
+| :--- | :--- | :--- |
+| `action` | `"picker_open"` \| `"drag_enter"` | `"picker_open"` = clicked dropzone to open file dialog; `"drag_enter"` = started dragging files over the browser window. |
+| `ui_lang` | String (e.g., `"ja"`, `"en"`) | Active UI language at interaction time. |
+
+---
+
+### Event 9: `file_rejected`
+Triggered whenever a presented file is rejected before or during initial archive validation.
+
+| Property | Type / Enum | Definition & AI Interpretation |
+| :--- | :--- | :--- |
+| `stage` | `"extension_check"` \| `"archive_parse"` \| `"safety_limit"` | Rejection stage: file extension check, initial JSZip parsing, or Zip Bomb / safety threshold check. |
+| `reason` | `"unsupported_extension"` \| `"corrupt_or_unreadable"` \| `"too_many_files"` \| `"uncompressed_too_large"` \| `"empty_drop"` | Abstracted rejection reason. `"empty_drop"` indicates a file drop where `DataTransfer.files` was empty. |
+| `ext_class` | `"rar"` \| `"jar"` \| `"7z"` \| `"folder_or_none"` \| `"other"` | Bucketed extension category (raw filenames and arbitrary extensions are never sent). Desktop folder drops typically appear as `"folder_or_none"`. |
+| `input_method` | `"drop"` \| `"file_picker"` | User input UX: dropped via drag-and-drop vs. selected through the file dialog. |
+| `size_tier` | `"<10MB"` \| `"10-50MB"` \| `"50-100MB"` \| `">100MB"` *(optional)* | Binned file size. Omitted when size is unavailable or `0` (e.g., `empty_drop` or folder drops). |
+
+---
+
 ## 4. Key Performance Indicators & AI Analysis Prompts
 
 When evaluating analytics data, use the following formulas and perspectives:
 
-### 1. Funnel Conversion Rate (CVR)
+### 1. Funnel Conversion Rate (CVR) & Pre-Upload Drop-off
+- **No-Intent Bounce (Group A)**: `pageview_only_sessions - upload_interact_sessions` (mismatch in search intent or first impression).
+- **Input Friction Drop-off (Group B)**: Sessions with `upload_interact` or `file_rejected` but no `file_selected` (dialog canceled or unsupported formats like `.rar`, `.jar`, or unarchived folders).
 - **Start-to-Download CVR**: `pack_download (count) / conversion_start (count)`
-- **Full Funnel Drop-off**: `file_selected` → `conversion_start` → `conversion_success` → `pack_download`
-- *AI Diagnostic*: If `file_selected` to `conversion_start` drop-off is high, check `file_abandoned.has_warning` to determine if users are hitting version/format confusion.
+- **Full Funnel Drop-off**: `upload_interact` → `file_selected` → `conversion_start` → `conversion_success` → `pack_download`
+- *AI Diagnostic*: If `file_selected` to `conversion_start` drop-off is high, check `file_abandoned.has_warning` to determine if users are hitting version/format confusion. If `file_rejected` is high, inspect `reason` and `ext_class` (`"rar"`, `"jar"`, `"folder_or_none"`) to guide input UX improvements.
 
 ### 2. Mapping Quality Assessment
 - Look at `conversion_success.skip_reason_top === "NO_MAPPING"`.

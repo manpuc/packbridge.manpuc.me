@@ -61,7 +61,39 @@ export type AnalyticsEventMap = {
   report_click: {
     source: 'error_banner' | 'report_summary' | 'footer';
   };
+  upload_interact: {
+    action: 'picker_open' | 'drag_enter';
+    ui_lang: string;
+  };
+  file_rejected: {
+    stage: 'extension_check' | 'archive_parse' | 'safety_limit';
+    reason:
+      | 'unsupported_extension'
+      | 'corrupt_or_unreadable'
+      | 'too_many_files'
+      | 'uncompressed_too_large'
+      | 'empty_drop';
+    ext_class: 'rar' | 'jar' | '7z' | 'folder_or_none' | 'other';
+    input_method: 'drop' | 'file_picker';
+    size_tier?: '<10MB' | '10-50MB' | '50-100MB' | '>100MB';
+  };
 };
+
+/**
+ * 拡張子から安全な分類カテゴリへ丸める（生の拡張子やファイル名は送信しない）
+ */
+export function getExtClass(fileName?: string): 'rar' | 'jar' | '7z' | 'folder_or_none' | 'other' {
+  if (!fileName) return 'folder_or_none';
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot <= 0 || lastDot === fileName.length - 1) {
+    return 'folder_or_none';
+  }
+  const ext = fileName.slice(lastDot + 1).toLowerCase();
+  if (ext === 'rar') return 'rar';
+  if (ext === 'jar') return 'jar';
+  if (ext === '7z') return '7z';
+  return 'other';
+}
 
 /**
  * 安全なUmamiイベント送信ラッパー
@@ -74,7 +106,13 @@ export function trackEvent<E extends keyof AnalyticsEventMap>(
 
   try {
     if (window.umami && typeof window.umami.track === 'function') {
-      window.umami.track(name, props as Record<string, string | number | boolean>);
+      const cleanProps: Record<string, string | number | boolean> = {};
+      for (const [k, v] of Object.entries(props)) {
+        if (v !== undefined) {
+          cleanProps[k] = v as string | number | boolean;
+        }
+      }
+      window.umami.track(name, cleanProps);
     }
   } catch (err) {
     // 広告ブロッカーやオフライン時も例外を握りつぶしてユーザー体験を阻害しない

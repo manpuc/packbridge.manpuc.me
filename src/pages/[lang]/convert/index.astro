@@ -1,0 +1,15 @@
+---
+import ConvertHubContent from "@/components/seo/ConvertHubContent.astro";
+import { SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
+
+export function getStaticPaths() {
+	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
+		params: { lang },
+	}));
+}
+
+const { lang } = Astro.params;
+---
+
+<ConvertHubContent lang={lang as Language} />
+
