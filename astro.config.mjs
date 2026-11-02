@@ -33,7 +33,7 @@ export default defineConfig({
     defaultLocale: 'ja',
     locales: ['ja', 'en', 'ko', 'zh', 'tl', 'es', 'fr', 'de'],
     routing: {
-      prefixDefaultLocale: false
+      prefixDefaultLocale: true
     }
   }
 });

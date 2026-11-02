@@ -9,7 +9,7 @@ import { getReportStrings } from "@/lib/i18n/report";
 import { getConvertHubCopy } from "@/lib/seo/version-pages-i18n";
 
 export function getStaticPaths() {
-	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
+	return SUPPORTED_LANGUAGES.map((lang) => ({
 		params: { lang },
 	}));
 }

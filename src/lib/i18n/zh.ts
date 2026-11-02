@@ -95,13 +95,16 @@ const zh: Translation = {
 	backToHome: "回到首页",
 	viewSourceCode: "在 GitHub 上查看源代码",
 	openSourceText: "本服务已作为开源项目公开。",
-	betaFeatures: "Beta Features",
-	enableGuiConversion: "Enable GUI Conversion",
-	enableModernGuiSprites: "启用 1.20.2+ 拆分 GUI 精灵转换",
-	enableTgaConversion: "将 TGA 纹理解码转换为 PNG",
-	enableAnimationConversion: "Enable Animation Conversion",
-	enableLanguageConversion: '启用语言转换',
-	enableSoundConversion: '启用声音转换',
+	betaFeatures: "测试版功能",
+	betaGroupUiTextures: "界面与纹理",
+	betaGroupAudioLang: "音频与语言",
+	enableGuiConversion: "GUI 界面转换",
+	enableModernGuiSprites: "1.20.2+ 拆分 GUI 精灵转换",
+	enableTgaConversion: "将 TGA 转换为 PNG",
+	enableAnimationConversion: "动画纹理转换",
+	enableLanguageConversion: '语言与翻译文件转换',
+	enableSoundConversion: '声音配置转换',
+	enableAudioReencode: '音频重新编码 (FFmpeg, ~20MB)',
 };
 
 export default zh;

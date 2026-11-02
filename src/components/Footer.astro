@@ -8,7 +8,7 @@ interface Props {
 }
 
 const { t, lang = "ja" } = Astro.props;
-const termsHref = lang === "ja" ? "/terms" : `/${lang}/terms`;
+const termsHref = `/${lang}/terms`;
 const rs = getReportStrings(lang as Language);
 ---
 
@@ -58,9 +58,17 @@ const rs = getReportStrings(lang as Language);
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
+		width: 100%;
 	}
 	.app-version {
-		font-size: 13px;
+		font-size: 12px;
 		color: var(--color-text-muted);
+		font-feature-settings: "tnum";
+		letter-spacing: 0.02em;
+	}
+	@media (pointer: coarse) {
+		.footer-info {
+			min-height: 44px;
+		}
 	}
 </style>

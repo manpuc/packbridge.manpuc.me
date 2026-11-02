@@ -2,6 +2,7 @@
 import "@/styles/global.css";
 import { ClientRouter } from 'astro:transitions';
 import { SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n/config";
+import LanguageSuggestionBanner from "@/components/LanguageSuggestionBanner";
 
 interface Props {
 	title: string;
@@ -26,14 +27,13 @@ const siteUrl = "https://packbridge.manpuc.me";
 const pathname = Astro.url.pathname.replace(/\/$/, "");
 const canonicalURL = new URL(pathname || "/", siteUrl);
 
-const langPrefixes = SUPPORTED_LANGUAGES.filter((l) => l !== "ja").join("|");
-const langRegex = new RegExp(`^/(${langPrefixes})`);
-const currentPath = pathname.replace(langRegex, "");
+const langPrefixes = SUPPORTED_LANGUAGES.join("|");
+const langRegex = new RegExp(`^/(${langPrefixes})(/|$)`);
+const currentPath = pathname.replace(langRegex, "/").replace(/\/+$/, "") || "";
 
 const alternateLinks = SUPPORTED_LANGUAGES.map((l) => {
-	const prefix = l === "ja" ? "" : `/${l}`;
 	return {
-		href: new URL(`${prefix}${currentPath}` || "/", siteUrl).href,
+		href: new URL(`/${l}${currentPath}`, siteUrl).href,
 		lang: l,
 	};
 });
@@ -152,16 +152,12 @@ const baseBreadcrumbItems = [
 		name: "Home",
 		item: siteUrl,
 	},
-	...(lang !== "ja"
-		? [
-				{
-					"@type": "ListItem",
-					position: 2,
-					name: lang.toUpperCase(),
-					item: `${siteUrl}/${lang}`,
-				},
-			]
-		: []),
+	{
+		"@type": "ListItem",
+		position: 2,
+		name: lang.toUpperCase(),
+		item: `${siteUrl}/${lang}`,
+	},
 ];
 
 const customBreadcrumbItems = breadcrumbs
@@ -177,7 +173,7 @@ const customBreadcrumbItems = breadcrumbs
 					"@type": "ListItem",
 					position: baseBreadcrumbItems.length + 1,
 					name: "Terms",
-					item: `${siteUrl}${lang === "ja" ? "" : "/" + lang}/terms`,
+					item: `${siteUrl}/${lang}/terms`,
 				},
 			]
 		: [];
@@ -202,7 +198,7 @@ const webSiteStructuredData = {
 <html lang={lang}>
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
 		<!-- SEO -->
 		<link rel="canonical" href={canonicalURL} />
@@ -214,7 +210,7 @@ const webSiteStructuredData = {
 		<link
 			rel="alternate"
 			hreflang="x-default"
-			href={new URL(currentPath || "/", siteUrl).href}
+			href={siteUrl + "/"}
 		/>
 
 		<title>{title}</title>
@@ -295,6 +291,7 @@ const webSiteStructuredData = {
 	</head>
 	<body>
 		<slot />
+		<LanguageSuggestionBanner client:load />
 <script is:inline define:vars={{ supportedLangs: SUPPORTED_LANGUAGES }}>
 	// Theme handling
 	const getTheme = () => {
@@ -310,16 +307,6 @@ const webSiteStructuredData = {
 	};
 	document.documentElement.setAttribute("data-theme", getTheme());
 
-	// Initial Redirect handling (Root only)
-	if (location.pathname === "/") {
-		let savedLang = null;
-		try {
-			savedLang = localStorage.getItem("lang");
-		} catch {}
-		if (savedLang && savedLang !== "ja" && supportedLangs.includes(savedLang)) {
-			location.href = "/" + savedLang;
-		}
-	}
 
 	// Footer Logo Touch Handling
 	document.addEventListener("click", (e) => {

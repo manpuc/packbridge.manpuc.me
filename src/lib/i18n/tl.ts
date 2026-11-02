@@ -96,13 +96,16 @@ const tl: Translation = {
 	backToHome: "Bumalik sa Home",
 	viewSourceCode: "Tingnan ang Source Code sa GitHub",
 	openSourceText: "Ang serbisyong ito ay open source.",
-	betaFeatures: "Beta Features",
-	enableGuiConversion: "Enable GUI Conversion",
-	enableModernGuiSprites: "Enable 1.20.2+ Split GUI Sprites",
-	enableTgaConversion: "I-convert ang TGA Textures sa PNG",
-	enableAnimationConversion: "Enable Animation Conversion",
-	enableLanguageConversion: 'Enable Language Conversion',
-	enableSoundConversion: 'Enable Sound Conversion',
+	betaFeatures: "Mga Beta Feature",
+	betaGroupUiTextures: "UI at Textures",
+	betaGroupAudioLang: "Audio at Localization",
+	enableGuiConversion: "Conversion ng GUI",
+	enableModernGuiSprites: "1.20.2+ Split GUI Sprites",
+	enableTgaConversion: "I-convert ang TGA sa PNG",
+	enableAnimationConversion: "Conversion ng Animation",
+	enableLanguageConversion: 'Conversion ng Wika at Pagsasalin',
+	enableSoundConversion: 'Conversion ng Sound Definitions',
+	enableAudioReencode: 'I-re-encode ang Audio (FFmpeg, ~20MB)',
 };
 
 export default tl;

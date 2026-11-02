@@ -96,13 +96,16 @@ const es: Translation = {
 	backToHome: "Volver al inicio",
 	viewSourceCode: "Ver código fuente en GitHub",
 	openSourceText: "Este servicio es de código abierto.",
-	betaFeatures: "Beta Features",
-	enableGuiConversion: "Enable GUI Conversion",
-	enableModernGuiSprites: "Activar sprites GUI divididos (1.20.2+)",
+	betaFeatures: "Funciones beta",
+	betaGroupUiTextures: "Interfaz y texturas",
+	betaGroupAudioLang: "Audio y localización",
+	enableGuiConversion: "Conversión de interfaz GUI",
+	enableModernGuiSprites: "Sprites GUI divididos (1.20.2+)",
 	enableTgaConversion: "Convertir texturas TGA a PNG",
-	enableAnimationConversion: "Enable Animation Conversion",
-	enableLanguageConversion: 'Enable Language Conversion',
-	enableSoundConversion: 'Enable Sound Conversion',
+	enableAnimationConversion: "Conversión de animaciones",
+	enableLanguageConversion: 'Conversión de idiomas y traducciones',
+	enableSoundConversion: 'Conversión de sonidos',
+	enableAudioReencode: 'Re-codificar audio (FFmpeg, ~20MB)',
 };
 
 export default es;

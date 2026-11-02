@@ -178,11 +178,10 @@ export function getRelatedVersionPages(spec: VersionPageSpec): {
 }
 
 export function getVersionPageHref(lang: Language, spec: VersionPageSpec): string {
-  const prefix = lang === 'ja' ? '' : `/${lang}`;
-  return `${prefix}/convert/${spec.direction}/${spec.pairSlug}`;
+  return `/${lang}/convert/${spec.direction}/${spec.pairSlug}`;
 }
 
 export function getConvertHubHref(lang: Language): string {
-  return lang === 'ja' ? '/convert' : `/${lang}/convert`;
+  return `/${lang}/convert`;
 }
 

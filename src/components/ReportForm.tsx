@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Copy, Check, ExternalLink, Lock, Send, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ChevronDown, Copy, Check, ExternalLink, Lock, Send, AlertTriangle, ArrowLeft, Download } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { getReportStrings, LAST_CONVERSION_KEY, APP_VERSION } from '@/lib/i18n/report';
 import { FluidSegmentedControl } from '@/components/ui/FluidSegmentedControl';
@@ -27,7 +27,7 @@ const spring = { type: 'spring', stiffness: 300, damping: 30 } as const;
 
 export default function ReportForm({ lang, backToHome }: { lang: Language; backToHome: string }) {
   const s = getReportStrings(lang);
-  const homeHref = lang === 'ja' ? '/' : `/${lang}`;
+  const homeHref = `/${lang}`;
   const [ctx, setCtx] = useState<LastConversion | null>(null);
   const [env, setEnv] = useState('');
   const [kind, setKind] = useState<Kind>('other');
@@ -45,7 +45,6 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
   });
   const [touched, setTouched] = useState(false);
   const [showAuto, setShowAuto] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,7 +151,13 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
       if (ctx && include.direction) payload.direction = ctx.direction;
       if (ctx && include.file) payload.file_info = `${ctx.fileName} (${(ctx.fileSize / 1048576).toFixed(2)} MB)`;
       if (ctx && include.log && log) {
-        payload.log = log.slice(0, LOG_LIMIT);
+        if (log.length > LOG_LIMIT) {
+          const head = log.slice(0, 1800);
+          const tail = log.slice(-1000);
+          payload.log = `${head}\n\n... [省略: 全 ${log.length} 文字中 中間 ${log.length - 2800} 文字を短縮。詳細ログは必要に応じて txt 提供可能] ...\n\n${tail}`;
+        } else {
+          payload.log = log;
+        }
       }
 
       const res = await fetch(FORMSPREE_ENDPOINT, {
@@ -198,6 +203,23 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
     await navigator.clipboard.writeText(log);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  };
+
+  const downloadLog = () => {
+    try {
+      const blob = new Blob([log], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `packbridge-error-${dateStr}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download log:", err);
+    }
   };
 
   const summaryError = touched && !summary.trim();
@@ -385,18 +407,13 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
           onClick={() => setShowAuto(!showAuto)}
         >
           <span>{s.auto}</span>
-          <motion.span animate={{ rotate: showAuto ? 180 : 0 }}>
+          <span className="t-acc-chevron" data-open={showAuto ? "true" : "false"}>
             <ChevronDown size={18} />
-          </motion.span>
+          </span>
         </button>
-        <AnimatePresence initial={false}>
-          {showAuto && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              style={{ overflow: 'hidden' }}
-            >
+        <div className="t-acc-panel" data-open={showAuto ? "true" : "false"}>
+          <div className="t-acc-panel-inner">
+            <div style={{ paddingTop: '8px' }}>
               <p className="report-hint">{ctx ? s.autoHint : s.autoEmpty}</p>
               <ul className="report-auto-list">
                 {autoRows.filter((r) => r.show).map((r) => (
@@ -424,22 +441,23 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
                     </label>
                     <pre className="report-log">{log}</pre>
                     {isTruncated && <p className="report-hint warn">{s.truncated}</p>}
-                    <button type="button" className="secondary report-small" onClick={copyLog}>
-                      {copied ? <Check size={16} /> : <Copy size={16} />}
-                      {copied ? s.copied : s.copyLog}
-                    </button>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                      <button type="button" className="secondary report-small" onClick={copyLog}>
+                        {copied ? <Check size={16} /> : <Copy size={16} /> }
+                        {copied ? s.copied : s.copyLog}
+                      </button>
+                      <button type="button" className="secondary report-small" onClick={downloadLog}>
+                        <Download size={16} />
+                        {s.downloadLog}
+                      </button>
+                    </div>
                   </li>
                 )}
               </ul>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        </div>
       </section>
-
-      <details className="report-preview" open={showPreview} onToggle={(e) => setShowPreview((e.target as HTMLDetailsElement).open)}>
-        <summary>{s.preview}</summary>
-        <pre>{body}</pre>
-      </details>
 
       <div className="report-submit-bar" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <p className="report-notice">

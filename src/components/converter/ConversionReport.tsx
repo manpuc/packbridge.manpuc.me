@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Download, RefreshCw, AlertCircle, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Download, RefreshCw, AlertCircle, ChevronDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PackReport, ConversionResult } from '@/lib/pack/types';
 import type { Translation } from '@/lib/i18n';
 
@@ -16,6 +16,7 @@ interface ConversionReportProps {
 }
 
 const springTransition = { type: "spring", stiffness: 350, damping: 28 } as const;
+const PAGE_SIZE = 40;
 
 export function ConversionReport({
   report,
@@ -26,7 +27,42 @@ export function ConversionReport({
   t
 }: ConversionReportProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'error' | 'skipped'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
   const isPerfect = report.errorCount === 0 && report.skippedCount === 0;
+
+  const nonConvertedDetails = useMemo(() => {
+    return report.details.filter((d: ConversionResult) => d.status !== 'converted');
+  }, [report.details]);
+
+  const filteredDetails = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return nonConvertedDetails.filter((d: ConversionResult) => {
+      if (filterType !== 'all' && d.status !== filterType) return false;
+      if (!query) return true;
+      const nameMatch = d.filename.toLowerCase().includes(query);
+      const reasonMatch = d.reason ? d.reason.toLowerCase().includes(query) : false;
+      return nameMatch || reasonMatch;
+    });
+  }, [nonConvertedDetails, filterType, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDetails.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedDetails = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredDetails.slice(start, start + PAGE_SIZE);
+  }, [filteredDetails, currentPage]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (type: 'all' | 'error' | 'skipped') => {
+    setFilterType(type);
+    setPage(1);
+  };
 
   return (
     <motion.div
@@ -135,13 +171,13 @@ export function ConversionReport({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="card"
-          style={{ padding: '16px 20px' }}
+          className="card unsupported-card"
         >
           <button
             type="button"
             className="unsupported-toggle-btn"
             onClick={() => setShowDetails(!showDetails)}
+            aria-expanded={showDetails}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
               <AlertCircle size={18} color="var(--color-warning)" />
@@ -149,57 +185,119 @@ export function ConversionReport({
                 {t.unsupportedTitle} ({report.skippedCount + report.errorCount})
               </span>
             </span>
-            <motion.div animate={{ rotate: showDetails ? 180 : 0 }} transition={{ type: "spring", stiffness: 350, damping: 25 }}>
+            <div
+              className="t-acc-chevron"
+              data-open={showDetails ? "true" : "false"}
+              aria-hidden="true"
+            >
               <ChevronDown size={18} style={{ color: 'var(--color-text-muted)' }} />
-            </motion.div>
+            </div>
           </button>
 
-          <AnimatePresence initial={false}>
-            {showDetails && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{
-                  height: 'auto',
-                  opacity: 1,
-                  transition: {
-                    height: { duration: 0.28, ease: [0.25, 1, 0.5, 1] },
-                    opacity: { duration: 0.2, ease: 'easeOut' }
-                  }
-                }}
-                exit={{
-                  height: 0,
-                  opacity: 0,
-                  transition: {
-                    height: { duration: 0.24, ease: [0.25, 1, 0.5, 1] },
-                    opacity: { duration: 0.15, ease: 'easeIn' }
-                  }
-                }}
-                style={{ overflow: 'hidden' }}
-              >
+          <div className="t-acc-panel" data-open={showDetails ? "true" : "false"}>
+            <div className="t-acc-panel-inner" style={{ padding: '0 4px 6px 4px' }}>
+              <div className="report-controls">
+                <div className="report-search-box">
+                  <Search size={15} className="report-search-icon" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    placeholder="ファイル名・理由で絞り込み..."
+                    className="report-search-input"
+                  />
+                </div>
+
+                <div className="report-filter-bar">
+                  <div className="report-filter-tabs">
+                    <button
+                      type="button"
+                      className={`report-filter-btn ${filterType === 'all' ? 'active' : ''}`}
+                      onClick={() => handleFilterChange('all')}
+                    >
+                      すべて ({nonConvertedDetails.length})
+                    </button>
+                    {report.errorCount > 0 && (
+                      <button
+                        type="button"
+                        className={`report-filter-btn ${filterType === 'error' ? 'active' : ''}`}
+                        onClick={() => handleFilterChange('error')}
+                      >
+                        エラー ({report.errorCount})
+                      </button>
+                    )}
+                    {report.skippedCount > 0 && (
+                      <button
+                        type="button"
+                        className={`report-filter-btn ${filterType === 'skipped' ? 'active' : ''}`}
+                        onClick={() => handleFilterChange('skipped')}
+                      >
+                        スキップ ({report.skippedCount})
+                      </button>
+                    )}
+                  </div>
+
+                  <span className="report-filter-count">
+                    {filteredDetails.length} 件
+                  </span>
+                </div>
+              </div>
+
+              {filteredDetails.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+                  該当ファイルは見つかりませんでした
+                </div>
+              ) : (
                 <div
                   className="report-list"
-                  style={{ marginTop: '16px', maxHeight: '300px', overflowY: 'auto' }}
+                  style={{ maxHeight: '340px', overflowY: 'auto' }}
                 >
-                  {report.details
-                    .filter((d: ConversionResult) => d.status !== 'converted')
-                    .map((detail: ConversionResult, idx: number) => (
-                      <div
-                        key={idx}
-                        className="report-item"
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontWeight: 600, wordBreak: 'break-all' }}>{detail.filename}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{detail.reason}</span>
-                        </div>
-                        <span className={`status-badge status-${detail.status}`}>
-                          {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
-                        </span>
+                  {paginatedDetails.map((detail: ConversionResult, idx: number) => (
+                    <div
+                      key={detail.filename || idx}
+                      className="report-item"
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                        <span style={{ fontWeight: 600, wordBreak: 'break-all', fontSize: '13px' }}>{detail.filename}</span>
+                        {detail.reason && (
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', wordBreak: 'break-word' }}>
+                            {detail.reason}
+                          </span>
+                        )}
                       </div>
-                    ))}
+                      <span className={`status-badge status-${detail.status}`} style={{ flexShrink: 0 }}>
+                        {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+
+              {totalPages > 1 && (
+                <div className="report-pagination">
+                  <button
+                    type="button"
+                    className="report-page-btn"
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft size={14} /> 前へ
+                  </button>
+                  <span>
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="report-page-btn"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    次へ <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
       )}
     </motion.div>
@@ -218,17 +316,47 @@ function SummaryItem({ label, value, color, index }: { label: string, value: num
         delay: 0.15 + index * 0.06
       }}
       className="summary-card-metric"
-      style={{ minWidth: 0, overflow: 'hidden' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '12px 14px',
+        borderRadius: '14px',
+        backgroundColor: 'rgba(120, 120, 128, 0.06)',
+        border: '1px solid var(--color-border)',
+        gap: '2px',
+        overflow: 'hidden'
+      }}
     >
-      <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>{label}</p>
-      <motion.p
-        initial={{ scale: 0.9 }}
+      <motion.span
+        initial={{ scale: 0.6 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.25 + index * 0.06, type: "spring", stiffness: 450, damping: 20 }}
-        style={{ fontSize: '26px', fontWeight: 800, color: color || 'var(--color-text)', margin: 0, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        transition={{ type: "spring", stiffness: 450, damping: 20, delay: 0.2 + index * 0.06 }}
+        style={{
+          fontSize: '24px',
+          fontWeight: 800,
+          color: color || 'var(--color-text)',
+          lineHeight: 1.1,
+          fontVariantNumeric: 'tabular-nums'
+        }}
       >
-        {value.toLocaleString()}
-      </motion.p>
+        {value}
+      </motion.span>
+      <span
+        style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: 'var(--color-text-muted)',
+          textAlign: 'center',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}
+        title={label}
+      >
+        {label}
+      </span>
     </motion.div>
   );
 }

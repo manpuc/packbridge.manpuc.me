@@ -41,7 +41,6 @@ const hubHref = getConvertHubHref(lang);
 							<span class="pill-main">
 								Java {spec.slugFrom} → Bedrock {spec.slugTo}
 							</span>
-							<span class="pill-meta">format {spec.javaPackFormat}</span>
 						</a>
 					))
 				}
@@ -61,7 +60,6 @@ const hubHref = getConvertHubHref(lang);
 							<span class="pill-main">
 								Bedrock {spec.slugFrom} → Java {spec.slugTo}
 							</span>
-							<span class="pill-meta">format {spec.javaPackFormat}</span>
 						</a>
 					))
 				}
@@ -163,14 +161,6 @@ const hubHref = getConvertHubHref(lang);
 		color: var(--color-text);
 	}
 
-	.pill-meta {
-		font-size: 11.5px;
-		font-weight: 500;
-		color: var(--color-text-muted);
-		opacity: 0.75;
-		white-space: nowrap;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-	}
 
 	.popular-footer {
 		padding-top: 2px;

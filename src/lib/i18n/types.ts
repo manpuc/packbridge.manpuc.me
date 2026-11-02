@@ -30,6 +30,7 @@ export interface Translation {
 	dropzoneTitle: string;
 	dropzoneSubtitle: string;
 	dropzoneProcessing: string;
+	dropzonePrivacyBadge?: string;
 	sourceVersion: string;
 	targetVersion: string;
 	autoDetected: string;
@@ -78,6 +79,8 @@ export interface Translation {
 
 	// Beta Features
 	betaFeatures: string;
+	betaGroupUiTextures?: string;
+	betaGroupAudioLang?: string;
 	enableGuiConversion: string;
 	enableModernGuiSprites?: string;
 	enableTgaConversion?: string;

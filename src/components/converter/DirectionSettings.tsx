@@ -276,11 +276,12 @@ export function DirectionSettings({
         </AnimatePresence>
       </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <button
             type="button"
             className="beta-toggle-btn"
             onClick={() => setIsBetaExpanded(!isBetaExpanded)}
+            aria-expanded={isBetaExpanded}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
@@ -295,70 +296,49 @@ export function DirectionSettings({
               }}>BETA</span>
               <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{t.betaFeatures || 'Beta Features'}</span>
             </span>
-            <motion.div
-              animate={{ rotate: isBetaExpanded ? 180 : 0 }}
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="beta-toggle-chevron"
+            <div
+              className="t-acc-chevron"
+              data-open={isBetaExpanded ? "true" : "false"}
+              aria-hidden="true"
             >
               <ChevronDown size={17} />
-            </motion.div>
+            </div>
           </button>
 
-          <AnimatePresence initial={false}>
-            {isBetaExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{
-                  height: 'auto',
-                  opacity: 1,
-                  transition: {
-                    height: { type: 'spring', stiffness: 350, damping: 30 },
-                    opacity: { duration: 0.22, ease: 'easeOut' }
-                  }
-                }}
-                exit={{
-                  height: 0,
-                  opacity: 0,
-                  transition: {
-                    height: { duration: 0.24, ease: [0.25, 1, 0.5, 1] },
-                    opacity: { duration: 0.18, ease: 'easeIn' }
-                  }
-                }}
-                style={{ overflow: 'hidden' }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '6px' }}>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableGuiConversion || 'Enable GUI Conversion'}</span>
-                    <IosSwitch checked={enableGuiConversion} onChange={setEnableGuiConversion} />
-                  </label>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}</span>
-                    <IosSwitch checked={enableModernGuiSprites} onChange={setEnableModernGuiSprites} />
-                  </label>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableTgaConversion || 'Convert TGA Textures to PNG'}</span>
-                    <IosSwitch checked={enableTgaConversion} onChange={setEnableTgaConversion} />
-                  </label>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableAnimationConversion || 'Enable Animation Conversion'}</span>
-                    <IosSwitch checked={enableAnimationConversion} onChange={setEnableAnimationConversion} />
-                  </label>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableLanguageConversion || 'Enable Language Conversion'}</span>
-                    <IosSwitch checked={enableLanguageConversion} onChange={setEnableLanguageConversion} />
-                  </label>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableSoundConversion || 'Enable Sound Conversion'}</span>
-                    <IosSwitch checked={enableSoundConversion} onChange={setEnableSoundConversion} />
-                  </label>
-                  <label className="beta-option-row">
-                    <span style={{ color: 'var(--color-text)' }}>{t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}</span>
-                    <IosSwitch checked={enableAudioReencode} onChange={setEnableAudioReencode} />
-                  </label>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="t-acc-panel" data-open={isBetaExpanded ? "true" : "false"}>
+            <div className="t-acc-panel-inner">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '8px' }}>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableGuiConversion || 'Enable GUI Conversion'}</span>
+                  <IosSwitch checked={enableGuiConversion} onChange={setEnableGuiConversion} />
+                </label>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}</span>
+                  <IosSwitch checked={enableModernGuiSprites} onChange={setEnableModernGuiSprites} />
+                </label>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableTgaConversion || 'Convert TGA Textures to PNG'}</span>
+                  <IosSwitch checked={enableTgaConversion} onChange={setEnableTgaConversion} />
+                </label>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableAnimationConversion || 'Enable Animation Conversion'}</span>
+                  <IosSwitch checked={enableAnimationConversion} onChange={setEnableAnimationConversion} />
+                </label>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableLanguageConversion || 'Enable Language Conversion'}</span>
+                  <IosSwitch checked={enableLanguageConversion} onChange={setEnableLanguageConversion} />
+                </label>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableSoundConversion || 'Enable Sound Conversion'}</span>
+                  <IosSwitch checked={enableSoundConversion} onChange={setEnableSoundConversion} />
+                </label>
+                <label className="beta-option-row">
+                  <span style={{ color: 'var(--color-text)' }}>{t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}</span>
+                  <IosSwitch checked={enableAudioReencode} onChange={setEnableAudioReencode} />
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
     </motion.div>
   );

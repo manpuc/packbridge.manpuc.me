@@ -1,51 +1,91 @@
 ---
-import Layout from "@/layouts/Layout.astro";
-import ThemeToggle from "@/components/ThemeToggle";
-import LangToggle from "@/components/LangToggle";
-import Converter from "@/components/Converter";
-import IntroAccordion from "@/components/IntroAccordion";
-import PopularConversions from "@/components/seo/PopularConversions.astro";
-import Footer from "@/components/Footer.astro";
-import { getTranslation } from "@/lib/i18n";
+import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "@/lib/i18n/config";
 
-const lang = "ja";
-const t = getTranslation(lang);
+// Client-side instant redirection script
+const supported = JSON.stringify(SUPPORTED_LANGUAGES);
+const defaultLang = JSON.stringify(DEFAULT_LANGUAGE);
 ---
 
-<Layout
-	title={t.title}
-	description={t.metaDescription}
-	keywords={t.keywords}
-	lang="ja"
->
-	<div class="top-controls">
-		<LangToggle client:load />
-		<ThemeToggle client:load />
-	</div>
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+		<title>PackBridge - Redirecting...</title>
+		<meta name="robots" content="noindex, follow" />
+		<link rel="canonical" href="https://packbridge.manpuc.me/ja" />
+		<meta http-equiv="refresh" content="0;url=/ja" />
+		<script is:inline define:vars={{ supportedLangs: SUPPORTED_LANGUAGES, defaultLang: DEFAULT_LANGUAGE }}>
+			(function () {
+				try {
+					var saved = localStorage.getItem("lang");
+					if (saved && supportedLangs.includes(saved)) {
+						location.replace("/" + saved);
+						return;
+					}
+				} catch (e) {}
 
-	<main class="container">
-		<header class="animate-fade-up stagger-1">
-			<div class="brand-name">{t.heading}</div>
-			<h1>{t.h1Title}</h1>
-			<p class="description">{t.description}</p>
-		</header>
-
-		<div class="animate-fade-up stagger-2">
-			<Converter client:load t={t} lang={lang} />
+				var browserLangs = navigator.languages || [navigator.language || navigator.userLanguage];
+				var target = defaultLang;
+				if (browserLangs) {
+					for (var i = 0; i < browserLangs.length; i++) {
+						var code = (browserLangs[i] || "").toLowerCase().split("-")[0];
+						if (supportedLangs.includes(code)) {
+							target = code;
+							break;
+						}
+					}
+				}
+				location.replace("/" + target);
+			})();
+		</script>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 100vh;
+				margin: 0;
+				background-color: #f2f2f7;
+				color: #1c1c1e;
+			}
+			@media (prefers-color-scheme: dark) {
+				body {
+					background-color: #000000;
+					color: #f2f2f7;
+				}
+			}
+			.redirect-box {
+				text-align: center;
+				padding: 2rem;
+			}
+			.spinner {
+				width: 32px;
+				height: 32px;
+				border: 3px solid rgba(0, 122, 255, 0.2);
+				border-top-color: #007aff;
+				border-radius: 50%;
+				animation: spin 0.8s linear infinite;
+				margin: 0 auto 1rem;
+			}
+			@keyframes spin {
+				to { transform: rotate(360deg); }
+			}
+			a {
+				color: #007aff;
+				text-decoration: none;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="redirect-box">
+			<div class="spinner"></div>
+			<p>Redirecting to PackBridge...</p>
+			<p><small><a href="/ja">日本語</a> | <a href="/en">English</a></small></p>
 		</div>
-
-				<div class="animate-fade-up stagger-3">
-			<IntroAccordion client:load t={t} />
-		</div>
-
-		<div class="animate-fade-up stagger-3">
-			<PopularConversions lang={lang} />
-		</div>
-
-		<div class="animate-fade-up stagger-4">
-			<Footer t={t} lang={lang} />
-		</div>
-	</main>
-</Layout>
-
-
+	</body>
+</html>

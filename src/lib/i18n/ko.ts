@@ -96,13 +96,16 @@ const ko: Translation = {
 	backToHome: "홈으로 돌아가기",
 	viewSourceCode: "GitHub에서 소스 코드 보기",
 	openSourceText: "이 서비스는 오픈 소스로 공개되어 있습니다.",
-	betaFeatures: "Beta Features",
-	enableGuiConversion: "Enable GUI Conversion",
+	betaFeatures: "베타 기능",
+	betaGroupUiTextures: "UI 및 텍스처",
+	betaGroupAudioLang: "오디오 및 번역",
+	enableGuiConversion: "GUI 변환",
 	enableModernGuiSprites: "1.20.2+ 분할 GUI 스프라이트 변환",
 	enableTgaConversion: "TGA 이미지를 PNG로 변환",
-	enableAnimationConversion: "Enable Animation Conversion",
-	enableLanguageConversion: '언어 변환 활성화',
-	enableSoundConversion: '사운드 변환 활성화',
+	enableAnimationConversion: "애니메이션 변환",
+	enableLanguageConversion: '언어 및 번역 변환',
+	enableSoundConversion: '사운드 정의 변환',
+	enableAudioReencode: '오디오 재인코딩 (FFmpeg, ~20MB)',
 };
 
 export default ko;

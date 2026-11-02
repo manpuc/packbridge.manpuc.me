@@ -3,7 +3,7 @@ import ConvertHubContent from "@/components/seo/ConvertHubContent.astro";
 import { SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 
 export function getStaticPaths() {
-	return SUPPORTED_LANGUAGES.filter((lang) => lang !== "ja").map((lang) => ({
+	return SUPPORTED_LANGUAGES.map((lang) => ({
 		params: { lang },
 	}));
 }

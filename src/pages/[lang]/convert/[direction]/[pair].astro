@@ -4,7 +4,7 @@ import { SUPPORTED_LANGUAGES, type Language } from "@/lib/i18n";
 import { getAllVersionPages, type VersionPageSpec } from "@/lib/seo/version-pages";
 
 export function getStaticPaths() {
-	const langs = SUPPORTED_LANGUAGES.filter((l) => l !== "ja");
+	const langs = SUPPORTED_LANGUAGES;
 	const pages = getAllVersionPages();
 
 	return langs.flatMap((lang) =>

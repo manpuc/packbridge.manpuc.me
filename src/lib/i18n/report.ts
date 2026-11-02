@@ -1,4 +1,4 @@
-import type { Language } from "./config";
+﻿import type { Language } from "./config";
 
 const ja = {
 	link: "不具合を報告",
@@ -28,6 +28,7 @@ const ja = {
 	fieldEnv: "ブラウザ / OS",
 	fieldVersion: "アプリバージョン",
 	copyLog: "ログ全文をコピー",
+	downloadLog: "ログを .txt で保存",
 	copied: "コピーしました",
 	truncated: "ログが長いため一部を省略しました。全文はコピーして Issue に貼り付けてください。",
 	publicNotice: "パックファイル本体は送信されません。メールアドレスは返信目的以外に使用しません。",
@@ -77,6 +78,7 @@ const en: ReportStrings = {
 	fieldEnv: "Browser / OS",
 	fieldVersion: "App version",
 	copyLog: "Copy full log",
+	downloadLog: "Save log as .txt",
 	copied: "Copied",
 	truncated: "The log was shortened to fit. Copy the full log and paste it into the issue.",
 	publicNotice: "Your pack file is never uploaded. Your email is only used if a reply is needed.",
@@ -124,6 +126,7 @@ const ko: ReportStrings = {
 	fieldEnv: "브라우저 / OS",
 	fieldVersion: "앱 버전",
 	copyLog: "전체 로그 복사",
+	downloadLog: "로그를 .txt로 저장",
 	copied: "복사됨",
 	truncated: "로그가 길어 일부를 생략했습니다. 전체 로그를 복사해 Issue에 붙여 넣어 주세요.",
 	publicNotice: "팩 파일 본체는 전송되지 않습니다. 이메일은 회신 목적으로만 사용됩니다.",
@@ -171,6 +174,7 @@ const zh: ReportStrings = {
 	fieldEnv: "浏览器 / 系统",
 	fieldVersion: "应用版本",
 	copyLog: "复制完整日志",
+	downloadLog: "将日志保存为 .txt",
 	copied: "已复制",
 	truncated: "日志过长，已部分省略。请复制完整日志并粘贴到 Issue 中。",
 	publicNotice: "资源包文件不会被上传。邮箱仅用于必要时的回复。",
@@ -218,6 +222,7 @@ const tl: ReportStrings = {
 	fieldEnv: "Browser / OS",
 	fieldVersion: "Bersyon ng app",
 	copyLog: "Kopyahin ang buong log",
+	downloadLog: "I-save ang log bilang .txt",
 	copied: "Nakopya",
 	truncated: "Pinaikli ang log. Kopyahin ang buong log at i-paste sa issue.",
 	publicNotice: "Hindi kailanman ina-upload ang pack file mo. Ginagamit lang ang email kung kailangan ng tugon.",
@@ -265,6 +270,7 @@ const es: ReportStrings = {
 	fieldEnv: "Navegador / SO",
 	fieldVersion: "Versión de la app",
 	copyLog: "Copiar registro completo",
+	downloadLog: "Guardar registro como .txt",
 	copied: "Copiado",
 	truncated: "El registro se ha acortado. Copia el registro completo y pégalo en el issue.",
 	publicNotice: "Tu paquete nunca se sube. Tu correo solo se usará si se requiere respuesta.",
@@ -312,6 +318,7 @@ const fr: ReportStrings = {
 	fieldEnv: "Navigateur / OS",
 	fieldVersion: "Version de l’app",
 	copyLog: "Copier le journal complet",
+	downloadLog: "Enregistrer le journal en .txt",
 	copied: "Copié",
 	truncated: "Le journal a été raccourci. Copiez-le en entier et collez-le dans l’issue.",
 	publicNotice: "Votre pack n’est jamais envoyé. Votre e-mail ne servira qu'en cas de réponse.",
@@ -359,6 +366,7 @@ const de: ReportStrings = {
 	fieldEnv: "Browser / OS",
 	fieldVersion: "App-Version",
 	copyLog: "Gesamtes Protokoll kopieren",
+	downloadLog: "Protokoll als .txt speichern",
 	copied: "Kopiert",
 	truncated: "Das Protokoll wurde gekürzt. Kopiere es vollständig und füge es ins Issue ein.",
 	publicNotice: "Deine Pack-Datei wird nie hochgeladen. Deine E-Mail wird nur für Antworten genutzt.",
@@ -381,7 +389,7 @@ const de: ReportStrings = {
 const strings: Record<Language, ReportStrings> = { ja, en, ko, zh, tl, es, fr, de };
 
 export const getReportStrings = (lang: Language): ReportStrings => strings[lang] ?? en;
-export const reportHref = (lang: string) => (lang === "ja" ? "/report" : `/${lang}/report`);
+export const reportHref = (lang: string) => `/${lang}/report`;
 export const LAST_CONVERSION_KEY = "pb_last_conversion";
 export const APP_VERSION = "1.6.3";
 export type { ReportStrings };

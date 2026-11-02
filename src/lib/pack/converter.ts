@@ -124,6 +124,25 @@ export async function convertPack(
     }
   }
 
+  // Fallback: if no pack.mcmeta/manifest.json found at top level, check for nested assets/ or textures/ directories
+  if (bestRootDepth === Infinity) {
+    for (const path of files) {
+      if (path.includes("__MACOSX") || path.split("/").pop()?.startsWith(".")) continue;
+      const lower = path.toLowerCase();
+      const assetsIdx = lower.indexOf("assets/");
+      const texturesIdx = lower.indexOf("textures/");
+      const targetIdx = assetsIdx !== -1 ? assetsIdx : texturesIdx;
+      if (targetIdx !== -1) {
+        const prefix = path.substring(0, targetIdx);
+        const depth = prefix.split("/").filter(Boolean).length;
+        if (depth > 0 && depth < bestRootDepth) {
+          bestRootDepth = depth;
+          packRoot = prefix;
+        }
+      }
+    }
+  }
+
   // Determine target and source pack formats for Java migrations
   const targetJavaVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
   const sourceJavaVersion = options.sourceJavaVersionId

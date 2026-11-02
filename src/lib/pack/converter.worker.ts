@@ -73,10 +73,12 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
     const mergedLangs = new Map<string, string>();
     const flipbookEntries: FlipbookEntry[] = [];
 
-    // Pre-scan for metadata & pack root (prefer shallowest pack.mcmeta or manifest.json)
+    // Pre-scan for metadata & pack root (prefer shallowest pack.mcmeta or manifest.json, or root folder containing assets/textures)
     let packRoot = "";
     let bestRootDepth = Infinity;
     let detectedSourcePackFormat: number | null = null;
+
+    // 1. First look for pack.mcmeta or manifest.json
     for (const path of filePaths) {
       if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
 
@@ -106,6 +108,25 @@ self.onmessage = async (e: MessageEvent<{ fileBuffer: ArrayBuffer; fileName: str
             }
           }
         } catch { }
+      }
+    }
+
+    // 2. Fallback: if no pack.mcmeta/manifest.json found at top level, check for nested assets/ or textures/ directories
+    if (bestRootDepth === Infinity) {
+      for (const path of filePaths) {
+        if (path.includes('__MACOSX') || path.split('/').pop()?.startsWith('.')) continue;
+        const lower = path.toLowerCase();
+        const assetsIdx = lower.indexOf('assets/');
+        const texturesIdx = lower.indexOf('textures/');
+        const targetIdx = assetsIdx !== -1 ? assetsIdx : texturesIdx;
+        if (targetIdx !== -1) {
+          const prefix = path.substring(0, targetIdx);
+          const depth = prefix.split('/').filter(Boolean).length;
+          if (depth > 0 && depth < bestRootDepth) {
+            bestRootDepth = depth;
+            packRoot = prefix;
+          }
+        }
       }
     }
 
