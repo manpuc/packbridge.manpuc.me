@@ -391,5 +391,5 @@ const strings: Record<Language, ReportStrings> = { ja, en, ko, zh, tl, es, fr, d
 export const getReportStrings = (lang: Language): ReportStrings => strings[lang] ?? en;
 export const reportHref = (lang: string) => `/${lang}/report`;
 export const LAST_CONVERSION_KEY = "pb_last_conversion";
-export const APP_VERSION = "1.6.3";
+export const APP_VERSION = "1.6.4";
 export type { ReportStrings };
