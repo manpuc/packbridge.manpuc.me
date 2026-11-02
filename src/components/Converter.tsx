@@ -339,11 +339,40 @@ export default function Converter({
 
         // Check if archive seems to contain any Minecraft pack structure
         let notPackWarn: string | null = null;
-        const hasPackFiles = packMcmetaEntry || manifestEntry || Object.keys(zipInstance.files).some(p => {
-          const lower = p.toLowerCase();
-          return lower.includes('assets/') || lower.includes('textures/') || lower.includes('sounds/') || lower.includes('texts/');
+        const fileKeys = Object.keys(zipInstance.files).filter(k => !zipInstance.files[k].dir && !k.endsWith('/'));
+
+        const hasImageFiles = fileKeys.some(k => {
+          const l = k.toLowerCase();
+          return l.endsWith('.png') || l.endsWith('.tga') || l.endsWith('.jpg') || l.endsWith('.jpeg') || l.endsWith('.webp');
         });
-        if (!hasPackFiles) {
+        const hasSoundFiles = fileKeys.some(k => {
+          const l = k.toLowerCase();
+          return l.endsWith('.ogg') || l.endsWith('.wav') || l.endsWith('.mp3') || l.endsWith('.fsb');
+        });
+        const hasModelOrFontFiles = fileKeys.some(k => {
+          const l = k.toLowerCase();
+          return (l.includes('assets/') || l.includes('textures/') || l.includes('font/')) && (l.endsWith('.json') || l.endsWith('.ttf') || l.endsWith('.otf'));
+        });
+
+        const hasJavaAssetsDir = fileKeys.some(k => {
+          const l = k.toLowerCase();
+          return l.includes('assets/minecraft/') || l.startsWith('assets/');
+        });
+        const hasBedrockTexturesDir = fileKeys.some(k => {
+          const l = k.toLowerCase();
+          return l.includes('textures/') || l.includes('sounds/') || l.includes('ui/');
+        });
+
+        // Check for Datapack-only zip (has pack.mcmeta + data/ but no assets/)
+        const isDatapackOnly = Boolean(packMcmetaEntry && fileKeys.some(k => k.toLowerCase().includes('data/')) && !hasJavaAssetsDir);
+
+        // A valid texture pack must have resource files (textures, sounds, or models) and Minecraft resource structure
+        const isMinecraftPack = !isDatapackOnly && (
+          ((packMcmetaEntry || hasJavaAssetsDir) && (hasImageFiles || hasSoundFiles || hasModelOrFontFiles)) ||
+          ((manifestEntry || hasBedrockTexturesDir) && (hasImageFiles || hasSoundFiles || hasModelOrFontFiles))
+        );
+
+        if (!isMinecraftPack) {
           notPackWarn = t.warnNotMinecraftPack;
         }
 

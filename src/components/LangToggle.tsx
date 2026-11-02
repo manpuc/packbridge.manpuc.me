@@ -97,16 +97,19 @@ export default function LangToggle() {
           position: absolute;
           top: calc(100% + 8px);
           right: 0;
-          background: var(--color-surface);
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          background: rgba(255, 255, 255, 0.82);
+          backdrop-filter: blur(24px) saturate(180%);
+          -webkit-backdrop-filter: blur(24px) saturate(180%);
           border: 1px solid var(--color-border);
           padding: 6px;
           border-radius: calc(10px + 6px); /* Concentric: 10px inner item + 6px padding = 16px */
           min-width: 170px;
           box-shadow: var(--shadow-md);
-          z-index: 1000;
+          z-index: 1001;
           transform-origin: top right;
+        }
+        [data-theme="dark"] .lang-dropdown {
+          background: rgba(24, 24, 26, 0.82);
         }
         .dropdown-header {
           padding: 8px 10px 6px;

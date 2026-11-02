@@ -162,14 +162,23 @@ h1 {
   display: inline-flex;
   align-items: center;
   padding: 4px;
-  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px; /* 12px button radius + 4px padding = 16px concentric */
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-shadow: var(--shadow-sm);
   gap: 2px;
   z-index: 1000;
+}
+
+.top-controls::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Glassmorphism Card */
@@ -514,6 +523,61 @@ button.icon-btn.active {
   color: var(--color-text-muted);
 }
 
+/* Report Action Buttons */
+.report-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.report-download-btn {
+  text-decoration: none;
+  flex: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: var(--radius-inner, 14px);
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  box-sizing: border-box;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-download-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
+}
+
+.report-reset-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-inner, 14px);
+  padding: 14px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  box-sizing: border-box;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.report-btn-icon {
+  flex-shrink: 0;
+}
+
 .unsupported-card {
   --unsupported-padding: 6px;
   --unsupported-inner-radius: var(--radius-inner); /* 14px */
@@ -528,6 +592,7 @@ button.icon-btn.active {
   justify-content: space-between;
   width: 100%;
   padding: 8px 12px;
+  margin: 0 !important;
   border-radius: var(--unsupported-inner-radius); /* 14px inner + 6px padding = 20px outer */
   background: transparent !important;
   color: var(--color-text);
@@ -638,6 +703,11 @@ button.icon-btn.active {
 .dropzone.active {
   border-color: rgba(0, 122, 255, 0.5);
   background: rgba(0, 122, 255, 0.04);
+}
+
+.dropzone.has-error {
+  border-color: var(--color-danger) !important;
+  background: rgba(255, 59, 48, 0.05) !important;
 }
 
 .dropzone-icon-container {
@@ -1037,6 +1107,11 @@ footer {
     background: var(--color-surface);
   }
 
+  .converter-root .dropzone.has-error {
+    border-color: var(--color-danger) !important;
+    background: rgba(255, 59, 48, 0.05) !important;
+  }
+
   /* Unsupported collapsible section on mobile */
   .converter-root .report-container > .card.unsupported-card,
   .converter-root .report-container > .card:has(.unsupported-toggle-btn) {
@@ -1044,6 +1119,41 @@ footer {
     border: 1px solid var(--color-border);
     border-radius: var(--unsupported-outer-radius, 20px);
     padding: var(--unsupported-padding, 6px) !important;
+  }
+
+  /* Conversion Report action buttons stacked on mobile for clarity and thumb reach */
+  .converter-root .report-actions,
+  .report-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .report-download-btn {
+    width: 100%;
+    min-height: 52px;
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+  }
+
+  .report-reset-btn {
+    width: 100%;
+    min-height: 46px;
+    padding: 12px 18px;
+    font-size: 14px;
+    opacity: 0.88;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .report-download-btn {
+    font-size: 14px;
+    padding: 14px 12px;
+    white-space: normal;
+    text-align: center;
   }
 }
 
@@ -1507,6 +1617,7 @@ footer {
   transition: grid-template-rows var(--acc-expand) var(--acc-ease);
 }
 .t-acc-panel-inner {
+  min-height: 0;
   overflow: hidden;
   opacity: 0;
   filter: blur(2px);

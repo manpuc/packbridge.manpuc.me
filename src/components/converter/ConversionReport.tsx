@@ -117,12 +117,12 @@ export function ConversionReport({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.3 }}
-          style={{ display: 'flex', gap: '12px', marginTop: '4px' }}
+          className="report-actions"
         >
           {downloadUrl && (
             <motion.a
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.96 }}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               href={downloadUrl}
               download={`${fileName.replace(/\.(zip|mcpack)$/i, '')}_converted.${direction.endsWith('bedrock') ? 'mcpack' : 'zip'}`}
@@ -130,37 +130,21 @@ export function ConversionReport({
                 const format = direction.endsWith('bedrock') ? 'mcpack' : 'zip';
                 trackEvent('pack_download', { format, direction });
               }}
-              className="primary"
-              style={{
-                textDecoration: 'none',
-                flex: 1,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '14px 24px',
-                borderRadius: '16px',
-                backgroundColor: 'var(--color-primary)',
-                color: 'var(--color-primary-text)',
-                fontWeight: 700,
-                fontSize: '15px',
-                boxShadow: '0 4px 18px rgba(0,0,0,0.12)'
-              }}
+              className="report-download-btn primary"
             >
-              <Download size={19} />
-              {t.btnDownload}
+              <Download size={20} className="report-btn-icon" />
+              <span>{t.btnDownload}</span>
             </motion.a>
           )}
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className="secondary"
+            className="secondary report-reset-btn"
             onClick={onReset}
-            style={{ borderRadius: '16px', padding: '14px 20px', fontWeight: 600 }}
           >
-            <RefreshCw size={18} />
-            {t.btnReset}
+            <RefreshCw size={17} className="report-btn-icon" />
+            <span>{t.btnReset}</span>
           </motion.button>
         </motion.div>
       </motion.div>
@@ -195,7 +179,8 @@ export function ConversionReport({
           </button>
 
           <div className="t-acc-panel" data-open={showDetails ? "true" : "false"}>
-            <div className="t-acc-panel-inner" style={{ padding: '0 4px 6px 4px' }}>
+            <div className="t-acc-panel-inner">
+              <div style={{ padding: '4px 2px 2px 2px' }}>
               <div className="report-controls">
                 <div className="report-search-box">
                   <Search size={15} className="report-search-icon" />
@@ -296,6 +281,7 @@ export function ConversionReport({
                   </button>
                 </div>
               )}
+              </div>
             </div>
           </div>
         </motion.div>
