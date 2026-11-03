@@ -34,6 +34,8 @@ const es: Translation = {
 
 	btnConvert: "Iniciar conversión",
 	btnDownload: "Descargar paquete convertido",
+	inAppBrowserNotice: "Es posible que la descarga no funcione en los navegadores integrados de apps. Vuelve a abrir la página en un navegador estándar como Safari o Chrome (el resultado no se conserva, deberás convertir de nuevo).",
+	inAppBrowserOpenExternal: "Abrir en navegador externo",
 	btnReset: "Convertir otro archivo",
 
 	reportTitle: "Informe de conversión",

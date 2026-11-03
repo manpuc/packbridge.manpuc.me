@@ -35,6 +35,8 @@ const en: Translation = {
 
 	btnConvert: "Start Conversion",
 	btnDownload: "Download Converted Pack",
+	inAppBrowserNotice: "Downloads may not work in in-app browsers. Please reopen this page in a standard browser such as Safari or Chrome (your converted result will not carry over, so you'll need to convert again).",
+	inAppBrowserOpenExternal: "Open in external browser",
 	btnReset: "Convert another file",
 
 	reportTitle: "Conversion Report",

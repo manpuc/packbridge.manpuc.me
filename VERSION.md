@@ -1,5 +1,10 @@
 # Version History
 
+## v1.6.5
+* **アプリ内ブラウザでのダウンロード不具合への対処**:
+  * **アプリ内ブラウザ検知バナー**: LINE・Instagram・Facebook 等のアプリ内ブラウザ（および iOS/Android の WebView）を検知した場合、変換結果画面に「標準ブラウザで開き直してください（再変換が必要）」という案内を表示（`InAppBrowserNotice`、全8言語対応）。
+  * **LINE 向け外部ブラウザ導線**: LINE 内ブラウザでは `?openExternalBrowser=1` 付きの「外部ブラウザで開く」リンクを併せて表示。
+
 ## v1.6.4
 * **変換エンジンの改善**:
   * **パックルート推定のフォールバック**: `pack.mcmeta` / `manifest.json` が見つからない場合、ネストした `assets/` や `textures/` からパックのルートを自動推定（メイン処理・Worker 双方に対応）。

@@ -5,6 +5,7 @@ import type { PackReport, ConversionResult } from '@/lib/pack/types';
 import type { Translation } from '@/lib/i18n';
 
 import { trackEvent } from '@/lib/analytics';
+import { InAppBrowserNotice } from './InAppBrowserNotice';
 
 interface ConversionReportProps {
   report: PackReport;
@@ -111,6 +112,8 @@ export function ConversionReport({
           <SummaryItem label={t.countSkipped} value={report.skippedCount} color={report.skippedCount > 0 ? "var(--color-warning)" : undefined} index={2} />
           <SummaryItem label={t.countErrors} value={report.errorCount} color={report.errorCount > 0 ? "var(--color-danger)" : undefined} index={3} />
         </div>
+
+        <InAppBrowserNotice t={t} />
 
         {/* Action Buttons */}
         <motion.div

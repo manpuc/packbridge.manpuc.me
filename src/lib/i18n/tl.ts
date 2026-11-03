@@ -34,6 +34,8 @@ const tl: Translation = {
 
 	btnConvert: "Simulan ang Pag-convert",
 	btnDownload: "I-download ang Na-convert na Pack",
+	inAppBrowserNotice: "Maaaring hindi gumana ang download sa in-app browser. Buksan muli sa karaniwang browser tulad ng Safari o Chrome (hindi madadala ang resulta, kaya kailangang mag-convert ulit).",
+	inAppBrowserOpenExternal: "Buksan sa external browser",
 	btnReset: "Mag-convert ng ibang file",
 
 	reportTitle: "Ulat ng Pag-convert",

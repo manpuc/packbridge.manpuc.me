@@ -38,6 +38,8 @@ export interface Translation {
 
 	btnConvert: string;
 	btnDownload: string;
+	inAppBrowserNotice: string;
+	inAppBrowserOpenExternal: string;
 	btnReset: string;
 
 	reportTitle: string;

@@ -35,6 +35,8 @@ const ja: Translation = {
 
 	btnConvert: "変換を開始",
 	btnDownload: "変換済みパックをダウンロード",
+	inAppBrowserNotice: "アプリ内ブラウザではダウンロードできない場合があります。Safari や Chrome などの標準ブラウザで開き直してください（変換結果は引き継がれないため、再変換が必要です）。",
+	inAppBrowserOpenExternal: "外部ブラウザで開く",
 	btnReset: "別のファイルを変換",
 
 	reportTitle: "変換レポート",

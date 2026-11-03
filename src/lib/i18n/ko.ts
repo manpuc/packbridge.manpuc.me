@@ -34,6 +34,8 @@ const ko: Translation = {
 
 	btnConvert: "변환 시작",
 	btnDownload: "변환된 팩 다운로드",
+	inAppBrowserNotice: "인앱 브라우저에서는 다운로드가 되지 않을 수 있습니다. Safari, Chrome 등 기본 브라우저에서 다시 열어 주세요(변환 결과는 유지되지 않으므로 다시 변환해야 합니다).",
+	inAppBrowserOpenExternal: "외부 브라우저로 열기",
 	btnReset: "다른 파일 변환",
 
 	reportTitle: "변환 보고서",

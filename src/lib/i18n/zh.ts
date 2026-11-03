@@ -33,6 +33,8 @@ const zh: Translation = {
 
 	btnConvert: "开始转换",
 	btnDownload: "下载转换后的包",
+	inAppBrowserNotice: "应用内浏览器可能无法下载。请在 Safari、Chrome 等标准浏览器中重新打开（转换结果不会保留，需要重新转换）。",
+	inAppBrowserOpenExternal: "在外部浏览器中打开",
 	btnReset: "转换另一个文件",
 
 	reportTitle: "转换报告",

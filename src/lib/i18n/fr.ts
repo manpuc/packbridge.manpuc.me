@@ -34,6 +34,8 @@ const fr: Translation = {
 
 	btnConvert: "Démarrer la conversion",
 	btnDownload: "Télécharger le pack converti",
+	inAppBrowserNotice: "Le téléchargement peut échouer dans les navigateurs intégrés aux applications. Rouvrez la page dans un navigateur standard comme Safari ou Chrome (le résultat n'est pas conservé, il faudra reconvertir).",
+	inAppBrowserOpenExternal: "Ouvrir dans le navigateur externe",
 	btnReset: "Convertir un autre fichier",
 
 	reportTitle: "Rapport de conversion",
