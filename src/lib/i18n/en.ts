@@ -35,7 +35,8 @@ const en: Translation = {
 
 	btnConvert: "Start Conversion",
 	btnDownload: "Download Converted Pack",
-	inAppBrowserNotice: "Downloads may not work in in-app browsers. Please reopen this page in a standard browser such as Safari or Chrome (your converted result will not carry over, so you'll need to convert again).",
+	inAppBrowserNotice: "Saving may fail in in-app browsers.",
+	inAppBrowserAction: "Open in Safari or Chrome",
 	inAppBrowserOpenExternal: "Open in external browser",
 	btnReset: "Convert another file",
 
@@ -49,6 +50,8 @@ const en: Translation = {
 	countConverted: "Converted",
 	countSkipped: "Skipped",
 	countErrors: "Errors",
+
+	btnExportTxt: "Export TXT",
 
 	unsupportedTitle: "Unsupported / Skipped Files",
 	unsupportedReason: "Reason",

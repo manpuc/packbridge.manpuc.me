@@ -77,6 +77,10 @@ export type AnalyticsEventMap = {
     input_method: 'drop' | 'file_picker';
     size_tier?: '<10MB' | '10-50MB' | '50-100MB' | '>100MB';
   };
+  open_external_browser: {
+    browser: 'line' | 'other';
+    trigger: 'notice_sheet';
+  };
 };
 
 /**

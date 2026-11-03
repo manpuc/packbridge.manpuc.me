@@ -25,6 +25,10 @@ export default defineConfig({
   })],
   site: 'https://packbridge.manpuc.me',
   vite: {
+    server: {
+      // ngrok 経由でスマホ実機から dev を確認するためのホスト許可
+      allowedHosts: ['.ngrok-free.app', '.ngrok-free.dev', '.ngrok.app', '.ngrok.io'],
+    },
     worker: {
       format: 'es'
     }

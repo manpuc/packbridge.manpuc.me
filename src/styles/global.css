@@ -1740,10 +1740,29 @@ footer {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.report-filter-count {
+.report-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(120, 120, 128, 0.08);
+  border: 1px solid var(--color-border);
+  padding: 4px 10px;
+  border-radius: 7px;
   font-size: 12px;
+  font-weight: 600;
   color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.report-export-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-text) 20%, transparent);
+}
+
+.report-export-btn:active {
+  transform: scale(0.96);
 }
 
 .report-item {

@@ -34,7 +34,8 @@ const fr: Translation = {
 
 	btnConvert: "Démarrer la conversion",
 	btnDownload: "Télécharger le pack converti",
-	inAppBrowserNotice: "Le téléchargement peut échouer dans les navigateurs intégrés aux applications. Rouvrez la page dans un navigateur standard comme Safari ou Chrome (le résultat n'est pas conservé, il faudra reconvertir).",
+	inAppBrowserNotice: "L'enregistrement peut échouer ici.",
+	inAppBrowserAction: "Ouvrez dans Safari ou Chrome",
 	inAppBrowserOpenExternal: "Ouvrir dans le navigateur externe",
 	btnReset: "Convertir un autre fichier",
 
@@ -48,6 +49,8 @@ const fr: Translation = {
 	countConverted: "Réussis",
 	countSkipped: "Ignorés",
 	countErrors: "Erreurs",
+
+	btnExportTxt: "Exporter en TXT",
 
 	unsupportedTitle: "Fichiers non pris en charge / ignorés",
 	unsupportedReason: "Raison",

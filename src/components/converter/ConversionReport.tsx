@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Download, RefreshCw, AlertCircle, ChevronDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, RefreshCw, AlertCircle, ChevronDown, Search, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
 import type { PackReport, ConversionResult } from '@/lib/pack/types';
 import type { Translation } from '@/lib/i18n';
 
 import { trackEvent } from '@/lib/analytics';
-import { InAppBrowserNotice } from './InAppBrowserNotice';
 
 interface ConversionReportProps {
   report: PackReport;
@@ -17,7 +16,7 @@ interface ConversionReportProps {
 }
 
 const springTransition = { type: "spring", stiffness: 350, damping: 28 } as const;
-const PAGE_SIZE = 40;
+const PAGE_SIZE = 20;
 
 export function ConversionReport({
   report,
@@ -28,6 +27,7 @@ export function ConversionReport({
   t
 }: ConversionReportProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [hasEverOpened, setHasEverOpened] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'error' | 'skipped'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -38,6 +38,7 @@ export function ConversionReport({
   }, [report.details]);
 
   const filteredDetails = useMemo(() => {
+    if (!hasEverOpened) return [];
     const query = searchQuery.trim().toLowerCase();
     return nonConvertedDetails.filter((d: ConversionResult) => {
       if (filterType !== 'all' && d.status !== filterType) return false;
@@ -46,14 +47,48 @@ export function ConversionReport({
       const reasonMatch = d.reason ? d.reason.toLowerCase().includes(query) : false;
       return nameMatch || reasonMatch;
     });
-  }, [nonConvertedDetails, filterType, searchQuery]);
+  }, [nonConvertedDetails, filterType, searchQuery, hasEverOpened]);
 
   const totalPages = Math.max(1, Math.ceil(filteredDetails.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginatedDetails = useMemo(() => {
+    if (!hasEverOpened) return [];
     const start = (currentPage - 1) * PAGE_SIZE;
     return filteredDetails.slice(start, start + PAGE_SIZE);
-  }, [filteredDetails, currentPage]);
+  }, [filteredDetails, currentPage, hasEverOpened]);
+
+  const handleToggleDetails = () => {
+    if (!hasEverOpened) setHasEverOpened(true);
+    setShowDetails((prev) => !prev);
+  };
+
+  const handleExportTxt = () => {
+    const lines: string[] = [
+      `PackBridge Conversion Report - Skipped / Error Files`,
+      `Target: ${fileName}`,
+      `Direction: ${direction}`,
+      `Date: ${new Date().toLocaleString()}`,
+      `Summary: Total ${report.totalFiles} | Converted ${report.convertedCount} | Skipped ${report.skippedCount} | Errors ${report.errorCount}`,
+      `--------------------------------------------------`,
+      '',
+    ];
+
+    for (const item of nonConvertedDetails) {
+      const tag = item.status === 'skipped' ? '[SKIP]' : '[ERROR]';
+      lines.push(`${tag} ${item.filename}${item.reason ? ` - ${item.reason}` : ''}`);
+    }
+
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const base = fileName.replace(/\.(zip|mcpack)$/i, '');
+    a.download = `${base}_unsupported_files.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -68,7 +103,6 @@ export function ConversionReport({
   return (
     <motion.div
       key="report"
-      layout
       initial={{ opacity: 0, y: 24, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, y: -16 }}
@@ -112,8 +146,6 @@ export function ConversionReport({
           <SummaryItem label={t.countSkipped} value={report.skippedCount} color={report.skippedCount > 0 ? "var(--color-warning)" : undefined} index={2} />
           <SummaryItem label={t.countErrors} value={report.errorCount} color={report.errorCount > 0 ? "var(--color-danger)" : undefined} index={3} />
         </div>
-
-        <InAppBrowserNotice t={t} />
 
         {/* Action Buttons */}
         <motion.div
@@ -163,7 +195,7 @@ export function ConversionReport({
           <button
             type="button"
             className="unsupported-toggle-btn"
-            onClick={() => setShowDetails(!showDetails)}
+            onClick={handleToggleDetails}
             aria-expanded={showDetails}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
@@ -183,108 +215,116 @@ export function ConversionReport({
 
           <div className="t-acc-panel" data-open={showDetails ? "true" : "false"}>
             <div className="t-acc-panel-inner">
-              <div style={{ padding: '4px 2px 2px 2px' }}>
-              <div className="report-controls">
-                <div className="report-search-box">
-                  <Search size={15} className="report-search-icon" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    placeholder="ファイル名・理由で絞り込み..."
-                    className="report-search-input"
-                  />
-                </div>
+              {hasEverOpened && (
+                <div style={{ padding: '4px 2px 2px 2px' }}>
+                  <div className="report-controls">
+                    <div className="report-search-box">
+                      <Search size={15} className="report-search-icon" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        placeholder="ファイル名・理由で絞り込み..."
+                        className="report-search-input"
+                      />
+                    </div>
 
-                <div className="report-filter-bar">
-                  <div className="report-filter-tabs">
-                    <button
-                      type="button"
-                      className={`report-filter-btn ${filterType === 'all' ? 'active' : ''}`}
-                      onClick={() => handleFilterChange('all')}
-                    >
-                      すべて ({nonConvertedDetails.length})
-                    </button>
-                    {report.errorCount > 0 && (
-                      <button
-                        type="button"
-                        className={`report-filter-btn ${filterType === 'error' ? 'active' : ''}`}
-                        onClick={() => handleFilterChange('error')}
-                      >
-                        エラー ({report.errorCount})
-                      </button>
-                    )}
-                    {report.skippedCount > 0 && (
-                      <button
-                        type="button"
-                        className={`report-filter-btn ${filterType === 'skipped' ? 'active' : ''}`}
-                        onClick={() => handleFilterChange('skipped')}
-                      >
-                        スキップ ({report.skippedCount})
-                      </button>
-                    )}
-                  </div>
-
-                  <span className="report-filter-count">
-                    {filteredDetails.length} 件
-                  </span>
-                </div>
-              </div>
-
-              {filteredDetails.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-                  該当ファイルは見つかりませんでした
-                </div>
-              ) : (
-                <div
-                  className="report-list"
-                  style={{ maxHeight: '340px', overflowY: 'auto' }}
-                >
-                  {paginatedDetails.map((detail: ConversionResult, idx: number) => (
-                    <div
-                      key={detail.filename || idx}
-                      className="report-item"
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
-                        <span style={{ fontWeight: 600, wordBreak: 'break-all', fontSize: '13px' }}>{detail.filename}</span>
-                        {detail.reason && (
-                          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', wordBreak: 'break-word' }}>
-                            {detail.reason}
-                          </span>
+                    <div className="report-filter-bar">
+                      <div className="report-filter-tabs">
+                        <button
+                          type="button"
+                          className={`report-filter-btn ${filterType === 'all' ? 'active' : ''}`}
+                          onClick={() => handleFilterChange('all')}
+                        >
+                          すべて ({nonConvertedDetails.length})
+                        </button>
+                        {report.errorCount > 0 && (
+                          <button
+                            type="button"
+                            className={`report-filter-btn ${filterType === 'error' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('error')}
+                          >
+                            エラー ({report.errorCount})
+                          </button>
+                        )}
+                        {report.skippedCount > 0 && (
+                          <button
+                            type="button"
+                            className={`report-filter-btn ${filterType === 'skipped' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('skipped')}
+                          >
+                            スキップ ({report.skippedCount})
+                          </button>
                         )}
                       </div>
-                      <span className={`status-badge status-${detail.status}`} style={{ flexShrink: 0 }}>
-                        {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
 
-              {totalPages > 1 && (
-                <div className="report-pagination">
-                  <button
-                    type="button"
-                    className="report-page-btn"
-                    disabled={currentPage <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    <ChevronLeft size={14} /> 前へ
-                  </button>
-                  <span>
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    className="report-page-btn"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    次へ <ChevronRight size={14} />
-                  </button>
+                      <button
+                        type="button"
+                        className="report-export-btn"
+                        onClick={handleExportTxt}
+                        title={t.btnExportTxt}
+                      >
+                        <FileDown size={14} />
+                        <span>{t.btnExportTxt}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {filteredDetails.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+                      該当ファイルは見つかりませんでした
+                    </div>
+                  ) : (
+                    <div
+                      className="report-list"
+                      style={{ maxHeight: '340px', overflowY: 'auto' }}
+                    >
+                      {paginatedDetails.map((detail: ConversionResult, idx: number) => (
+                        <div
+                          key={detail.filename || idx}
+                          className="report-item"
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                            <span style={{ fontWeight: 600, wordBreak: 'break-all', fontSize: '13px' }}>{detail.filename}</span>
+                            {detail.reason && (
+                              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', wordBreak: 'break-word' }}>
+                                {detail.reason}
+                              </span>
+                            )}
+                          </div>
+                          <span className={`status-badge status-${detail.status}`} style={{ flexShrink: 0 }}>
+                            {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {totalPages > 1 && (
+                    <div className="report-pagination">
+                      <button
+                        type="button"
+                        className="report-page-btn"
+                        disabled={currentPage <= 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft size={14} /> 前へ
+                      </button>
+                      <span>
+                        {currentPage} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="report-page-btn"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        次へ <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-              </div>
             </div>
           </div>
         </motion.div>

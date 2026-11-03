@@ -35,7 +35,8 @@ const ja: Translation = {
 
 	btnConvert: "変換を開始",
 	btnDownload: "変換済みパックをダウンロード",
-	inAppBrowserNotice: "アプリ内ブラウザではダウンロードできない場合があります。Safari や Chrome などの標準ブラウザで開き直してください（変換結果は引き継がれないため、再変換が必要です）。",
+	inAppBrowserNotice: "アプリ内ブラウザではファイルを保存できないことがあります。",
+	inAppBrowserAction: "Safari・Chromeで開いてください",
 	inAppBrowserOpenExternal: "外部ブラウザで開く",
 	btnReset: "別のファイルを変換",
 
@@ -49,6 +50,8 @@ const ja: Translation = {
 	countConverted: "変換成功",
 	countSkipped: "スキップ",
 	countErrors: "エラー",
+
+	btnExportTxt: "TXT保存",
 
 	unsupportedTitle: "未対応・スキップされたファイル",
 	unsupportedReason: "理由",

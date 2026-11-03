@@ -39,6 +39,7 @@ export interface Translation {
 	btnConvert: string;
 	btnDownload: string;
 	inAppBrowserNotice: string;
+	inAppBrowserAction: string;
 	inAppBrowserOpenExternal: string;
 	btnReset: string;
 
@@ -52,6 +53,8 @@ export interface Translation {
 	countConverted: string;
 	countSkipped: string;
 	countErrors: string;
+
+	btnExportTxt: string;
 
 	unsupportedTitle: string;
 	unsupportedReason: string;

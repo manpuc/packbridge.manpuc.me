@@ -34,7 +34,8 @@ const tl: Translation = {
 
 	btnConvert: "Simulan ang Pag-convert",
 	btnDownload: "I-download ang Na-convert na Pack",
-	inAppBrowserNotice: "Maaaring hindi gumana ang download sa in-app browser. Buksan muli sa karaniwang browser tulad ng Safari o Chrome (hindi madadala ang resulta, kaya kailangang mag-convert ulit).",
+	inAppBrowserNotice: "Maaaring hindi ma-save sa in-app browser.",
+	inAppBrowserAction: "Buksan sa Safari o Chrome",
 	inAppBrowserOpenExternal: "Buksan sa external browser",
 	btnReset: "Mag-convert ng ibang file",
 
@@ -48,6 +49,8 @@ const tl: Translation = {
 	countConverted: "Na-convert",
 	countSkipped: "Nilaktawan",
 	countErrors: "Mga Error",
+
+	btnExportTxt: "I-export ang TXT",
 
 	unsupportedTitle: "Hindi Suportado / Nilaktawan na mga File",
 	unsupportedReason: "Dahilan",

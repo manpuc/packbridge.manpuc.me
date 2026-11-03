@@ -28,6 +28,7 @@ import { LARGE_FILE_WARN_THRESHOLD_BYTES, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRE
 import { DirectionSettings } from './converter/DirectionSettings';
 import { DropZone } from './converter/DropZone';
 import { ConversionReport } from './converter/ConversionReport';
+import { InAppBrowserNotice } from './converter/InAppBrowserNotice';
 
 interface ConverterProps {
   t: Translation;
@@ -601,6 +602,8 @@ export default function Converter({
           document.body
         )}
       </AnimatePresence>
+
+      <InAppBrowserNotice t={t} />
 
       <DirectionSettings
         direction={direction}

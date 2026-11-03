@@ -138,6 +138,16 @@ Triggered whenever a presented file is rejected before or during initial archive
 
 ---
 
+### Event 10: `open_external_browser`
+Triggered when a user clicks the "Open in external browser" button on the in-app browser notice sheet (e.g. within LINE).
+
+| Property | Type / Enum | Definition & AI Interpretation |
+| :--- | :--- | :--- |
+| `browser` | `"line"` \| `"other"` | The in-app browser environment triggering the external launch. |
+| `trigger` | `"notice_sheet"` | The UI trigger source where the external browser transition was initiated. |
+
+---
+
 ## 4. Key Performance Indicators & AI Analysis Prompts
 
 When evaluating analytics data, use the following formulas and perspectives:
@@ -145,6 +155,7 @@ When evaluating analytics data, use the following formulas and perspectives:
 ### 1. Funnel Conversion Rate (CVR) & Pre-Upload Drop-off
 - **No-Intent Bounce (Group A)**: `pageview_only_sessions - upload_interact_sessions` (mismatch in search intent or first impression).
 - **Input Friction Drop-off (Group B)**: Sessions with `upload_interact` or `file_rejected` but no `file_selected` (dialog canceled or unsupported formats like `.rar`, `.jar`, or unarchived folders).
+- **In-App Browser Recovery**: Count of `open_external_browser` events indicates how many users successfully followed guidance to switch from restricted in-app WebViews (such as LINE) to Safari or Chrome.
 - **Start-to-Download CVR**: `pack_download (count) / conversion_start (count)`
 - **Full Funnel Drop-off**: `upload_interact` → `file_selected` → `conversion_start` → `conversion_success` → `pack_download`
 - *AI Diagnostic*: If `file_selected` to `conversion_start` drop-off is high, check `file_abandoned.has_warning` to determine if users are hitting version/format confusion. If `file_rejected` is high, inspect `reason` and `ext_class` (`"rar"`, `"jar"`, `"folder_or_none"`) to guide input UX improvements.

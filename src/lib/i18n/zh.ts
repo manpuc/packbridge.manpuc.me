@@ -33,7 +33,8 @@ const zh: Translation = {
 
 	btnConvert: "开始转换",
 	btnDownload: "下载转换后的包",
-	inAppBrowserNotice: "应用内浏览器可能无法下载。请在 Safari、Chrome 等标准浏览器中重新打开（转换结果不会保留，需要重新转换）。",
+	inAppBrowserNotice: "应用内浏览器可能无法保存。",
+	inAppBrowserAction: "请用 Safari 或 Chrome 打开",
 	inAppBrowserOpenExternal: "在外部浏览器中打开",
 	btnReset: "转换另一个文件",
 
@@ -47,6 +48,8 @@ const zh: Translation = {
 	countConverted: "转换成功",
 	countSkipped: "已跳过",
 	countErrors: "错误",
+
+	btnExportTxt: "导出 TXT",
 
 	unsupportedTitle: "不支持/已跳过的文件",
 	unsupportedReason: "原因",

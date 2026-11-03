@@ -34,7 +34,8 @@ const ko: Translation = {
 
 	btnConvert: "변환 시작",
 	btnDownload: "변환된 팩 다운로드",
-	inAppBrowserNotice: "인앱 브라우저에서는 다운로드가 되지 않을 수 있습니다. Safari, Chrome 등 기본 브라우저에서 다시 열어 주세요(변환 결과는 유지되지 않으므로 다시 변환해야 합니다).",
+	inAppBrowserNotice: "인앱 브라우저에서는 저장이 안 될 수 있어요.",
+	inAppBrowserAction: "Safari·Chrome에서 열어 주세요",
 	inAppBrowserOpenExternal: "외부 브라우저로 열기",
 	btnReset: "다른 파일 변환",
 
@@ -48,6 +49,8 @@ const ko: Translation = {
 	countConverted: "변환 성공",
 	countSkipped: "건너뜀",
 	countErrors: "오류",
+
+	btnExportTxt: "TXT 내보내기",
 
 	unsupportedTitle: "지원되지 않거나 건너뛴 파일",
 	unsupportedReason: "이유",

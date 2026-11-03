@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, RefreshCw, FileArchive, AlertCircle } from 'lucide-react';
+import { useInAppBrowser } from '@/lib/inAppBrowser';
 import type { Translation } from '@/lib/i18n';
 
 interface DropZoneProps {
@@ -36,6 +37,7 @@ export function DropZone({
 }: DropZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const inAppBrowser = useInAppBrowser();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -265,6 +267,22 @@ export function DropZone({
                   file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : t.dropzoneSubtitle
                 )}
               </p>
+              {inAppBrowser.isInApp && file && !isProcessing && (
+                <p
+                  role="alert"
+                  style={{
+                    margin: '8px 0 0',
+                    padding: '0 8px',
+                    color: 'var(--color-warning)',
+                    fontSize: '14px',
+                    lineHeight: 1.5,
+                    fontWeight: 600,
+                    textAlign: 'center',
+                  }}
+                >
+                  {t.inAppBrowserNotice} {t.inAppBrowserAction}
+                </p>
+              )}
             </motion.div>
           </AnimatePresence>
 
