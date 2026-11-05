@@ -80,7 +80,7 @@ export function InAppBrowserNotice({ t }: { t: Translation }) {
           display: flex;
           flex-direction: column;
           gap: 8px;
-          /* 蜷悟ｿ・ｧ剃ｸｸ: 螟門・ 18px(--radius-md) = 繝懊ち繝ｳ 10px(--radius-sm) + 菴咏區 8px */
+          /* 同心角丸: 外側 16px(--radius-md) = 内側 8px(--radius-sm) + 余白 8px */
           padding: 8px;
           background: var(--color-surface);
           backdrop-filter: blur(24px) saturate(180%);
@@ -119,10 +119,10 @@ export function InAppBrowserNotice({ t }: { t: Translation }) {
         .in-app-notice-text {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 4px;
           flex: 1;
           min-width: 0;
-          padding-top: 1px;
+          padding-top: 0;
         }
         .in-app-notice-reason {
           font-size: 15px;

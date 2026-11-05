@@ -101,9 +101,9 @@ export default function LangToggle() {
           backdrop-filter: blur(24px) saturate(180%);
           -webkit-backdrop-filter: blur(24px) saturate(180%);
           border: 1px solid var(--color-border);
-          padding: 6px;
-          border-radius: calc(10px + 6px); /* Concentric: 10px inner item + 6px padding = 16px */
-          min-width: 170px;
+          padding: 8px;
+          border-radius: calc(8px + 8px); /* Concentric: 8px inner item + 8px padding = 16px */
+          min-width: 176px;
           box-shadow: var(--shadow-md);
           z-index: 1001;
           transform-origin: top right;
@@ -112,7 +112,7 @@ export default function LangToggle() {
           background: rgba(24, 24, 26, 0.82);
         }
         .dropdown-header {
-          padding: 8px 10px 6px;
+          padding: 4px 12px 4px;
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.06em;
@@ -122,15 +122,15 @@ export default function LangToggle() {
         .dropdown-list {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 4px;
         }
         .dropdown-item {
           display: flex;
           align-items: center;
           justify-content: space-between;
           width: 100%;
-          padding: 8px 10px;
-          border-radius: 10px;
+          padding: 8px 12px;
+          border-radius: 8px;
           border: none;
           background: transparent;
           color: var(--color-text);

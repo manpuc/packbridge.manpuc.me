@@ -110,7 +110,7 @@ export function ConversionReport({
       className="report-container"
       style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
-      <motion.div layout className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <motion.div layout className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', maxWidth: '100%' }}>
           <motion.h2
             initial={{ opacity: 0, y: 6 }}
@@ -216,7 +216,7 @@ export function ConversionReport({
           <div className="t-acc-panel" data-open={showDetails ? "true" : "false"}>
             <div className="t-acc-panel-inner">
               {hasEverOpened && (
-                <div style={{ padding: '4px 2px 2px 2px' }}>
+                <div style={{ padding: '4px' }}>
                   <div className="report-controls">
                     <div className="report-search-box">
                       <Search size={15} className="report-search-icon" />
@@ -284,7 +284,7 @@ export function ConversionReport({
                           key={detail.filename || idx}
                           className="report-item"
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
                             <span style={{ fontWeight: 600, wordBreak: 'break-all', fontSize: '13px' }}>{detail.filename}</span>
                             {detail.reason && (
                               <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', wordBreak: 'break-word' }}>
@@ -349,11 +349,11 @@ function SummaryItem({ label, value, color, index }: { label: string, value: num
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '12px 14px',
-        borderRadius: '14px',
+        padding: '12px 16px',
+        borderRadius: 'var(--radius-inner)',
         backgroundColor: 'rgba(120, 120, 128, 0.06)',
         border: '1px solid var(--color-border)',
-        gap: '2px',
+        gap: '4px',
         overflow: 'hidden'
       }}
     >

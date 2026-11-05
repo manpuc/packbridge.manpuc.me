@@ -288,8 +288,8 @@ export function DirectionSettings({
                 display: 'inline-block',
                 fontSize: '11px',
                 fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: '6px',
+                padding: '2px 8px',
+                borderRadius: '4px',
                 backgroundColor: 'var(--color-border)',
                 color: 'var(--color-text-muted)',
                 letterSpacing: '0.02em'

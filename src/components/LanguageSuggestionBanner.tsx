@@ -146,7 +146,7 @@ export default function LanguageSuggestionBanner() {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 10px 14px 10px 16px;
+          padding: 8px 12px 8px 16px;
           background: var(--color-surface);
           backdrop-filter: blur(24px) saturate(180%);
           -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -168,7 +168,7 @@ export default function LanguageSuggestionBanner() {
         .toast-text {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           white-space: nowrap;
           font-weight: 500;
         }
@@ -191,7 +191,7 @@ export default function LanguageSuggestionBanner() {
           color: #ffffff;
           font-size: 13px;
           font-weight: 600;
-          padding: 6px 14px;
+          padding: 8px 16px;
           border-radius: var(--radius-full);
           cursor: pointer;
           transition: transform 0.15s ease, opacity 0.15s ease;
@@ -246,7 +246,7 @@ export default function LanguageSuggestionBanner() {
             width: calc(100vw - 32px);
           }
           .toast-content {
-            padding: 10px 12px;
+            padding: 8px 12px;
             justify-content: space-between;
           }
           .toast-text {

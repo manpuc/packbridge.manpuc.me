@@ -151,7 +151,7 @@ export function DropZone({
                 style={{
                   width: '80px',
                   height: '80px',
-                  borderRadius: '18px',
+                  borderRadius: '16px',
                   objectFit: 'cover',
                   boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
                   border: '2px solid var(--color-surface)'
@@ -186,7 +186,7 @@ export function DropZone({
         <motion.div
           layout="position"
           transition={springTransition}
-          style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', alignItems: 'center' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center' }}
         >
           <AnimatePresence mode="wait">
             <motion.p
@@ -250,7 +250,7 @@ export function DropZone({
                   color: 'var(--color-text-muted)',
                   fontSize: '14px',
                   lineHeight: 1.5,
-                  padding: '2px 8px'
+                  padding: '0 8px'
                 }}
               >
                 {isProcessing ? (
@@ -313,7 +313,7 @@ export function DropZone({
                 }}
                 style={{ overflow: 'hidden', width: '100%' }}
               >
-                <div style={{ paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
+                <div style={{ paddingTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
                   <div className="dropzone-progress-bar">
                     {progressPercent !== null ? (
                       <motion.div
@@ -358,7 +358,7 @@ export function DropZone({
                 }}
                 style={{ overflow: 'hidden', width: '100%' }}
               >
-                <div style={{ display: 'flex', gap: '10px', paddingTop: '16px', paddingBottom: '4px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '12px', paddingTop: '16px', paddingBottom: '4px', justifyContent: 'center' }}>
                   <motion.button
                     whileHover={{
                       backgroundColor: 'var(--color-danger)',
@@ -370,7 +370,7 @@ export function DropZone({
                     whileTap={{ scale: 0.94 }}
                     className="secondary"
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); onReset(); }}
-                    style={{ padding: '12px', minWidth: '46px', width: '46px', justifyContent: 'center' }}
+                    style={{ padding: '12px', minWidth: '48px', width: '48px', justifyContent: 'center' }}
                     aria-label="Reset selection"
                   >
                     <X size={20} />
