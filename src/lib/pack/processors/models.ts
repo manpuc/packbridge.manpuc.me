@@ -267,22 +267,37 @@ export function bedrockToJavaModel(
 
     if (isBlockOrItem) {
       const isItem = baseName.startsWith('item_') || primary.identifier.startsWith('geometry.item_');
-      const cleanName = baseName.replace(/^(block_|item_)/, '');
+      const cleanName = baseName.replace(/^(block_|item_)/, '').replace(/[^a-z0-9_.-]/g, '_');
+      if (!cleanName) return null;
       const elements: JavaElement[] = [];
+      const clampCoord = (v: number) => Math.max(-16, Math.min(32, Number.isFinite(v) ? v : 0));
+      const clampUv = (v: number) => Math.max(0, Math.min(16, Number.isFinite(v) ? v : 0));
+      const scaleU = 16 / Math.max(1, primary.textureWidth || 16);
+      const scaleV = 16 / Math.max(1, primary.textureHeight || 16);
 
       for (const bone of primary.bones) {
         if (!bone || !Array.isArray(bone.cubes)) continue;
         for (const cube of bone.cubes) {
           if (!Array.isArray(cube.origin) || !Array.isArray(cube.size)) continue;
-          const from: [number, number, number] = [
+          const rawFrom: [number, number, number] = [
             Number(cube.origin[0] || 0) + 8,
             Number(cube.origin[1] || 0),
             Number(cube.origin[2] || 0) + 8
           ];
+          const rawTo: [number, number, number] = [
+            rawFrom[0] + Number(cube.size[0] || 0),
+            rawFrom[1] + Number(cube.size[1] || 0),
+            rawFrom[2] + Number(cube.size[2] || 0)
+          ];
+          const from: [number, number, number] = [
+            clampCoord(Math.min(rawFrom[0], rawTo[0])),
+            clampCoord(Math.min(rawFrom[1], rawTo[1])),
+            clampCoord(Math.min(rawFrom[2], rawTo[2]))
+          ];
           const to: [number, number, number] = [
-            from[0] + Number(cube.size[0] || 0),
-            from[1] + Number(cube.size[1] || 0),
-            from[2] + Number(cube.size[2] || 0)
+            clampCoord(Math.max(rawFrom[0], rawTo[0])),
+            clampCoord(Math.max(rawFrom[1], rawTo[1])),
+            clampCoord(Math.max(rawFrom[2], rawTo[2]))
           ];
 
           const el: JavaElement = { from, to };
@@ -313,12 +328,12 @@ export function bedrockToJavaModel(
             for (const f of faceNames) {
               const fData = cube.uv[f];
               if (fData && Array.isArray(fData.uv)) {
-                const u0 = Number(fData.uv[0] || 0);
-                const v0 = Number(fData.uv[1] || 0);
-                const us = Array.isArray(fData.uv_size) ? Number(fData.uv_size[0] || 0) : 16;
-                const vs = Array.isArray(fData.uv_size) ? Number(fData.uv_size[1] || 0) : 16;
+                const u0 = Number(fData.uv[0] || 0) * scaleU;
+                const v0 = Number(fData.uv[1] || 0) * scaleV;
+                const us = (Array.isArray(fData.uv_size) ? Number(fData.uv_size[0] || 0) : 16) * scaleU;
+                const vs = (Array.isArray(fData.uv_size) ? Number(fData.uv_size[1] || 0) : 16) * scaleV;
                 faces[f] = {
-                  uv: [u0, v0, u0 + us, v0 + vs],
+                  uv: [clampUv(u0), clampUv(v0), clampUv(u0 + us), clampUv(v0 + vs)],
                   texture: '#0'
                 };
               } else {

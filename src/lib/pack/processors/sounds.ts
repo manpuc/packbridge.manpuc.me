@@ -75,39 +75,60 @@ export function javaToBedrockSounds(jsonContent: string): string {
   }
 }
 
+function stripJsonComments(str: string): string {
+  return str.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+function normalizeJavaSoundValue(val: unknown, fallback: number): number {
+  if (typeof val === 'number' && Number.isFinite(val) && val > 0) return val;
+  if (Array.isArray(val) && val.length > 0) {
+    const nums = val.map(Number).filter(n => Number.isFinite(n) && n > 0);
+    if (nums.length > 0) return nums.reduce((a, b) => a + b, 0) / nums.length;
+  }
+  return fallback;
+}
+
 /**
  * Converts Bedrock Edition sound_definitions.json to Java Edition sounds.json
  */
 export function bedrockToJavaSounds(jsonContent: string): string {
   try {
-    const bedrockData = JSON.parse(jsonContent);
-    if (!bedrockData || typeof bedrockData !== 'object') return jsonContent;
+    const bedrockData = JSON.parse(stripJsonComments(jsonContent));
+    if (!bedrockData || typeof bedrockData !== 'object') return '{}';
     const javaData: any = Object.create(null);
     const definitions = (bedrockData.sound_definitions && typeof bedrockData.sound_definitions === 'object')
       ? bedrockData.sound_definitions
-      : {};
+      : (bedrockData.format_version ? {} : bedrockData);
 
     const BEDROCK_TO_JAVA_EVENT_MAP: Record<string, string> = Object.entries(JAVA_TO_BEDROCK_EVENT_MAP).reduce((acc, [j, b]) => {
-      // Keep only the first mapping found if there are duplicates
       if (!acc[b]) acc[b] = j;
       return acc;
     }, Object.create(null) as Record<string, string>);
 
     const active = getActiveMappings();
     for (const [soundEvent, data] of Object.entries(definitions) as [string, any][]) {
-      if (isUnsafeObjectKey(soundEvent) || !data || typeof data !== 'object') continue;
-      const jSounds = (Array.isArray(data.sounds) ? data.sounds : []).map((s: any) => {
-        if (typeof s === 'string') {
-          return s.replace(/^sounds\//, '');
-        }
-        if (!s || typeof s !== 'object') return s;
-        const newObj = { ...s };
-        const name = typeof s.name === 'string' ? s.name : "";
-        newObj.name = name.replace(/^sounds\//, '');
-        return newObj;
-      });
+      if (isUnsafeObjectKey(soundEvent) || !data || typeof data !== 'object' || !Array.isArray(data.sounds)) continue;
+      const jSounds = data.sounds
+        .map((s: any) => {
+          if (typeof s === 'string') {
+            const clean = s.replace(/^sounds\//i, '').replace(/\.(ogg|fsb|wav|mp3)$/i, '').toLowerCase();
+            return /^[a-z0-9/._-]+$/.test(clean) ? clean : null;
+          }
+          if (!s || typeof s !== 'object' || typeof s.name !== 'string') return null;
+          const cleanName = s.name.replace(/^sounds\//i, '').replace(/\.(ogg|fsb|wav|mp3)$/i, '').toLowerCase();
+          if (!/^[a-z0-9/._-]+$/.test(cleanName)) return null;
+          const newObj: Record<string, any> = { name: cleanName };
+          if (s.volume !== undefined) newObj.volume = normalizeJavaSoundValue(s.volume, 1.0);
+          if (s.pitch !== undefined) newObj.pitch = normalizeJavaSoundValue(s.pitch, 1.0);
+          if (typeof s.weight === 'number' && s.weight >= 1) newObj.weight = Math.round(s.weight);
+          if (typeof s.stream === 'boolean') newObj.stream = s.stream;
+          if (typeof s.load_on_low_memory === 'boolean') newObj.stream = s.load_on_low_memory;
+          return newObj;
+        })
+        .filter(Boolean);
 
-      // Build reverse dynamic map on the fly if provided
+      if (jSounds.length === 0) continue;
+
       let dynamicMapped: string | undefined;
       if (active.sounds_bedrock_to_java && Object.hasOwn(active.sounds_bedrock_to_java, soundEvent)) {
         dynamicMapped = active.sounds_bedrock_to_java[soundEvent];
@@ -116,17 +137,16 @@ export function bedrockToJavaSounds(jsonContent: string): string {
         if (jKey) dynamicMapped = jKey;
       }
 
-      const mappedEvent = dynamicMapped || BEDROCK_TO_JAVA_EVENT_MAP[soundEvent] || soundEvent;
-      if (isUnsafeObjectKey(mappedEvent)) continue;
+      const mappedEvent = (dynamicMapped || BEDROCK_TO_JAVA_EVENT_MAP[soundEvent] || soundEvent).toLowerCase();
+      if (isUnsafeObjectKey(mappedEvent) || !/^[a-z0-9._-]+$/.test(mappedEvent)) continue;
 
       javaData[mappedEvent] = {
-        category: data.category || "neutral",
         sounds: jSounds
       };
     }
 
     return JSON.stringify(javaData, null, 2);
   } catch (e) {
-    return jsonContent;
+    return '{}';
   }
 }

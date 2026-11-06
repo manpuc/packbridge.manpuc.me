@@ -20,11 +20,15 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   const colorMapType = data[1];
   const imageType = data[2];
 
-  // Supported types: 2 (Uncompressed True-Color), 3 (Uncompressed Grayscale),
-  // 10 (RLE True-Color), 11 (RLE Grayscale)
-  if (colorMapType !== 0 || ![2, 3, 10, 11].includes(imageType)) {
+  // Supported types: 1 (Uncompressed Color-Mapped), 2 (Uncompressed True-Color),
+  // 3 (Uncompressed Grayscale), 9 (RLE Color-Mapped), 10 (RLE True-Color), 11 (RLE Grayscale)
+  if (![1, 2, 3, 9, 10, 11].includes(imageType)) {
     return null;
   }
+
+  const colorMapOrigin = data[3] | (data[4] << 8);
+  const colorMapLength = data[5] | (data[6] << 8);
+  const colorMapDepth = data[7];
 
   const width = data[12] | (data[13] << 8);
   const height = data[14] | (data[15] << 8);
@@ -36,7 +40,7 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   }
 
   const bytesPerPixel = pixelDepth >> 3;
-  if (![1, 3, 4].includes(bytesPerPixel)) {
+  if (![1, 2, 3, 4].includes(bytesPerPixel)) {
     return null;
   }
 
@@ -46,15 +50,61 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   let offset = 18 + idLength;
   if (offset >= data.length) return null;
 
+  const isColorMapped = imageType === 1 || imageType === 9;
+  let palette: Uint8Array | null = null;
+  if (colorMapType === 1) {
+    const cmapBytesPerEntry = Math.ceil(colorMapDepth / 8);
+    const cmapTotalBytes = colorMapLength * cmapBytesPerEntry;
+    if (offset + cmapTotalBytes > data.length) return null;
+    if (isColorMapped) {
+      palette = new Uint8Array((colorMapOrigin + colorMapLength) * 4);
+      for (let i = 0; i < colorMapLength; i++) {
+        const entryOffset = offset + i * cmapBytesPerEntry;
+        const dst = (colorMapOrigin + i) * 4;
+        if (cmapBytesPerEntry === 4) {
+          palette[dst] = data[entryOffset + 2];
+          palette[dst + 1] = data[entryOffset + 1];
+          palette[dst + 2] = data[entryOffset];
+          palette[dst + 3] = data[entryOffset + 3];
+        } else if (cmapBytesPerEntry === 3) {
+          palette[dst] = data[entryOffset + 2];
+          palette[dst + 1] = data[entryOffset + 1];
+          palette[dst + 2] = data[entryOffset];
+          palette[dst + 3] = 255;
+        } else if (cmapBytesPerEntry === 2) {
+          const v = data[entryOffset] | (data[entryOffset + 1] << 8);
+          palette[dst] = ((v >> 10) & 0x1f) * 255 / 31;
+          palette[dst + 1] = ((v >> 5) & 0x1f) * 255 / 31;
+          palette[dst + 2] = (v & 0x1f) * 255 / 31;
+          palette[dst + 3] = 255;
+        }
+      }
+    }
+    offset += cmapTotalBytes;
+  } else if (isColorMapped) {
+    return null;
+  }
+
   const totalPixels = width * height;
   const rawPixels = new Uint8Array(totalPixels * 4);
-  const isRle = imageType === 10 || imageType === 11;
+  const isRle = imageType === 9 || imageType === 10 || imageType === 11;
 
   let pixelIndex = 0;
 
   const readPixelInto = (srcOffset: number, dstPixelIdx: number) => {
     const dst = dstPixelIdx * 4;
-    if (bytesPerPixel === 4) {
+    if (isColorMapped && palette) {
+      const idx = bytesPerPixel === 2
+        ? (data[srcOffset] | (data[srcOffset + 1] << 8))
+        : data[srcOffset];
+      const pIdx = idx * 4;
+      if (pIdx + 3 < palette.length) {
+        rawPixels[dst] = palette[pIdx];
+        rawPixels[dst + 1] = palette[pIdx + 1];
+        rawPixels[dst + 2] = palette[pIdx + 2];
+        rawPixels[dst + 3] = palette[pIdx + 3];
+      }
+    } else if (bytesPerPixel === 4) {
       rawPixels[dst] = data[srcOffset + 2];     // R
       rawPixels[dst + 1] = data[srcOffset + 1]; // G
       rawPixels[dst + 2] = data[srcOffset];     // B
@@ -63,6 +113,12 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
       rawPixels[dst] = data[srcOffset + 2];     // R
       rawPixels[dst + 1] = data[srcOffset + 1]; // G
       rawPixels[dst + 2] = data[srcOffset];     // B
+      rawPixels[dst + 3] = 255;
+    } else if (bytesPerPixel === 2) {
+      const v = data[srcOffset] | (data[srcOffset + 1] << 8);
+      rawPixels[dst] = ((v >> 10) & 0x1f) * 255 / 31;
+      rawPixels[dst + 1] = ((v >> 5) & 0x1f) * 255 / 31;
+      rawPixels[dst + 2] = (v & 0x1f) * 255 / 31;
       rawPixels[dst + 3] = 255;
     } else {
       const v = data[srcOffset];
@@ -191,15 +247,30 @@ export function encodeRgbaToPngSync(width: number, height: number, rgba: Uint8Ar
   return out;
 }
 
+export function isValidPngHeader(bytes: Uint8Array): boolean {
+  return (
+    bytes.length > 24 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  );
+}
+
+export function getPngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (!isValidPngHeader(bytes)) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = view.getUint32(16, false);
+  const height = view.getUint32(20, false);
+  if (width <= 0 || height <= 0 || width > MAX_TGA_DIMENSION || height > MAX_TGA_DIMENSION) {
+    return null;
+  }
+  return { width, height };
+}
+
 export async function convertTgaToPng(tgaBytes: Uint8Array): Promise<Uint8Array | null> {
   // Check if file is already a valid PNG (some packs name PNG files with .tga extension)
-  if (
-    tgaBytes.length > 8 &&
-    tgaBytes[0] === 0x89 &&
-    tgaBytes[1] === 0x50 &&
-    tgaBytes[2] === 0x4e &&
-    tgaBytes[3] === 0x47
-  ) {
+  if (isValidPngHeader(tgaBytes)) {
     return tgaBytes;
   }
 
@@ -207,5 +278,97 @@ export async function convertTgaToPng(tgaBytes: Uint8Array): Promise<Uint8Array 
   if (!decoded) return null;
 
   return encodeRgbaToPngSync(decoded.width, decoded.height, decoded.rgba);
+}
+
+export async function ensureValidPngBytes(bytes: Uint8Array): Promise<Uint8Array | null> {
+  if (isValidPngHeader(bytes)) return bytes;
+  return convertTgaToPng(bytes);
+}
+
+/**
+ * Ensures textures placed into Java's mipmapped `blocks` atlas (`assets/minecraft/textures/block/`)
+ * have width and height divisible by 16 (2^4 for 4 mipmap levels).
+ * Legacy Bedrock unused block textures (`bed_feet_*`, `bed_head_*`, `conduit_base`) are rejected (null),
+ * while off-by-1/off-by-2 Bedrock block textures (e.g. `16x17` or `32x34` `end_gateway`) are cropped/padded to a 16x multiple.
+ */
+export function normalizeJavaBlockAtlasPng(
+  targetPath: string,
+  pngBytes: Uint8Array,
+  decodePngSync: (data: Uint8Array) => { width: number; height: number; rgba: Uint8Array } | null
+): Uint8Array | null {
+  if (!/^assets\/minecraft\/textures\/(blocks?|entity\/conduit)\//.test(targetPath)) {
+    return pngBytes;
+  }
+  const baseName = targetPath.split('/').pop() || '';
+  if (/^(bed_feet_|bed_head_|conduit_base)/.test(baseName)) {
+    return null;
+  }
+  const dims = getPngDimensions(pngBytes);
+  if (!dims) return null;
+
+  if (targetPath.startsWith('assets/minecraft/textures/entity/conduit/')) {
+    if (baseName.startsWith('base')) {
+      // Vanilla Java conduit/base.png is 32x16; Bedrock conduit_base.png is 24x12 (unpadded box UV) or 32x16
+      if (dims.width % 16 === 0 && dims.height % 16 === 0) return pngBytes;
+      const decoded = decodePngSync(pngBytes);
+      if (!decoded) return null;
+      const scale = Math.max(1, Math.round(decoded.height / 12));
+      const targetW = 32 * scale;
+      const targetH = 16 * scale;
+      const outRgba = new Uint8Array(targetW * targetH * 4);
+      const copyW = Math.min(decoded.width, targetW);
+      const copyH = Math.min(decoded.height, targetH);
+      for (let y = 0; y < copyH; y++) {
+        const srcRow = y * decoded.width * 4;
+        const dstRow = y * targetW * 4;
+        outRgba.set(decoded.rgba.subarray(srcRow, srcRow + copyW * 4), dstRow);
+      }
+      return encodeRgbaToPngSync(targetW, targetH, outRgba);
+    }
+    if (baseName.startsWith('open_eye') || baseName.startsWith('closed_eye')) {
+      // Vanilla Java conduit/open_eye.png & closed_eye.png are 8x8 on a 16x16 canvas
+      if (dims.width % 16 === 0 && dims.height % 16 === 0) return pngBytes;
+      const decoded = decodePngSync(pngBytes);
+      if (!decoded) return null;
+      const scale = Math.max(1, Math.round(decoded.width / 8));
+      const targetW = 16 * scale;
+      const targetH = 16 * scale;
+      const outRgba = new Uint8Array(targetW * targetH * 4);
+      const copyW = Math.min(decoded.width, targetW);
+      const copyH = Math.min(decoded.height, targetH);
+      for (let y = 0; y < copyH; y++) {
+        const srcRow = y * decoded.width * 4;
+        const dstRow = y * targetW * 4;
+        outRgba.set(decoded.rgba.subarray(srcRow, srcRow + copyW * 4), dstRow);
+      }
+      return encodeRgbaToPngSync(targetW, targetH, outRgba);
+    }
+  }
+
+  if (dims.width % 16 === 0 && dims.height % 16 === 0) {
+    return pngBytes;
+  }
+
+  const decoded = decodePngSync(pngBytes);
+  if (!decoded) return null;
+
+  const targetW = Math.max(16, Math.round(decoded.width / 16) * 16);
+  const targetH = Math.max(16, Math.round(decoded.height / 16) * 16);
+  const outRgba = new Uint8Array(targetW * targetH * 4);
+
+  for (let y = 0; y < targetH; y++) {
+    const srcY = Math.min(y, decoded.height - 1);
+    for (let x = 0; x < targetW; x++) {
+      const srcX = Math.min(x, decoded.width - 1);
+      const srcIdx = (srcY * decoded.width + srcX) * 4;
+      const dstIdx = (y * targetW + x) * 4;
+      outRgba[dstIdx] = decoded.rgba[srcIdx];
+      outRgba[dstIdx + 1] = decoded.rgba[srcIdx + 1];
+      outRgba[dstIdx + 2] = decoded.rgba[srcIdx + 2];
+      outRgba[dstIdx + 3] = decoded.rgba[srcIdx + 3];
+    }
+  }
+
+  return encodeRgbaToPngSync(targetW, targetH, outRgba);
 }
 

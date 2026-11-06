@@ -64,39 +64,8 @@ export function generateManifestContent(
 }
 
 export function generateMcmetaContent(description: unknown, packFormat: number): string {
-  let finalDescription: any;
-  try {
-    let baseComp: any;
-    if (typeof description === 'string') {
-      try {
-        baseComp = JSON.parse(description);
-      } catch {
-        baseComp = { text: description };
-      }
-    } else if (description && typeof description === 'object') {
-      baseComp = structuredClone(description);
-    } else {
-      baseComp = { text: String(description ?? "Converted by PackBridge") };
-    }
-
-    if (typeof baseComp !== 'object' || baseComp === null) {
-      baseComp = { text: String(baseComp) };
-    } else if (Array.isArray(baseComp)) {
-      baseComp = { text: "", extra: baseComp };
-    }
-    if (!Array.isArray(baseComp.extra)) baseComp.extra = [];
-    baseComp.extra.push({ text: "\nConverted with ", color: "gray" });
-    baseComp.extra.push({
-      text: "PackBridge",
-      color: "blue",
-      underlined: true,
-      clickEvent: { action: "open_url", value: "https://packbridge.manpuc.me" }
-    });
-    finalDescription = baseComp;
-  } catch {
-    const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
-    finalDescription = cleanDesc + "\nConverted with PackBridge (https://packbridge.manpuc.me)";
-  }
+  const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
+  const finalDescription = `${cleanDesc}\nConverted with PackBridge (packbridge.manpuc.me)`;
 
   const packObj: any = {
     pack_format: packFormat,

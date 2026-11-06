@@ -17,7 +17,7 @@ import {
   MODERN_GUI_SPRITE_JAVA_TO_BEDROCK,
   MODERN_GUI_SPRITE_BEDROCK_TO_JAVA
 } from './processors/gui';
-import { convertTgaToPng } from './processors/tga';
+import { convertTgaToPng, ensureValidPngBytes, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
 import { reencodeOgg } from './processors/audio';
 import { javaToBedrockGeometry, bedrockToJavaModel, isBedrockModelPath, isJavaModelPath } from './processors/models';
 import { compositeSnowyGrassSide } from './processors/grass';
@@ -27,7 +27,8 @@ import {
   convertBedrockMerToLabPbrSpec,
   convertLabPbrSpecToBedrockMer,
   parseTextureSetJson,
-  generateBedrockTextureSetJson
+  generateBedrockTextureSetJson,
+  decodePngToRgbaSync
 } from './processors/pbr';
 import { isSafePath, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES, isSystemHiddenFile } from './security';
 
@@ -160,15 +161,24 @@ export async function convertPack(
   const sourcePackFormat = sourceJavaVersion?.packFormat ?? detectedSourcePackFormat ?? targetJavaVersion.packFormat;
 
   const formatTargetJavaPath = (jPath: string): string => {
-    if (targetJavaVersion.packFormat <= 3) {
-      return downgradeLegacyPath(jPath, targetJavaVersion.packFormat);
+    const formatted = targetJavaVersion.packFormat <= 3
+      ? downgradeLegacyPath(jPath, targetJavaVersion.packFormat)
+      : normalizeLegacyPath(jPath, targetJavaVersion.packFormat);
+    if (targetJavaVersion.packFormat >= 4 && formatted.startsWith('assets/')) {
+      return formatted.toLowerCase();
     }
-    return normalizeLegacyPath(jPath, targetJavaVersion.packFormat);
+    return formatted;
+  };
+
+  const isValidJavaAssetPath = (jPath: string): boolean => {
+    if (targetJavaVersion.packFormat >= 4 && jPath.startsWith('assets/')) {
+      return /^assets\/[a-z0-9_.-]+\/[a-z0-9/._-]+$/.test(jPath);
+    }
+    return true;
   };
 
   // Pre-scan Bedrock subpacks (`subpacks/<folder>/...`) so the richest subpack is merged into the main pack
   let activeSubpackFolder: string | null = null;
-  const rootRelativePaths = new Set<string>();
   const subpackCounts = new Map<string, number>();
 
   for (const p of files) {
@@ -177,8 +187,6 @@ export async function convertPack(
     const spMatch = rel.match(/^subpacks\/([^/]+)\/(.+)$/);
     if (spMatch) {
       subpackCounts.set(spMatch[1], (subpackCounts.get(spMatch[1]) || 0) + 1);
-    } else {
-      rootRelativePaths.add(rel);
     }
   }
 
@@ -206,6 +214,9 @@ export async function convertPack(
 
   // Track generated Bedrock texture_set metadata when converting Java LabPBR -> Bedrock
   const bedrockPbrSets = new Map<string, { baseName: string; dir: string; hasMer: boolean; hasNormal: boolean }>();
+  const javaOutputPngDims = new Map<string, { width: number; height: number }>();
+  const pendingJavaFlipbooks: Array<{ sourcePath: string; javaPngPath: string; entry: FlipbookEntry }> = [];
+  const writtenJavaMcmetas = new Map<string, string>();
 
   // Pre-load dirt texture for Bedrock -> Java conversion to composite transparent snowy grass
   let cachedBedrockDirtBytes: Uint8Array | null = null;
@@ -350,11 +361,14 @@ export async function convertPack(
           const rawBytes = await fileEntry.async('uint8array');
 
           if (pbrInfo.type === 'mer' || pbrInfo.type === 'mers') {
-            const specPng = await convertBedrockMerToLabPbrSpec(rawBytes, pbrInfo.type === 'mers');
+            const rawSpecPng = await convertBedrockMerToLabPbrSpec(rawBytes, pbrInfo.type === 'mers');
             const specPath = formattedBase.replace(/\.png$/i, '_s.png');
-            if (specPng && isSafePath(specPath)) {
+            const specPng = rawSpecPng ? normalizeJavaBlockAtlasPng(specPath, rawSpecPng, decodePngToRgbaSync) : null;
+            if (specPng && isSafePath(specPath) && isValidJavaAssetPath(specPath)) {
               targetZip.file(specPath, specPng, getZipFileOptions(specPath));
               allTargetTextures.add(specPath);
+              const dims = getPngDimensions(specPng);
+              if (dims) javaOutputPngDims.set(specPath, dims);
               report.convertedCount++;
               report.details.push({ filename: path, status: 'converted', outputPath: specPath });
             } else {
@@ -364,14 +378,18 @@ export async function convertPack(
             continue;
           } else if (pbrInfo.type === 'normal' || pbrInfo.type === 'heightmap') {
             const normPath = formattedBase.replace(/\.png$/i, '_n.png');
-            const normBytes = relativePath.toLowerCase().endsWith('.tga')
-              ? (await convertTgaToPng(rawBytes)) || rawBytes
-              : rawBytes;
-            if (isSafePath(normPath)) {
+            const rawNormBytes = await ensureValidPngBytes(rawBytes);
+            const normBytes = rawNormBytes ? normalizeJavaBlockAtlasPng(normPath, rawNormBytes, decodePngToRgbaSync) : null;
+            if (normBytes && isSafePath(normPath) && isValidJavaAssetPath(normPath)) {
               targetZip.file(normPath, normBytes, getZipFileOptions(normPath));
               allTargetTextures.add(normPath);
+              const dims = getPngDimensions(normBytes);
+              if (dims) javaOutputPngDims.set(normPath, dims);
               report.convertedCount++;
               report.details.push({ filename: path, status: 'converted', outputPath: normPath });
+            } else {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Failed to decode Bedrock normal/height map' });
             }
             continue;
           }
@@ -433,7 +451,7 @@ export async function convertPack(
         }
         const rawText = await fileEntry.async('text');
         const convertedModel = bedrockToJavaModel(rawText, relativePath, targetJavaVersion.packFormat);
-        if (convertedModel && isSafePath(convertedModel.outputPath)) {
+        if (convertedModel && isSafePath(convertedModel.outputPath) && isValidJavaAssetPath(convertedModel.outputPath)) {
           targetZip.file(convertedModel.outputPath, convertedModel.content, getZipFileOptions(convertedModel.outputPath));
           report.convertedCount++;
           report.details.push({ filename: path, status: 'converted', outputPath: convertedModel.outputPath });
@@ -482,12 +500,8 @@ export async function convertPack(
         }
       }
 
-      if (direction === 'bedrock-to-java' && targetPath) {
-        if (targetJavaVersion.packFormat <= 3) {
-          targetPath = downgradeLegacyPath(targetPath, targetJavaVersion.packFormat);
-        } else {
-          targetPath = normalizeLegacyPath(targetPath, targetJavaVersion.packFormat);
-        }
+      if ((direction === 'bedrock-to-java' || direction === 'java-to-java') && targetPath) {
+        targetPath = formatTargetJavaPath(targetPath);
       }
 
       // Check if we need to load and decode the content for text/logic processing
@@ -508,13 +522,9 @@ export async function convertPack(
         } else if (direction === 'bedrock-to-java') {
           if (relativePath.endsWith('.lang') && targetPath.endsWith('.json')) {
             needsProcessing = true;
-          } else if (relativePath === 'textures/flipbook_textures.json') {
+          } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
             needsProcessing = true;
-          } else if (
-            relativePath === 'sounds/sound_definitions.json' ||
-            relativePath === 'sounds.json' ||
-            relativePath === 'sounds/sounds.json'
-          ) {
+          } else if (relativePath === 'sounds/sound_definitions.json') {
             needsProcessing = true;
           } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
             needsProcessing = true;
@@ -618,7 +628,9 @@ export async function convertPack(
                   targetPath = targetPath.replace(/\.fsb$/, '.ogg');
                 }
               } else {
-                finalContent = content;
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Failed to extract FSB audio' });
+                continue;
               }
             } else if (relativePath.endsWith('.lang') && targetPath.endsWith('.json')) {
               if (!options.enableLanguageConversion) {
@@ -627,14 +639,18 @@ export async function convertPack(
                 continue;
               }
               finalContent = bedrockToJavaLang(decoder.decode(content));
-            } else if (relativePath === 'textures/flipbook_textures.json') {
+            } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
               if (!options.enableAnimationConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Animation conversion disabled' });
                 continue;
               }
               try {
-                const flipbooks = JSON.parse(decoder.decode(content));
+                const cleanedFlipbook = decoder.decode(content)
+                  .replace(/\/\/.*$/gm, '')
+                  .replace(/\/\*[\s\S]*?\*\//g, '')
+                  .replace(/,\s*([}\]])/g, '$1');
+                const flipbooks = JSON.parse(cleanedFlipbook);
                 if (Array.isArray(flipbooks)) {
                   for (const entry of flipbooks) {
                     if (!entry || typeof entry.flipbook_texture !== 'string') continue;
@@ -645,26 +661,18 @@ export async function convertPack(
                       : 'textures/' + rawTex;
                     const jPath = getTargetContext(bPath, 'bedrock-to-java');
                     if (jPath) {
-                      const mcmetaPath = jPath + '.mcmeta';
-                      if (!isSafePath(mcmetaPath)) continue;
-                      const mcmetaContent = generateJavaAnimation(entry);
-                      targetZip.file(mcmetaPath, mcmetaContent, getZipFileOptions(mcmetaPath));
-                      report.convertedCount++;
-                      report.details.push({ filename: path, status: 'converted', outputPath: mcmetaPath });
+                      const formattedJPath = formatTargetJavaPath(jPath);
+                      pendingJavaFlipbooks.push({ sourcePath: path, javaPngPath: formattedJPath, entry });
                     }
                   }
                 }
-              } catch (e) {
+              } catch {
                 // Ignore parse errors, just skip it
               }
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
               continue;
-            } else if (
-              relativePath === 'sounds/sound_definitions.json' ||
-              relativePath === 'sounds.json' ||
-              relativePath === 'sounds/sounds.json'
-            ) {
+            } else if (relativePath === 'sounds/sound_definitions.json') {
               if (!options.enableSoundConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
@@ -674,12 +682,18 @@ export async function convertPack(
               targetPath = 'assets/minecraft/sounds.json';
             } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
               try {
-                const parsed = JSON.parse(decoder.decode(content));
+                const cleanedSplashes = decoder.decode(content)
+                  .replace(/\/\/.*$/gm, '')
+                  .replace(/\/\*[\s\S]*?\*\//g, '')
+                  .replace(/,\s*([}\]])/g, '$1');
+                const parsed = JSON.parse(cleanedSplashes);
                 const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.splashes) ? parsed.splashes : [];
                 finalContent = list.map((s: any) => String(s)).join('\n');
                 targetPath = 'assets/minecraft/texts/splashes.txt';
               } catch {
-                finalContent = content;
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid splashes.json format' });
+                continue;
               }
             } else {
               finalContent = content;
@@ -733,19 +747,42 @@ export async function convertPack(
           }
         }
 
-        if (options.enableTgaConversion && relativePath.toLowerCase().endsWith('.tga')) {
-          try {
-            const resolved = finalContent instanceof Promise ? await finalContent : finalContent;
-            const rawBytes = typeof resolved === 'string' ? new TextEncoder().encode(resolved) : resolved;
-            const pngBytes = await convertTgaToPng(rawBytes);
-            if (pngBytes) {
-              finalContent = pngBytes;
-              targetPath = targetPath.replace(/\.tga$/i, '.png');
-            } else {
-              report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed, keeping raw bytes' });
+        if (relativePath.toLowerCase().endsWith('.tga')) {
+          if (!options.enableTgaConversion) {
+            if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
+              continue;
             }
-          } catch (e) {
-            console.warn("TGA to PNG conversion failed:", e);
+          } else {
+            const pngTarget = targetPath.replace(/\.tga$/i, '.png');
+            if (direction === 'bedrock-to-java' && allTargetTextures.has(pngTarget)) {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
+              continue;
+            }
+            try {
+              const resolved = finalContent instanceof Promise ? await finalContent : finalContent;
+              const rawBytes = typeof resolved === 'string' ? new TextEncoder().encode(resolved) : resolved;
+              const pngBytes = await convertTgaToPng(rawBytes);
+              if (pngBytes) {
+                finalContent = pngBytes;
+                targetPath = pngTarget;
+              } else if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed' });
+                continue;
+              } else {
+                report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed, keeping raw bytes' });
+              }
+            } catch (e) {
+              console.warn("TGA to PNG conversion failed:", e);
+              if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion failed' });
+                continue;
+              }
+            }
           }
         }
 
@@ -762,6 +799,21 @@ export async function convertPack(
           } catch (e) {
             console.warn("Snowy grass compositing failed:", e);
           }
+        }
+
+        if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+          const resolved = finalContent instanceof Promise ? await finalContent : finalContent;
+          const rawBytes = typeof resolved === 'string' ? new TextEncoder().encode(resolved) : resolved;
+          const rawValidPng = await ensureValidPngBytes(rawBytes);
+          const validPng = rawValidPng ? normalizeJavaBlockAtlasPng(targetPath, rawValidPng, decodePngToRgbaSync) : null;
+          if (!validPng) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or legacy non-mipmappable block texture' });
+            continue;
+          }
+          finalContent = validPng;
+          const dims = getPngDimensions(validPng);
+          if (dims) javaOutputPngDims.set(targetPath, dims);
         }
 
         // Same-edition metadata updates
@@ -809,14 +861,14 @@ export async function convertPack(
           }
         }
 
-        if (targetPath.endsWith('.png') || targetPath.endsWith('.tga')) {
-          allTargetTextures.add(targetPath);
+        if (!isSafePath(targetPath) || ((direction === 'bedrock-to-java' || direction === 'java-to-java') && !isValidJavaAssetPath(targetPath))) {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or unsafe target path' });
+          continue;
         }
 
-        if (!isSafePath(targetPath)) {
-          report.skippedCount++;
-          report.details.push({ filename: path, status: 'skipped', reason: 'Unsafe target path traversal' });
-          continue;
+        if (targetPath.endsWith('.png') || targetPath.endsWith('.tga')) {
+          allTargetTextures.add(targetPath);
         }
 
         targetZip.file(targetPath, finalContent as any, getZipFileOptions(targetPath));
@@ -836,9 +888,15 @@ export async function convertPack(
           generateMcmeta(targetZip, report, path, packDescription, jVersion.packFormat);
         } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png' || relativePath.endsWith('/pack_icon.png') || relativePath.endsWith('/pack.png')) {
           const iconName = (direction === 'java-to-bedrock') ? 'pack_icon.png' : 'pack.png';
-          targetZip.file(iconName, fileEntry.async('uint8array'), getZipFileOptions(iconName));
-          report.convertedCount++;
-          report.details.push({ filename: path, status: 'converted', outputPath: iconName });
+          const iconBytes = await ensureValidPngBytes(await fileEntry.async('uint8array'));
+          if (iconBytes) {
+            targetZip.file(iconName, iconBytes, getZipFileOptions(iconName));
+            report.convertedCount++;
+            report.details.push({ filename: path, status: 'converted', outputPath: iconName });
+          } else {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'Invalid pack icon format' });
+          }
         } else {
           // Provide more specific reasons for common skips
           let reason = 'Unsupported or unmapped file';
@@ -940,6 +998,38 @@ export async function convertPack(
         generateManifest(targetZip, report, 'pack.mcmeta', packName, packDescription, headerUuid, moduleUuid, bVersion.minEngineVersion);
       }
     } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
+      if (direction === 'bedrock-to-java' && options.enableAnimationConversion) {
+        for (const { sourcePath, javaPngPath, entry } of pendingJavaFlipbooks) {
+          const dims = javaOutputPngDims.get(javaPngPath);
+          if (!dims || dims.height <= dims.width || dims.height % dims.width !== 0) continue;
+          const frameCount = dims.height / dims.width;
+          const sanitizedEntry: FlipbookEntry = {
+            ...entry,
+            frames: Array.isArray(entry.frames)
+              ? entry.frames.filter(f => typeof f === 'number' && Number.isFinite(f) && f >= 0 && f < frameCount)
+              : undefined
+          };
+          const mcmetaPath = `${javaPngPath}.mcmeta`;
+          if (!isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
+          const mcmetaContent = generateJavaAnimation(sanitizedEntry);
+          targetZip.file(mcmetaPath, mcmetaContent, getZipFileOptions(mcmetaPath));
+          writtenJavaMcmetas.set(mcmetaPath, mcmetaContent);
+          report.convertedCount++;
+          report.details.push({ filename: sourcePath, status: 'converted', outputPath: mcmetaPath });
+        }
+
+        for (const [pngPath, dims] of javaOutputPngDims.entries()) {
+          if (!/^assets\/minecraft\/textures\/(blocks?|items?|entity\/conduit)\//.test(pngPath)) continue;
+          if (dims.height <= dims.width || dims.height % dims.width !== 0) continue;
+          const mcmetaPath = `${pngPath}.mcmeta`;
+          if (writtenJavaMcmetas.has(mcmetaPath) || !isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
+          const baseMcmetaPath = pngPath.replace(/_[sn]\.png$/i, '.png.mcmeta');
+          const fallbackMcmeta = writtenJavaMcmetas.get(baseMcmetaPath) || JSON.stringify({ animation: {} }, null, 2);
+          targetZip.file(mcmetaPath, fallbackMcmeta, getZipFileOptions(mcmetaPath));
+          writtenJavaMcmetas.set(mcmetaPath, fallbackMcmeta);
+        }
+      }
+
       // Ensure pack.mcmeta exists in output zip
       if (!targetZip.file('pack.mcmeta')) {
         const jVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];

@@ -1357,7 +1357,8 @@
     "assets/minecraft/textures/environment/moon_phases.png": "textures/environment/moon_phases.png",
     "assets/minecraft/textures/environment/sun.png": "textures/environment/sun.png",
     "assets/minecraft/textures/environment/rain.png": "textures/environment/weather.png",
-    "assets/minecraft/textures/misc/pumpkinblur.png": "textures/misc/pumpkinblur.png"
+    "assets/minecraft/textures/misc/pumpkinblur.png": "textures/misc/pumpkinblur.png",
+    "assets/minecraft/textures/entity/conduit/base.png": "textures/blocks/conduit_base.png"
   },
   "bedrock_to_java": {
     "textures/blocks/anvil_base.png": "assets/minecraft/textures/blocks/anvil_base.png",
@@ -2434,6 +2435,7 @@
     "textures/environment/sun.png": "assets/minecraft/textures/environment/sun.png",
     "textures/environment/weather.png": "assets/minecraft/textures/environment/rain.png",
     "textures/misc/pumpkinblur.png": "assets/minecraft/textures/misc/pumpkinblur.png",
+    "textures/blocks/conduit_base.png": "assets/minecraft/textures/entity/conduit/base.png",
     "textures/blocks/leaves_oak.png": "assets/minecraft/textures/block/oak_leaves.png",
     "textures/blocks/leaves_spruce.png": "assets/minecraft/textures/block/spruce_leaves.png",
     "textures/blocks/leaves_birch.png": "assets/minecraft/textures/block/birch_leaves.png",
@@ -2469,8 +2471,6 @@
     "textures/entity/cat/siamese.png": "assets/minecraft/textures/entity/cat/siamese.png",
     "textures/entity/cat/blackcat.png": "assets/minecraft/textures/entity/cat/all_black.png",
     "textures/entity/zombie_villager2/zombie-villager.png": "assets/minecraft/textures/entity/zombie_villager/zombie_villager.png",
-    "textures/entity/pistonarm/pistonArm.png": "assets/minecraft/textures/block/piston_top.png",
-    "textures/entity/pistonarm/pistonArmSticky.png": "assets/minecraft/textures/block/piston_top_sticky.png",
     "textures/items/boat.png": "assets/minecraft/textures/item/oak_boat.png"
   },
   "sounds_java_to_bedrock": {

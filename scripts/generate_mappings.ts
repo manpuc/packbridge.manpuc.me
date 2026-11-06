@@ -398,6 +398,7 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   // Decorated Pot & Conduit
   "assets/minecraft/textures/entity/decorated_pot/decorated_pot_base.png": "textures/blocks/decorated_pot_base.png",
   "assets/minecraft/textures/entity/decorated_pot/decorated_pot_side.png": "textures/blocks/decorated_pot_side.png",
+  "assets/minecraft/textures/entity/conduit/base.png": "textures/blocks/conduit_base.png",
   "assets/minecraft/textures/entity/conduit/cage.png": "textures/blocks/conduit_cage.png",
   "assets/minecraft/textures/entity/conduit/closed_eye.png": "textures/blocks/conduit_closed.png",
   "assets/minecraft/textures/entity/conduit/open_eye.png": "textures/blocks/conduit_open.png",
@@ -549,8 +550,6 @@ const AUTHORITATIVE_B2J_ONLY_OVERRIDES: Record<string, string> = {
   "textures/entity/cat/siamese.png": "assets/minecraft/textures/entity/cat/siamese.png",
   "textures/entity/cat/blackcat.png": "assets/minecraft/textures/entity/cat/all_black.png",
   "textures/entity/zombie_villager2/zombie-villager.png": "assets/minecraft/textures/entity/zombie_villager/zombie_villager.png",
-  "textures/entity/pistonarm/pistonArm.png": "assets/minecraft/textures/block/piston_top.png",
-  "textures/entity/pistonarm/pistonArmSticky.png": "assets/minecraft/textures/block/piston_top_sticky.png",
   "textures/items/boat_dark_oak.png": "assets/minecraft/textures/item/dark_oak_boat.png",
   "textures/items/boat.png": "assets/minecraft/textures/item/oak_boat.png",
 };
@@ -563,6 +562,8 @@ function applyTextureOverrides(content: any, isFallback = false) {
   delete content.java_to_bedrock['assets/minecraft/textures/blocks/grass_side_overlay.png'];
   delete content.java_to_bedrock['assets/textures/block/grass_block_side_overlay.png'];
   delete content.java_to_bedrock['assets/textures/blocks/grass_side_overlay.png'];
+  delete content.java_to_bedrock['assets/minecraft/textures/block/conduit.png'];
+  delete content.java_to_bedrock['assets/textures/block/conduit.png'];
 
   for (const [javaFull, bedrockPath] of Object.entries(AUTHORITATIVE_TEXTURE_OVERRIDES)) {
     const javaKey = isFallback ? javaFull.replace(/^assets\/minecraft\//, 'assets/') : javaFull;

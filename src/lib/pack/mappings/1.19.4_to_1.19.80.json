@@ -174,7 +174,6 @@
     "assets/minecraft/textures/block/composter_ready.png": "textures/blocks/compost_ready.png",
     "assets/minecraft/textures/block/composter_side.png": "textures/blocks/composter_side.png",
     "assets/minecraft/textures/block/composter_top.png": "textures/blocks/composter_top.png",
-    "assets/minecraft/textures/block/conduit.png": "textures/blocks/conduit_base.png",
     "assets/minecraft/textures/block/copper_block.png": "textures/blocks/copper_block.png",
     "assets/minecraft/textures/block/copper_ore.png": "textures/blocks/copper_ore.png",
     "assets/minecraft/textures/block/cornflower.png": "textures/blocks/flower_cornflower.png",
@@ -1608,7 +1607,8 @@
     "assets/minecraft/textures/environment/moon_phases.png": "textures/environment/moon_phases.png",
     "assets/minecraft/textures/environment/sun.png": "textures/environment/sun.png",
     "assets/minecraft/textures/environment/rain.png": "textures/environment/weather.png",
-    "assets/minecraft/textures/misc/pumpkinblur.png": "textures/misc/pumpkinblur.png"
+    "assets/minecraft/textures/misc/pumpkinblur.png": "textures/misc/pumpkinblur.png",
+    "assets/minecraft/textures/entity/conduit/base.png": "textures/blocks/conduit_base.png"
   },
   "bedrock_to_java": {
     "textures/blocks/door_acacia_lower.png": "assets/minecraft/textures/block/acacia_door_bottom.png",
@@ -1783,7 +1783,6 @@
     "textures/blocks/compost_ready.png": "assets/minecraft/textures/block/composter_ready.png",
     "textures/blocks/composter_side.png": "assets/minecraft/textures/block/composter_side.png",
     "textures/blocks/composter_top.png": "assets/minecraft/textures/block/composter_top.png",
-    "textures/blocks/conduit_base.png": "assets/minecraft/textures/block/conduit.png",
     "textures/blocks/copper_block.png": "assets/minecraft/textures/block/copper_block.png",
     "textures/blocks/copper_ore.png": "assets/minecraft/textures/block/copper_ore.png",
     "textures/blocks/flower_cornflower.png": "assets/minecraft/textures/block/cornflower.png",
@@ -3077,6 +3076,7 @@
     "textures/environment/sun.png": "assets/minecraft/textures/environment/sun.png",
     "textures/environment/weather.png": "assets/minecraft/textures/environment/rain.png",
     "textures/misc/pumpkinblur.png": "assets/minecraft/textures/misc/pumpkinblur.png",
+    "textures/blocks/conduit_base.png": "assets/minecraft/textures/entity/conduit/base.png",
     "textures/blocks/leaves_oak.png": "assets/minecraft/textures/block/oak_leaves.png",
     "textures/blocks/leaves_spruce.png": "assets/minecraft/textures/block/spruce_leaves.png",
     "textures/blocks/leaves_birch.png": "assets/minecraft/textures/block/birch_leaves.png",
@@ -3114,8 +3114,6 @@
     "textures/entity/cat/siamese.png": "assets/minecraft/textures/entity/cat/siamese.png",
     "textures/entity/cat/blackcat.png": "assets/minecraft/textures/entity/cat/all_black.png",
     "textures/entity/zombie_villager2/zombie-villager.png": "assets/minecraft/textures/entity/zombie_villager/zombie_villager.png",
-    "textures/entity/pistonarm/pistonArm.png": "assets/minecraft/textures/block/piston_top.png",
-    "textures/entity/pistonarm/pistonArmSticky.png": "assets/minecraft/textures/block/piston_top_sticky.png",
     "textures/items/boat_dark_oak.png": "assets/minecraft/textures/item/dark_oak_boat.png",
     "textures/items/boat.png": "assets/minecraft/textures/item/oak_boat.png"
   },
