@@ -1,5 +1,14 @@
 # Version History
 
+## v1.6.6
+* **Bedrock → Java 変換の精度向上**:
+  * **サウンド変換**: `sound_definitions.json` のみを Java の `sounds.json` へ変換し、形式の異なる Bedrock ルートの `sounds.json` は出力しないよう修正。サウンドファイルは `ogg` / `fsb` / `wav` / `mp3` のみを対象に。名前・イベント名の検証と小文字化、`volume` / `pitch` / `weight` / `stream` の正規化を追加。
+  * **テクスチャ変換**: ブロックテクスチャを Java のアトラス要件（16の倍数）に自動補正（例: `16x17` → `16x32`）。コンジット（`base` / `open_eye` / `closed_eye`）のサイズ補正、ベッド・`conduit_base` の不適合テクスチャの除外、PNG の妥当性チェックを追加。
+  * **フリップブック**: `flipbook_textures.json` の処理を強化し、`.png.mcmeta` 生成を出力 PNG の寸法に基づいて行うよう改善。
+  * **パス処理**: pack_format 4 以上の出力では `assets/` 配下のパスを小文字化し、Java で無効なアセットパスを出力しないよう検証を追加。
+  * **モデル・メタデータ**: モデル変換と `pack.mcmeta` 生成の処理を整理。
+* **マッピングデータ**: 各バージョン間マッピング（`mappings/*.json`）および生成スクリプトを更新。
+
 ## v1.6.5
 * **アプリ内ブラウザ（LINE・SNS等）でのダウンロード不具合への対処**:
   * **アプリ内ブラウザ検知シート**: LINE、Instagram、Facebook 等のアプリ内ブラウザおよび WebView を検知した際、画面下部にグラスモーフィズム警告シートを表示（全8言語対応）。
