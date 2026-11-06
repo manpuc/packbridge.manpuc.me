@@ -181,7 +181,7 @@ export function normalizeLegacyPath(path: string, packFormat: number): string {
   }
 
   // 2. Fix filenames for 1.13+ (Flattening) and legacy conversions
-  const match = normalized.match(/^(assets\/minecraft\/textures\/(?:block|item)\/)(.*?)(\.png|\.png\.mcmeta)?$/);
+  const match = normalized.match(/^(assets\/minecraft\/textures\/(?:block|item)\/)(.*?)((?:_[sn])?\.png(?:\.mcmeta)?)$/);
   if (match) {
     const prefix = match[1];
     const name = match[2];
@@ -222,7 +222,7 @@ export function downgradeLegacyPath(path: string, targetPackFormat: number): str
   let downgraded = path;
 
   // 1. Reverse filenames for 1.12-
-  const match = downgraded.match(/^(assets\/minecraft\/textures\/(?:block|item)\/)(.*?)(\.png|\.png\.mcmeta)?$/);
+  const match = downgraded.match(/^(assets\/minecraft\/textures\/(?:block|item)\/)(.*?)((?:_[sn])?\.png(?:\.mcmeta)?)$/);
   if (match) {
     const prefix = match[1];
     const name = match[2];

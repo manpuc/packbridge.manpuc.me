@@ -25,6 +25,7 @@ const ko: Translation = {
 	editionBedrock: "베드락 에디션 (Bedrock)",
 
 	dropzoneTitle: "파일을 드롭하거나 클릭하여 선택",
+	dropzoneTitleMobile: "탭하여 파일 선택",
 	dropzoneSubtitle: ".zip 또는 .mcpack 형식 지원",
 	dropzoneProcessing: "처리 중...",
 	sourceVersion: "원본 버전",
@@ -111,6 +112,16 @@ const ko: Translation = {
 	enableLanguageConversion: '언어 및 번역 변환',
 	enableSoundConversion: '사운드 정의 변환',
 	enableAudioReencode: '오디오 재인코딩 (FFmpeg, ~20MB)',
+	enablePbrConversion: 'PBR / 셰이더 맵 변환 (RTX ⇄ LabPBR)',
+	enableModelConversion: '3D 커스텀 모델 변환 (Geo ⇄ JSON/CEM)',
+	betaCalloutActive: '활성화됨',
+	betaCalloutPreview: '활성화 시 주의사항',
+	betaWarningAudioReencode: '최초 실행 시 약 20MB의 FFmpeg 라이브러리를 로드하여 변환 시간과 CPU 부하가 크게 증가합니다.',
+	betaWarningModernGuiSprites: 'GUI 스프라이트를 동적으로 잘라내어 합성하므로 고해상도 팩에서 메모리 사용량이 늘어나고 일부 UI에서 정렬이 어긋날 수 있습니다.',
+	betaWarningGuiConversion: 'Java와 Bedrock 간의 GUI 구조 차이로 인해 일부 보관함 또는 컨테이너 화면이 완벽하게 맞지 않을 수 있습니다.',
+	betaWarningTgaConversion: '모든 TGA 이미지를 PNG로 디코딩 변환하므로 TGA 파일이 많은 팩의 경우 완료까지 시간이 걸릴 수 있습니다.',
+	betaWarningPbrConversion: 'Bedrock RTX/Deferred PBR 맵(_mer/_normal)과 Java LabPBR 셰이더 맵(_s/_n)을 상호 변환합니다. 픽셀 단위 연산으로 처리 시간이 늘어나며 Java에서는 Iris/OptiFine 등의 모드가 필요합니다.',
+	betaWarningModelConversion: '3D 블록/아이템 모델 및 엔티티 지오메트리(.geo.json ⇄ .json / OptiFine CEM .jem)를 실험적으로 변환합니다. 복잡한 본 구조는 일부 어긋날 수 있습니다.',
 };
 
 export default ko;

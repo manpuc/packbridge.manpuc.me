@@ -25,6 +25,7 @@ const fr: Translation = {
 	editionBedrock: "Bedrock Edition",
 
 	dropzoneTitle: "Déposez votre pack ici ou cliquez pour parcourir",
+	dropzoneTitleMobile: "Touchez pour sélectionner un pack",
 	dropzoneSubtitle: "Prend en charge les fichiers .zip ou .mcpack",
 	dropzoneProcessing: "Traitement en cours...",
 	sourceVersion: "Version source",
@@ -111,6 +112,16 @@ const fr: Translation = {
 	enableLanguageConversion: 'Conversion des langues et traductions',
 	enableSoundConversion: 'Conversion des sons',
 	enableAudioReencode: 'Ré-encoder les fichiers audio (FFmpeg, ~20 Mo)',
+	enablePbrConversion: 'Conversion PBR / Shaders (RTX ⇄ LabPBR)',
+	enableModelConversion: 'Conversion de modèles 3D (Geo ⇄ JSON/CEM)',
+	betaCalloutActive: 'Actif',
+	betaCalloutPreview: 'Impact potentiel',
+	betaWarningAudioReencode: 'Télécharge ~20 Mo de bibliothèques FFmpeg lors de la première utilisation et augmente considérablement le temps de conversion et la charge CPU.',
+	betaWarningModernGuiSprites: 'Découpe et recompose dynamiquement les sprites GUI ; peut augmenter l\'utilisation de la mémoire sur les packs HD et causer des décalages d\'affichage.',
+	betaWarningGuiConversion: 'En raison des différences structurelles entre Java et Bedrock, certains inventaires ou conteneurs peuvent ne pas s\'aligner parfaitement.',
+	betaWarningTgaConversion: 'Décode et convertit toutes les images TGA en PNG, ce qui peut rallonger le temps de traitement pour les packs contenant beaucoup de fichiers TGA.',
+	betaWarningPbrConversion: 'Convertit les textures PBR Bedrock (_mer/_normal) et LabPBR Java (_s/_n). Allonge le temps de traitement et nécessite un mod de shaders (Iris/OptiFine) sur Java.',
+	betaWarningModelConversion: 'Convertit expérimentalement les modèles 3D et la géométrie d\'entités (.geo.json ⇄ .json / OptiFine CEM .jem). Certaines structures complexes peuvent présenter des décalages.',
 };
 
 export default fr;

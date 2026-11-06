@@ -3,7 +3,7 @@
  * into PNG binary data using OffscreenCanvas or standard zlib/PNG encoding fallback.
  */
 
-import { deflateSync } from 'fflate';
+import { zlibSync } from 'fflate';
 
 const MAX_TGA_DIMENSION = 8192;
 
@@ -165,7 +165,7 @@ export function encodeRgbaToPngSync(width: number, height: number, rgba: Uint8Ar
     rawScanlines.set(rgba.subarray(y * stride, (y + 1) * stride), rowStart + 1);
   }
 
-  const compressed = deflateSync(rawScanlines, { level: 6 });
+  const compressed = zlibSync(rawScanlines, { level: 6 });
 
   const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
   const ihdrData = new Uint8Array(13);

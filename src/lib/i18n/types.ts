@@ -28,6 +28,7 @@ export interface Translation {
 	editionBedrock: string;
 
 	dropzoneTitle: string;
+	dropzoneTitleMobile: string;
 	dropzoneSubtitle: string;
 	dropzoneProcessing: string;
 	dropzonePrivacyBadge?: string;
@@ -93,4 +94,14 @@ export interface Translation {
 	enableLanguageConversion: string;
 	enableSoundConversion: string;
 	enableAudioReencode?: string;
+	enablePbrConversion?: string;
+	enableModelConversion?: string;
+	betaCalloutActive?: string;
+	betaCalloutPreview?: string;
+	betaWarningAudioReencode?: string;
+	betaWarningModernGuiSprites?: string;
+	betaWarningGuiConversion?: string;
+	betaWarningTgaConversion?: string;
+	betaWarningPbrConversion?: string;
+	betaWarningModelConversion?: string;
 }

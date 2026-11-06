@@ -93,12 +93,22 @@ export function DropZone({
       <motion.div
         layout
         transition={springTransition}
+        role="button"
+        tabIndex={isProcessing ? -1 : 0}
+        aria-label={t.dropzoneTitle}
         className={`dropzone ${file ? 'active' : ''} ${isDragOver ? 'dragover' : ''} ${error ? 'has-error' : ''}`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => {
           if (!isProcessing) {
+            onPickerOpen?.();
+            fileInputRef.current?.click();
+          }
+        }}
+        onKeyDown={(e) => {
+          if (!isProcessing && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
             onPickerOpen?.();
             fileInputRef.current?.click();
           }
@@ -203,11 +213,16 @@ export function DropZone({
                 padding: '0 8px'
               }}
             >
-              {isProcessing
-                ? t.dropzoneProcessing
-                : file
-                  ? file.name
-                  : t.dropzoneTitle}
+              {isProcessing ? (
+                t.dropzoneProcessing
+              ) : file ? (
+                file.name
+              ) : (
+                <>
+                  <span className="dropzone-title-desktop">{t.dropzoneTitle}</span>
+                  <span className="dropzone-title-mobile">{t.dropzoneTitleMobile || t.dropzoneTitle}</span>
+                </>
+              )}
             </motion.p>
           </AnimatePresence>
 

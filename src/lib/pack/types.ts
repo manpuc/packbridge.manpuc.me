@@ -31,4 +31,5 @@ export interface ConversionOptions {
   enableSoundConversion: boolean;
   enableAudioReencode: boolean;
   enableModelConversion?: boolean;
+  enablePbrConversion?: boolean;
 }

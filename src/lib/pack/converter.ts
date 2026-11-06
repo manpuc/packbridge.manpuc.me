@@ -19,7 +19,16 @@ import {
 } from './processors/gui';
 import { convertTgaToPng } from './processors/tga';
 import { reencodeOgg } from './processors/audio';
-import { javaToBedrockGeometry } from './processors/models';
+import { javaToBedrockGeometry, bedrockToJavaModel, isBedrockModelPath, isJavaModelPath } from './processors/models';
+import { compositeSnowyGrassSide } from './processors/grass';
+import {
+  classifyBedrockPbrPath,
+  classifyJavaLabPbrPath,
+  convertBedrockMerToLabPbrSpec,
+  convertLabPbrSpecToBedrockMer,
+  parseTextureSetJson,
+  generateBedrockTextureSetJson
+} from './processors/pbr';
 import { isSafePath, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES, isSystemHiddenFile } from './security';
 
 const MEDIA_EXTENSIONS = new Set(['.png', '.tga', '.ogg', '.wav', '.mp3', '.fsb', '.jpg', '.jpeg', '.webp']);
@@ -150,6 +159,102 @@ export async function convertPack(
     : (detectedSourcePackFormat !== null ? JAVA_VERSIONS.find(v => v.packFormat === detectedSourcePackFormat) : null);
   const sourcePackFormat = sourceJavaVersion?.packFormat ?? detectedSourcePackFormat ?? targetJavaVersion.packFormat;
 
+  const formatTargetJavaPath = (jPath: string): string => {
+    if (targetJavaVersion.packFormat <= 3) {
+      return downgradeLegacyPath(jPath, targetJavaVersion.packFormat);
+    }
+    return normalizeLegacyPath(jPath, targetJavaVersion.packFormat);
+  };
+
+  // Pre-scan Bedrock subpacks (`subpacks/<folder>/...`) so the richest subpack is merged into the main pack
+  let activeSubpackFolder: string | null = null;
+  const rootRelativePaths = new Set<string>();
+  const subpackCounts = new Map<string, number>();
+
+  for (const p of files) {
+    if (!p.startsWith(packRoot)) continue;
+    const rel = p.substring(packRoot.length);
+    const spMatch = rel.match(/^subpacks\/([^/]+)\/(.+)$/);
+    if (spMatch) {
+      subpackCounts.set(spMatch[1], (subpackCounts.get(spMatch[1]) || 0) + 1);
+    } else {
+      rootRelativePaths.add(rel);
+    }
+  }
+
+  if (subpackCounts.size > 0) {
+    let maxFiles = -1;
+    for (const [folder, count] of subpackCounts.entries()) {
+      if (count > maxFiles) {
+        maxFiles = count;
+        activeSubpackFolder = folder;
+      }
+    }
+  }
+
+  const activeSubpackPaths = new Set<string>();
+  if (activeSubpackFolder) {
+    const spPrefix = `subpacks/${activeSubpackFolder}/`;
+    for (const p of files) {
+      if (!p.startsWith(packRoot)) continue;
+      const rel = p.substring(packRoot.length);
+      if (rel.startsWith(spPrefix)) {
+        activeSubpackPaths.add(rel.substring(spPrefix.length));
+      }
+    }
+  }
+
+  // Track generated Bedrock texture_set metadata when converting Java LabPBR -> Bedrock
+  const bedrockPbrSets = new Map<string, { baseName: string; dir: string; hasMer: boolean; hasNormal: boolean }>();
+
+  // Pre-load dirt texture for Bedrock -> Java conversion to composite transparent snowy grass
+  let cachedBedrockDirtBytes: Uint8Array | null = null;
+  if (direction === 'bedrock-to-java') {
+    const dirtCandidates = [
+      activeSubpackFolder ? `${packRoot}subpacks/${activeSubpackFolder}/textures/blocks/dirt.png` : null,
+      activeSubpackFolder ? `${packRoot}subpacks/${activeSubpackFolder}/textures/blocks/dirt.tga` : null,
+      activeSubpackFolder ? `${packRoot}subpacks/${activeSubpackFolder}/textures/block/dirt.png` : null,
+      activeSubpackFolder ? `${packRoot}subpacks/${activeSubpackFolder}/textures/block/dirt.tga` : null,
+      `${packRoot}textures/blocks/dirt.png`,
+      `${packRoot}textures/blocks/dirt.tga`,
+      `${packRoot}textures/block/dirt.png`,
+      `${packRoot}textures/block/dirt.tga`,
+      activeSubpackFolder ? `subpacks/${activeSubpackFolder}/textures/blocks/dirt.png` : null,
+      activeSubpackFolder ? `subpacks/${activeSubpackFolder}/textures/blocks/dirt.tga` : null,
+      'textures/blocks/dirt.png',
+      'textures/blocks/dirt.tga',
+      'textures/block/dirt.png',
+      'textures/block/dirt.tga'
+    ].filter((p): p is string => Boolean(p));
+
+    for (const c of dirtCandidates) {
+      const entry = sourceZip.file(c);
+      if (entry) {
+        cachedBedrockDirtBytes = await entry.async('uint8array');
+        break;
+      }
+    }
+
+    if (!cachedBedrockDirtBytes) {
+      for (const p of files) {
+        if (/textures\/blocks?\/dirt\.(png|tga)$/i.test(p)) {
+          if (activeSubpackFolder && p.includes(`subpacks/${activeSubpackFolder}`)) {
+            const entry = sourceZip.file(p);
+            if (entry) {
+              cachedBedrockDirtBytes = await entry.async('uint8array');
+              break;
+            }
+          } else if (!cachedBedrockDirtBytes) {
+            const entry = sourceZip.file(p);
+            if (entry) {
+              cachedBedrockDirtBytes = await entry.async('uint8array');
+            }
+          }
+        }
+      }
+    }
+  }
+
   let lastYieldTime = performance.now();
   for (const path of files) {
     const now = performance.now();
@@ -184,12 +289,182 @@ export async function convertPack(
 
     let relativePath = path.substring(packRoot.length);
 
+    // Resolve Bedrock subpack hierarchy (`subpacks/<folder>/...`)
+    if (direction === 'bedrock-to-java' || direction === 'bedrock-to-bedrock') {
+      const spMatch = relativePath.match(/^subpacks\/([^/]+)\/(.+)$/);
+      if (spMatch) {
+        if (spMatch[1] !== activeSubpackFolder) {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: `Inactive subpack tier (${spMatch[1]})` });
+          continue;
+        }
+        relativePath = spMatch[2];
+      } else if (activeSubpackPaths.has(relativePath)) {
+        report.skippedCount++;
+        report.details.push({ filename: path, status: 'skipped', reason: `Overridden by active subpack (${activeSubpackFolder})` });
+        continue;
+      }
+    }
+
     // Normalize legacy paths
     if (direction === 'java-to-bedrock') {
       relativePath = normalizeLegacyPath(relativePath, sourcePackFormat);
     }
 
     try {
+      // 1. Handle PBR / Shader Companion Files (Bedrock RTX/Deferred <-> Java LabPBR)
+      if (direction === 'bedrock-to-java') {
+        const pbrInfo = classifyBedrockPbrPath(relativePath);
+        if (pbrInfo) {
+          if (!options.enablePbrConversion) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'PBR/Shader map conversion is disabled (Beta)' });
+            continue;
+          }
+          if (pbrInfo.type === 'texture_set') {
+            const rawText = await fileEntry.async('text');
+            const parsedTs = parseTextureSetJson(rawText);
+            const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
+            if (parsedTs && baseJava) {
+              const formattedBase = formatTargetJavaPath(baseJava);
+              report.convertedCount++;
+              report.details.push({
+                filename: path,
+                status: 'converted',
+                outputPath: formattedBase.replace(/\.png$/i, '_s.png')
+              });
+            } else {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Unmapped PBR texture_set reference' });
+            }
+            continue;
+          }
+
+          const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
+          if (!baseJava) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'Base texture for PBR map is unmapped' });
+            continue;
+          }
+          const formattedBase = formatTargetJavaPath(baseJava);
+          const rawBytes = await fileEntry.async('uint8array');
+
+          if (pbrInfo.type === 'mer' || pbrInfo.type === 'mers') {
+            const specPng = await convertBedrockMerToLabPbrSpec(rawBytes, pbrInfo.type === 'mers');
+            const specPath = formattedBase.replace(/\.png$/i, '_s.png');
+            if (specPng && isSafePath(specPath)) {
+              targetZip.file(specPath, specPng, getZipFileOptions(specPath));
+              allTargetTextures.add(specPath);
+              report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: specPath });
+            } else {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Failed to decode Bedrock MER map' });
+            }
+            continue;
+          } else if (pbrInfo.type === 'normal' || pbrInfo.type === 'heightmap') {
+            const normPath = formattedBase.replace(/\.png$/i, '_n.png');
+            const normBytes = relativePath.toLowerCase().endsWith('.tga')
+              ? (await convertTgaToPng(rawBytes)) || rawBytes
+              : rawBytes;
+            if (isSafePath(normPath)) {
+              targetZip.file(normPath, normBytes, getZipFileOptions(normPath));
+              allTargetTextures.add(normPath);
+              report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: normPath });
+            }
+            continue;
+          }
+        }
+      } else if (direction === 'java-to-bedrock') {
+        const labPbrInfo = classifyJavaLabPbrPath(relativePath);
+        if (labPbrInfo) {
+          if (!options.enablePbrConversion) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'PBR/Shader map conversion is disabled (Beta)' });
+            continue;
+          }
+          const baseBedrock = getTargetContext(labPbrInfo.baseJavaTexturePath, 'java-to-bedrock');
+          if (!baseBedrock) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'Base texture for LabPBR map is unmapped' });
+            continue;
+          }
+          const rawBytes = await fileEntry.async('uint8array');
+          const baseNoExt = baseBedrock.replace(/\.(png|tga)$/i, '');
+          const lastSlash = baseNoExt.lastIndexOf('/');
+          const dir = lastSlash !== -1 ? baseNoExt.slice(0, lastSlash) : 'textures';
+          const baseName = lastSlash !== -1 ? baseNoExt.slice(lastSlash + 1) : baseNoExt;
+          const setMeta = bedrockPbrSets.get(baseNoExt) || { baseName, dir, hasMer: false, hasNormal: false };
+
+          if (labPbrInfo.type === 'specular') {
+            const merBytes = convertLabPbrSpecToBedrockMer(rawBytes) || rawBytes;
+            const merPath = `${baseNoExt}_mer.png`;
+            if (isSafePath(merPath)) {
+              targetZip.file(merPath, merBytes, getZipFileOptions(merPath));
+              allTargetTextures.add(merPath);
+              setMeta.hasMer = true;
+              bedrockPbrSets.set(baseNoExt, setMeta);
+              report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: merPath });
+            }
+            continue;
+          } else {
+            const normPath = `${baseNoExt}_normal.png`;
+            if (isSafePath(normPath)) {
+              targetZip.file(normPath, rawBytes, getZipFileOptions(normPath));
+              allTargetTextures.add(normPath);
+              setMeta.hasNormal = true;
+              bedrockPbrSets.set(baseNoExt, setMeta);
+              report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: normPath });
+            }
+            continue;
+          }
+        }
+      }
+
+      // 2. Handle 3D Custom Models & Entity Geometry (Bedrock <-> Java)
+      if (direction === 'bedrock-to-java' && isBedrockModelPath(relativePath)) {
+        if (!options.enableModelConversion) {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is disabled (Beta)' });
+          continue;
+        }
+        const rawText = await fileEntry.async('text');
+        const convertedModel = bedrockToJavaModel(rawText, relativePath, targetJavaVersion.packFormat);
+        if (convertedModel && isSafePath(convertedModel.outputPath)) {
+          targetZip.file(convertedModel.outputPath, convertedModel.content, getZipFileOptions(convertedModel.outputPath));
+          report.convertedCount++;
+          report.details.push({ filename: path, status: 'converted', outputPath: convertedModel.outputPath });
+        } else {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: 'Unsupported or empty Bedrock geometry' });
+        }
+        continue;
+      } else if (direction === 'java-to-bedrock' && isJavaModelPath(relativePath)) {
+        if (!options.enableModelConversion) {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is disabled (Beta)' });
+          continue;
+        }
+        const rawText = await fileEntry.async('text');
+        const fileNameNoExt = relativePath.split('/').pop()?.replace(/\.(json|jem)$/i, '') || 'custom';
+        const isBlock = relativePath.includes('/models/block/');
+        const isItem = relativePath.includes('/models/item/');
+        const prefix = isBlock ? 'block_' : isItem ? 'item_' : '';
+        const geoJson = javaToBedrockGeometry(rawText, `${prefix}${fileNameNoExt}`);
+        const outGeoPath = `models/entity/${prefix}${fileNameNoExt}.geo.json`;
+        if (geoJson && isSafePath(outGeoPath)) {
+          targetZip.file(outGeoPath, geoJson, getZipFileOptions(outGeoPath));
+          report.convertedCount++;
+          report.details.push({ filename: path, status: 'converted', outputPath: outGeoPath });
+        } else {
+          report.skippedCount++;
+          report.details.push({ filename: path, status: 'skipped', reason: 'Model has no elements/cubes to convert' });
+        }
+        continue;
+      }
       let targetPath: string | null = null;
       if (options.enableModernGuiSprites) {
         if (direction === 'java-to-bedrock' && Object.hasOwn(MODERN_GUI_SPRITE_JAVA_TO_BEDROCK, relativePath)) {
@@ -235,7 +510,13 @@ export async function convertPack(
             needsProcessing = true;
           } else if (relativePath === 'textures/flipbook_textures.json') {
             needsProcessing = true;
-          } else if (relativePath === 'sounds/sound_definitions.json') {
+          } else if (
+            relativePath === 'sounds/sound_definitions.json' ||
+            relativePath === 'sounds.json' ||
+            relativePath === 'sounds/sounds.json'
+          ) {
+            needsProcessing = true;
+          } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
             needsProcessing = true;
           }
         }
@@ -379,7 +660,11 @@ export async function convertPack(
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
               continue;
-            } else if (relativePath === 'sounds/sound_definitions.json') {
+            } else if (
+              relativePath === 'sounds/sound_definitions.json' ||
+              relativePath === 'sounds.json' ||
+              relativePath === 'sounds/sounds.json'
+            ) {
               if (!options.enableSoundConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
@@ -387,6 +672,15 @@ export async function convertPack(
               }
               finalContent = bedrockToJavaSounds(decoder.decode(content));
               targetPath = 'assets/minecraft/sounds.json';
+            } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
+              try {
+                const parsed = JSON.parse(decoder.decode(content));
+                const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.splashes) ? parsed.splashes : [];
+                finalContent = list.map((s: any) => String(s)).join('\n');
+                targetPath = 'assets/minecraft/texts/splashes.txt';
+              } catch {
+                finalContent = content;
+              }
             } else {
               finalContent = content;
             }
@@ -452,6 +746,21 @@ export async function convertPack(
             }
           } catch (e) {
             console.warn("TGA to PNG conversion failed:", e);
+          }
+        }
+
+        const isSnowyGrass = /(^|\/)(grass_block_snow|grass_side_snowed)\.(png|tga)$/i.test(targetPath);
+        if (direction === 'bedrock-to-java' && isSnowyGrass) {
+          try {
+            const resolved = finalContent instanceof Promise ? await finalContent : finalContent;
+            const rawBytes = typeof resolved === 'string' ? new TextEncoder().encode(resolved) : resolved;
+            const composited = await compositeSnowyGrassSide(rawBytes, cachedBedrockDirtBytes);
+            if (composited) {
+              finalContent = composited;
+              targetPath = targetPath.replace(/\.tga$/i, '.png');
+            }
+          } catch (e) {
+            console.warn("Snowy grass compositing failed:", e);
           }
         }
 
@@ -611,6 +920,18 @@ export async function convertPack(
       // Write merged languages
       for (const [tPath, content] of mergedLangs.entries()) {
         targetZip.file(tPath, content, getZipFileOptions(tPath));
+      }
+
+      // Write generated Bedrock PBR .texture_set.json files
+      if (options.enablePbrConversion && bedrockPbrSets.size > 0) {
+        for (const [baseNoExt, meta] of bedrockPbrSets.entries()) {
+          const tsPath = `${baseNoExt}.texture_set.json`;
+          if (isSafePath(tsPath)) {
+            const tsContent = generateBedrockTextureSetJson(meta.baseName, meta.hasMer, meta.hasNormal);
+            targetZip.file(tsPath, tsContent, getZipFileOptions(tsPath));
+            report.convertedCount++;
+          }
+        }
       }
 
       // Ensure manifest.json exists

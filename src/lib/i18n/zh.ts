@@ -24,6 +24,7 @@ const zh: Translation = {
 	editionJava: "Java版",
 	editionBedrock: "基岩版",
 	dropzoneTitle: "将文件拖放到此处，或点击浏览",
+	dropzoneTitleMobile: "点击选择文件",
 	dropzoneSubtitle: "支持 .zip 或 .mcpack 文件",
 	dropzoneProcessing: "处理中...",
 	sourceVersion: "源版本",
@@ -110,6 +111,16 @@ const zh: Translation = {
 	enableLanguageConversion: '语言与翻译文件转换',
 	enableSoundConversion: '声音配置转换',
 	enableAudioReencode: '音频重新编码 (FFmpeg, ~20MB)',
+	enablePbrConversion: 'PBR / 光影贴图转换 (RTX ⇄ LabPBR)',
+	enableModelConversion: '3D 自定义模型转换 (Geo ⇄ JSON/CEM)',
+	betaCalloutActive: '已启用',
+	betaCalloutPreview: '启用潜在影响',
+	betaWarningAudioReencode: '首次使用时将加载约 20MB 的 FFmpeg 库，大幅增加转换时间与 CPU 占用。',
+	betaWarningModernGuiSprites: '动态裁剪并重新拼接 GUI 精灵，高清包可能会消耗更多内存，且特殊界面可能会出现对齐问题。',
+	betaWarningGuiConversion: '由于 Java 版与基岩版 GUI 结构差异，部分物品栏或容器界面可能无法完全对齐。',
+	betaWarningTgaConversion: '将所有 TGA 图像解码并转换为 PNG，包含较多 TGA 的包处理时间可能显著延长。',
+	betaWarningPbrConversion: '在基岩版 RTX/Deferred PBR 贴图 (_mer/_normal) 与 Java 版 LabPBR 光影贴图 (_s/_n) 之间相互转换。逐像素重映射会增加处理时间，且 Java 版需配合 Iris/OptiFine 等光影模组使用。',
+	betaWarningModelConversion: '实验性转换 3D 方块/物品模型与实体几何 (.geo.json ⇄ .json / OptiFine CEM .jem)。复杂骨骼或动画可能会出现偏移。',
 };
 
 export default zh;

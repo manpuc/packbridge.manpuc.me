@@ -18,7 +18,10 @@ const IosSwitch = ({ checked, onChange }: { checked: boolean, onChange: (c: bool
       onPointerUp={() => setIsPressed(false)}
       onPointerLeave={() => setIsPressed(false)}
       onPointerCancel={() => setIsPressed(false)}
-      onClick={() => onChange(!checked)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
       style={{
         boxSizing: 'border-box',
         width: '44px',
@@ -88,7 +91,51 @@ interface DirectionSettingsProps {
   setEnableSoundConversion: (v: boolean) => void;
   enableAudioReencode: boolean;
   setEnableAudioReencode: (v: boolean) => void;
+  enablePbrConversion: boolean;
+  setEnablePbrConversion: (v: boolean) => void;
+  enableModelConversion: boolean;
+  setEnableModelConversion: (v: boolean) => void;
   t: Translation;
+}
+
+interface BetaOptionItemProps {
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (val: boolean) => void;
+  warningText?: string;
+}
+
+function BetaOptionItem({
+  id,
+  label,
+  checked,
+  onChange,
+  warningText,
+}: BetaOptionItemProps) {
+  return (
+    <div className="beta-option-group">
+      <div className="beta-option-row" onClick={() => onChange(!checked)}>
+        <span style={{ color: 'var(--color-text)' }}>{label}</span>
+        <IosSwitch checked={checked} onChange={onChange} />
+      </div>
+      <AnimatePresence>
+        {checked && warningText && (
+          <motion.div
+            key={`desc-${id}`}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="beta-desc-wrapper"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="beta-option-desc">{warningText}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 export function DirectionSettings({
@@ -118,6 +165,10 @@ export function DirectionSettings({
   setEnableSoundConversion,
   enableAudioReencode,
   setEnableAudioReencode,
+  enablePbrConversion,
+  setEnablePbrConversion,
+  enableModelConversion,
+  setEnableModelConversion,
   t
 }: DirectionSettingsProps) {
   const [isBetaExpanded, setIsBetaExpanded] = useState(false);
@@ -308,34 +359,66 @@ export function DirectionSettings({
           <div className="t-acc-panel" data-open={isBetaExpanded ? "true" : "false"}>
             <div className="t-acc-panel-inner">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '8px' }}>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableGuiConversion || 'Enable GUI Conversion'}</span>
-                  <IosSwitch checked={enableGuiConversion} onChange={setEnableGuiConversion} />
-                </label>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}</span>
-                  <IosSwitch checked={enableModernGuiSprites} onChange={setEnableModernGuiSprites} />
-                </label>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableTgaConversion || 'Convert TGA Textures to PNG'}</span>
-                  <IosSwitch checked={enableTgaConversion} onChange={setEnableTgaConversion} />
-                </label>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableAnimationConversion || 'Enable Animation Conversion'}</span>
-                  <IosSwitch checked={enableAnimationConversion} onChange={setEnableAnimationConversion} />
-                </label>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableLanguageConversion || 'Enable Language Conversion'}</span>
-                  <IosSwitch checked={enableLanguageConversion} onChange={setEnableLanguageConversion} />
-                </label>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableSoundConversion || 'Enable Sound Conversion'}</span>
-                  <IosSwitch checked={enableSoundConversion} onChange={setEnableSoundConversion} />
-                </label>
-                <label className="beta-option-row">
-                  <span style={{ color: 'var(--color-text)' }}>{t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}</span>
-                  <IosSwitch checked={enableAudioReencode} onChange={setEnableAudioReencode} />
-                </label>
+                <BetaOptionItem
+                  id="gui"
+                  label={t.enableGuiConversion || 'Enable GUI Conversion'}
+                  checked={enableGuiConversion}
+                  onChange={setEnableGuiConversion}
+                  warningText={t.betaWarningGuiConversion}
+                />
+                <BetaOptionItem
+                  id="modern-gui"
+                  label={t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}
+                  checked={enableModernGuiSprites}
+                  onChange={setEnableModernGuiSprites}
+                  warningText={t.betaWarningModernGuiSprites}
+                />
+                <BetaOptionItem
+                  id="tga"
+                  label={t.enableTgaConversion || 'Convert TGA Textures to PNG'}
+                  checked={enableTgaConversion}
+                  onChange={setEnableTgaConversion}
+                  warningText={t.betaWarningTgaConversion}
+                />
+                <BetaOptionItem
+                  id="anim"
+                  label={t.enableAnimationConversion || 'Enable Animation Conversion'}
+                  checked={enableAnimationConversion}
+                  onChange={setEnableAnimationConversion}
+                />
+                <BetaOptionItem
+                  id="lang"
+                  label={t.enableLanguageConversion || 'Enable Language Conversion'}
+                  checked={enableLanguageConversion}
+                  onChange={setEnableLanguageConversion}
+                />
+                <BetaOptionItem
+                  id="sound"
+                  label={t.enableSoundConversion || 'Enable Sound Conversion'}
+                  checked={enableSoundConversion}
+                  onChange={setEnableSoundConversion}
+                />
+                <BetaOptionItem
+                  id="audio-reencode"
+                  label={t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}
+                  checked={enableAudioReencode}
+                  onChange={setEnableAudioReencode}
+                  warningText={t.betaWarningAudioReencode}
+                />
+                <BetaOptionItem
+                  id="pbr"
+                  label={t.enablePbrConversion || 'PBR / Shader Map Conversion (RTX ⇄ LabPBR)'}
+                  checked={enablePbrConversion}
+                  onChange={setEnablePbrConversion}
+                  warningText={t.betaWarningPbrConversion}
+                />
+                <BetaOptionItem
+                  id="model"
+                  label={t.enableModelConversion || '3D Custom Model Conversion (Geo ⇄ JSON/CEM)'}
+                  checked={enableModelConversion}
+                  onChange={setEnableModelConversion}
+                  warningText={t.betaWarningModelConversion}
+                />
               </div>
             </div>
           </div>

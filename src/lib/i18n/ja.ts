@@ -25,6 +25,7 @@ const ja: Translation = {
 	editionBedrock: "統合版 (Bedrock)",
 
 	dropzoneTitle: "ファイルをドロップするか選択",
+	dropzoneTitleMobile: "タップしてファイルを選択",
 	dropzoneSubtitle: ".zip または .mcpack 形式に対応",
 	dropzoneProcessing: "処理中...",
 	dropzonePrivacyBadge: "100% クライアント処理 • ファイルは外部サーバーに送信されません",
@@ -112,6 +113,16 @@ const ja: Translation = {
 	enableLanguageConversion: '言語・翻訳ファイル変換',
 	enableSoundConversion: 'サウンド定義変換',
 	enableAudioReencode: '音声を再エンコード (FFmpeg, 約20MB)',
+	enablePbrConversion: 'PBR・シェーダーマップ変換 (RTX ⇄ LabPBR)',
+	enableModelConversion: '3Dカスタムモデル変換 (Geo ⇄ JSON/CEM)',
+	betaCalloutActive: '有効化中',
+	betaCalloutPreview: '有効化時の影響',
+	betaWarningAudioReencode: '初回に約20MBのFFmpegライブラリのロードが発生し、変換処理時間と端末のCPU負荷が大幅に増加します。',
+	betaWarningModernGuiSprites: 'HUDやスプライトシートの動的切り抜きと合成を行うため、高解像度パックでメモリ消費が増加し、一部の特殊なGUIでズレが生じる可能性があります。',
+	betaWarningGuiConversion: 'Java版とBedrock版でGUIのレイアウト構造が異なるため、インベントリやコンテナ画面で一部表示崩れが生じる場合があります。',
+	betaWarningTgaConversion: 'TGA画像をPNGへ全件デコード変換するため、多数のTGAを含むパックでは完了まで時間がかかる場合があります。',
+	betaWarningPbrConversion: '統合版RTX/Deferred PBRマップ（_mer/_normal）とJava版シェーダー規格（LabPBR _s/_n）を相互変換します。ピクセル単位の再計算を行うため処理時間が増加し、Java版ではIrisやOptiFine等のシェーダーModが必要です。',
+	betaWarningModelConversion: 'ブロック・アイテムの3Dモデルおよびエンティティジオメトリ（.geo.json ⇄ .json / OptiFine CEM .jem）を実験的に変換します。ボーン構造やアニメーションの違いにより一部形状が崩れる場合があります。',
 };
 
 export default ja;

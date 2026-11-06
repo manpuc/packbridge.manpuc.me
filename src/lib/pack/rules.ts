@@ -7,7 +7,18 @@ export interface PathRule {
 }
 
 export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
-  // Keeping generic regex rules as fallback
+  // Specific structural mappings before generic fallbacks
+  { match: /^assets\/minecraft\/textures\/entity\/decorated_pot\/(.*_pottery_pattern)\.png$/, replace: 'textures/blocks/$1.png' },
+  { match: /^assets\/minecraft\/textures\/entity\/signs\/hanging\/(.*)\.png$/, replace: 'textures/entity/$1_hanging_sign.png' },
+  { match: /^assets\/minecraft\/textures\/entity\/villager\/(.*)$/, replace: 'textures/entity/villager2/$1' },
+  { match: /^assets\/minecraft\/textures\/entity\/zombie_villager\/type\/(.*)\.png$/, replace: 'textures/entity/zombie_villager2/biomes/biome-$1-zombie.png' },
+  { match: /^assets\/minecraft\/textures\/entity\/zombie_villager\/profession\/(.*)$/, replace: 'textures/entity/zombie_villager2/professions/$1' },
+  { match: /^assets\/minecraft\/textures\/entity\/llama\/decor\/(.*)\.png$/, replace: 'textures/entity/llama/decor/decor_$1.png' },
+  { match: /^assets\/minecraft\/textures\/trims\/models\/armor\/(.*)$/, replace: 'textures/trims/$1' },
+  { match: /^assets\/minecraft\/textures\/trims\/color_palettes\/(.*)$/, replace: 'textures/trims/color_palettes/$1' },
+  { match: /^assets\/minecraft\/textures\/item\/(.*)_bed\.png$/, replace: 'textures/items/bed_$1.png' },
+  { match: /^assets\/minecraft\/textures\/item\/(.*)_spawn_egg\.png$/, replace: 'textures/items/spawn_eggs/spawn_egg_$1.png' },
+  // Generic regex rules as fallback
   { match: /^assets\/minecraft\/textures\/blocks?\/(.*)$/, replace: 'textures/blocks/$1' },
   { match: /^assets\/minecraft\/textures\/items?\/(.*)$/, replace: 'textures/items/$1' },
   { match: /^assets\/minecraft\/textures\/models\/armor\/(.*)_layer_([12])\.png$/, replace: 'textures/models/armor/$1_$2.png' },
@@ -25,8 +36,31 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
 ];
 
 export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
+  // Specific structural mappings before generic fallbacks
+  { match: /^textures\/blocks?\/candles\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/block/$1.png' },
+  { match: /^textures\/blocks?\/deepslate\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/block/$1.png' },
+  { match: /^textures\/blocks?\/huge_fungus\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/block/$1.png' },
+  { match: /^textures\/blocks?\/(.*_pottery_pattern)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/decorated_pot/$1.png' },
+  { match: /^textures\/entity\/(.*)_hanging_sign\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/signs/hanging/$1.png' },
+  { match: /^textures\/entity\/villager2\/biomes\/biome_(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/villager/type/$1.png' },
+  { match: /^textures\/entity\/villager2\/professions\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/villager/profession/$1.png' },
+  { match: /^textures\/entity\/villager2\/levels\/level_(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/villager/profession_level/$1.png' },
+  { match: /^textures\/entity\/villager2\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/villager/$1.png' },
+  { match: /^textures\/entity\/zombie_villager2\/biomes\/biome-(.*)-zombie\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/zombie_villager/type/$1.png' },
+  { match: /^textures\/entity\/zombie_villager2\/professions\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/zombie_villager/profession/$1.png' },
+  { match: /^textures\/entity\/zombie_villager2\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/zombie_villager/$1.png' },
+  { match: /^textures\/entity\/horse2\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/horse/$1.png' },
+  { match: /^textures\/entity\/llama\/decor\/decor_(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/llama/decor/$1.png' },
+  { match: /^textures\/trims\/color_palettes\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/trims/color_palettes/$1.png' },
+  { match: /^textures\/trims\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/trims/models/armor/$1.png' },
+  { match: /^textures\/items?\/bed_silver\.(png|tga)$/, replace: 'assets/minecraft/textures/item/light_gray_bed.png' },
+  { match: /^textures\/items?\/bed_(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/item/$1_bed.png' },
+  { match: /^textures\/items?\/spawn_eggs\/spawn_egg_(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/item/$1_spawn_egg.png' },
+  { match: /^textures\/items?\/egg_(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/item/$1_spawn_egg.png' },
+  // Generic regex rules as fallback
   { match: /^textures\/blocks?\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/block/$1.png' },
   { match: /^textures\/items?\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/item/$1.png' },
+  { match: /^textures\/models\/armor\/chain_(layer_)?([12])\.(png|tga)$/, replace: 'assets/minecraft/textures/models/armor/chainmail_layer_$2.png' },
   { match: /^textures\/models\/armor\/(.*)_(layer_)?([12])\.(png|tga)$/, replace: 'assets/minecraft/textures/models/armor/$1_layer_$3.png' },
   { match: /^textures\/entity\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/$1.png' },
   { match: /^textures\/gui\/realms\/(.*)\.(png|tga)$/, replace: 'assets/realms/textures/$1.png' },
@@ -34,6 +68,8 @@ export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
   { match: /^textures\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/$1.png' },
   { match: /^sounds\/(.*)$/, replace: 'assets/minecraft/sounds/$1' },
   { match: /^texts\/(.*)\.lang$/, replace: 'assets/minecraft/lang/$1.json' },
+  { match: /^(?:texts\/)?splashes\.json$/, replace: 'assets/minecraft/texts/splashes.txt' },
+  { match: /^(?:sounds\/)?sounds\.json$/, replace: 'assets/minecraft/sounds.json' },
   { match: /^models\/entity\/block_(.*)\.geo\.json$/, replace: 'assets/minecraft/models/block/$1.json' },
   { match: /^models\/entity\/item_(.*)\.geo\.json$/, replace: 'assets/minecraft/models/item/$1.json' },
   { match: /^pack_icon\.(png|tga)$/, replace: 'pack.png' },
@@ -133,13 +169,21 @@ export function getTargetContext(path: string, direction: ConversionDirection): 
       return fallbackMappings.java_to_bedrock[lookupPath];
     }
   } else if (direction === 'bedrock-to-java') {
+    const normalizedLookup = path.replace(/\.tga$/i, '.png');
     // Active version mapping returns full Java path ('assets/minecraft/...')
     if (Object.hasOwn(activeMappings.bedrock_to_java, path)) {
       return activeMappings.bedrock_to_java[path];
     }
+    if (normalizedLookup !== path && Object.hasOwn(activeMappings.bedrock_to_java, normalizedLookup)) {
+      return activeMappings.bedrock_to_java[normalizedLookup];
+    }
     // Fallback mapping returns 'assets/textures/...' (needs 'assets/minecraft/')
     if (Object.hasOwn(fallbackMappings.bedrock_to_java, path)) {
       const match = fallbackMappings.bedrock_to_java[path];
+      return match.startsWith('assets/minecraft/') ? match : match.replace(/^assets\//, 'assets/minecraft/');
+    }
+    if (normalizedLookup !== path && Object.hasOwn(fallbackMappings.bedrock_to_java, normalizedLookup)) {
+      const match = fallbackMappings.bedrock_to_java[normalizedLookup];
       return match.startsWith('assets/minecraft/') ? match : match.replace(/^assets\//, 'assets/minecraft/');
     }
   }

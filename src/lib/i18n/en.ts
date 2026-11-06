@@ -25,6 +25,7 @@ const en: Translation = {
 	editionBedrock: "Bedrock Edition",
 
 	dropzoneTitle: "Drop your pack here or click to browse",
+	dropzoneTitleMobile: "Tap to select your pack",
 	dropzoneSubtitle: "Supports .zip or .mcpack files",
 	dropzoneProcessing: "Processing...",
 	dropzonePrivacyBadge: "100% Client-Side • Files never leave your browser",
@@ -112,6 +113,16 @@ const en: Translation = {
 	enableLanguageConversion: 'Language & Translation',
 	enableSoundConversion: 'Sound Definitions',
 	enableAudioReencode: 'Re-encode Audio (FFmpeg, ~20MB)',
+	enablePbrConversion: 'PBR / Shader Map Conversion (RTX ⇄ LabPBR)',
+	enableModelConversion: '3D Custom Model Conversion (Geo ⇄ JSON/CEM)',
+	betaCalloutActive: 'Active',
+	betaCalloutPreview: 'Potential Impact',
+	betaWarningAudioReencode: 'Downloads ~20MB of FFmpeg libraries on first use and significantly increases conversion time and CPU load.',
+	betaWarningModernGuiSprites: 'Dynamically crops and reassembles GUI sprites; may increase memory usage on HD packs and cause minor layout issues in custom GUIs.',
+	betaWarningGuiConversion: 'Due to structural differences between Java and Bedrock UI, some inventory or container screens may not align perfectly.',
+	betaWarningTgaConversion: 'Decodes and converts all TGA images to PNG, which may extend processing time for packs with many TGA files.',
+	betaWarningPbrConversion: 'Converts between Bedrock RTX/Deferred PBR maps (_mer/_normal) and Java LabPBR shader maps (_s/_n). Increases processing time due to per-pixel channel remapping and requires a shader mod (Iris/OptiFine) on Java.',
+	betaWarningModelConversion: 'Experimentally converts 3D block/item models and entity geometry (.geo.json ⇄ .json / OptiFine CEM .jem). Complex bone hierarchies or animations may not align perfectly.',
 };
 
 export default en;

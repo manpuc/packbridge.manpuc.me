@@ -67,6 +67,8 @@ export default function Converter({
   const [enableLanguageConversion, setEnableLanguageConversion] = useState(true);
   const [enableSoundConversion, setEnableSoundConversion] = useState(true);
   const [enableAudioReencode, setEnableAudioReencode] = useState(false);
+  const [enablePbrConversion, setEnablePbrConversion] = useState(false);
+  const [enableModelConversion, setEnableModelConversion] = useState(false);
 
   const hasTrackedInteractRef = useRef(false);
   const lastInputMethodRef = useRef<'drop' | 'file_picker'>('drop');
@@ -103,6 +105,12 @@ export default function Converter({
 
       const savedAudioReencode = localStorage.getItem('pb_beta_audio_reencode');
       if (savedAudioReencode) setEnableAudioReencode(savedAudioReencode === 'true');
+
+      const savedPbr = localStorage.getItem('pb_beta_pbr');
+      if (savedPbr) setEnablePbrConversion(savedPbr === 'true');
+
+      const savedModel = localStorage.getItem('pb_beta_model');
+      if (savedModel) setEnableModelConversion(savedModel === 'true');
     } catch (e) {
       // Ignore localStorage errors (e.g., in incognito mode)
     }
@@ -118,10 +126,12 @@ export default function Converter({
       localStorage.setItem('pb_beta_lang', String(enableLanguageConversion));
       localStorage.setItem('pb_beta_sound', String(enableSoundConversion));
       localStorage.setItem('pb_beta_audio_reencode', String(enableAudioReencode));
+      localStorage.setItem('pb_beta_pbr', String(enablePbrConversion));
+      localStorage.setItem('pb_beta_model', String(enableModelConversion));
     } catch (e) {
       // Ignore
     }
-  }, [enableGuiConversion, enableModernGuiSprites, enableTgaConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode]);
+  }, [enableGuiConversion, enableModernGuiSprites, enableTgaConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode, enablePbrConversion, enableModelConversion]);
 
   const handleFile = useCallback((selectedFile: File, inputMethod: 'drop' | 'file_picker' = 'drop') => {
     lastInputMethodRef.current = inputMethod;
@@ -475,7 +485,9 @@ export default function Converter({
         enableAnimationConversion,
         enableLanguageConversion,
         enableSoundConversion,
-        enableAudioReencode
+        enableAudioReencode,
+        enablePbrConversion,
+        enableModelConversion
       };
       const result = await convertPackWithWorker(file, options, (processed, total) => {
         setProgress({ processed, total });
@@ -632,6 +644,10 @@ export default function Converter({
         setEnableSoundConversion={setEnableSoundConversion}
         enableAudioReencode={enableAudioReencode}
         setEnableAudioReencode={setEnableAudioReencode}
+        enablePbrConversion={enablePbrConversion}
+        setEnablePbrConversion={setEnablePbrConversion}
+        enableModelConversion={enableModelConversion}
+        setEnableModelConversion={setEnableModelConversion}
         t={t}
       />
 

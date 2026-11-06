@@ -25,6 +25,7 @@ const tl: Translation = {
 	editionBedrock: "Bedrock Edition",
 
 	dropzoneTitle: "I-drop ang iyong pack dito o i-click para mag-browse",
+	dropzoneTitleMobile: "I-tap para pumili ng pack",
 	dropzoneSubtitle: "Sinusuportahan ang mga .zip o .mcpack na file",
 	dropzoneProcessing: "Pinoproseso...",
 	sourceVersion: "Source Version",
@@ -111,6 +112,16 @@ const tl: Translation = {
 	enableLanguageConversion: 'Conversion ng Wika at Pagsasalin',
 	enableSoundConversion: 'Conversion ng Sound Definitions',
 	enableAudioReencode: 'I-re-encode ang Audio (FFmpeg, ~20MB)',
+	enablePbrConversion: 'PBR / Shader Map Conversion (RTX ⇄ LabPBR)',
+	enableModelConversion: '3D Custom Model Conversion (Geo ⇄ JSON/CEM)',
+	betaCalloutActive: 'Aktibo',
+	betaCalloutPreview: 'Potensyal na Epekto',
+	betaWarningAudioReencode: 'Magda-download ng ~20MB na FFmpeg library sa unang paggamit at magpapataas sa oras ng conversion at CPU load.',
+	betaWarningModernGuiSprites: 'Dinamikong pinuputol at pinagsasama ang mga GUI sprite; maaaring tumaas ang paggamit ng memory sa mga HD pack at magdulot ng kaunting isyu sa layout.',
+	betaWarningGuiConversion: 'Dahil sa pagkakaiba ng istraktura sa pagitan ng Java at Bedrock UI, maaaring hindi perpektong mag-align ang ilang screen.',
+	betaWarningTgaConversion: 'Dini-decode at kino-convert ang lahat ng TGA na larawan sa PNG, na maaaring magpatagal sa pagproseso para sa mga pack na may maraming TGA file.',
+	betaWarningPbrConversion: 'Kino-convert ang Bedrock RTX/Deferred PBR maps (_mer/_normal) at Java LabPBR shader maps (_s/_n). Maaaring magpatagal sa pagproseso at nangangailangan ng shader mod (Iris/OptiFine) sa Java.',
+	betaWarningModelConversion: 'Eksperimental na kino-convert ang mga 3D model at entity geometry (.geo.json ⇄ .json / OptiFine CEM .jem). Maaaring hindi perpektong mag-align ang ilang kumplikadong modelo.',
 };
 
 export default tl;
