@@ -1,5 +1,13 @@
 # Version History
 
+## v1.6.7
+* **音声再エンコード (`ffmpeg.wasm`) の安定性改善**:
+  * **Detached `ArrayBuffer` クラッシュの修正**: `ffmpeg.writeFile()` へバッファのコピーを渡すよう修正し、個別 `.ogg` の再エンコード失敗時に元の音声バッファが Detached 化されて最終 ZIP 生成 (`zipSync`) が失敗する不具合を解消。
+  * **無効・空 Ogg ファイルの早期スキップ**: 4バイト未満（無音化用の0バイト `.ogg` 等）や先頭マジックナンバーが `OggS` でないデータは FFmpeg 起動前に即時フォールバックするよう最適化。
+  * **FFmpeg 初期化リトライ上限の設定**: CDN からの WASM 取得失敗時にパック内の全音声ファイルで無限リトライしないよう上限（最大2回）と Worker 終了処理を追加。
+* **アクセス解析（匿名エラー計測）の強化**:
+  * `conversion_failed` イベントに `java_version`、`bedrock_version`、およびファイル名・パス・URL・個人情報をマスクした `error_message`（先頭200文字）を追加。
+
 ## v1.6.6
 * **Bedrock → Java 変換の精度向上**:
   * **サウンド変換**: `sound_definitions.json` のみを Java の `sounds.json` へ変換し、形式の異なる Bedrock ルートの `sounds.json` は出力しないよう修正。サウンドファイルは `ogg` / `fsb` / `wav` / `mp3` のみを対象に。名前・イベント名の検証と小文字化、`volume` / `pitch` / `weight` / `stream` の正規化を追加。

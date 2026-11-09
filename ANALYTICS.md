@@ -90,7 +90,10 @@ Triggered when an unhandled exception or worker error halts conversion.
 | Property | Type / Enum | Definition & AI Interpretation |
 | :--- | :--- | :--- |
 | `direction` | Enum (same as `conversion_start`) | The conversion direction where the crash occurred. |
-| `error_category` | `"INVALID_ARCHIVE"` \| `"OUT_OF_MEMORY"` \| `"WORKER_CRASH"` \| `"FFMPEG_ERROR"` \| `"UNKNOWN"` | Abstracted category of failure (raw stack traces are never recorded). |
+| `java_version` | String (e.g., `"1.21.4"`, `"1.20.4"`) | Source or target Java Edition version ID at the time of failure. |
+| `bedrock_version` | String (e.g., `"1.21.50"`) | Source or target Bedrock Edition version ID at the time of failure. |
+| `error_category` | `"INVALID_ARCHIVE"` \| `"OUT_OF_MEMORY"` \| `"WORKER_CRASH"` \| `"FFMPEG_ERROR"` \| `"ZERO_CONVERTED"` \| `"UNKNOWN"` | Abstracted category of failure (raw stack traces are never recorded). |
+| `error_message` | String (max 200 chars) | Sanitized first-line error message with filenames, paths, URLs, and PII masked (`[file]`, `[path]`, `[url]`, `[email]`). |
 | `opt_audio_reencode` | `boolean` | Correlates whether ffmpeg.wasm was active during the failure. |
 | `size_tier` | Enum (same as `file_selected`) | Pack size tier that caused the failure. |
 

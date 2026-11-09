@@ -19,6 +19,7 @@ import {
   incrementLocalConversionCount,
   getUsageTier,
   categorizeError,
+  sanitizeErrorMessage,
   analyzeReportSafety,
   getExtClass
 } from '@/lib/analytics';
@@ -502,7 +503,10 @@ export default function Converter({
           .join('\n'));
         trackEvent('conversion_failed', {
           direction,
+          java_version: selectedJavaVersion,
+          bedrock_version: selectedBedrockVersion,
           error_category: 'ZERO_CONVERTED',
+          error_message: 'ZERO_CONVERTED',
           opt_audio_reencode: enableAudioReencode,
           size_tier: getSizeTier(file.size),
         });
@@ -535,7 +539,10 @@ export default function Converter({
 
       trackEvent('conversion_failed', {
         direction,
+        java_version: selectedJavaVersion,
+        bedrock_version: selectedBedrockVersion,
         error_category: categorizeError(err),
+        error_message: sanitizeErrorMessage(err),
         opt_audio_reencode: enableAudioReencode,
         size_tier: getSizeTier(file.size),
       });

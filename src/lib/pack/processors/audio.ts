@@ -3,13 +3,20 @@ import { toBlobURL } from '@ffmpeg/util';
 
 let ffmpeg: FFmpeg | null = null;
 let ffmpegLoadingPromise: Promise<void> | null = null;
+const MAX_FFMPEG_INIT_ATTEMPTS = 2;
+let ffmpegInitAttempts = 0;
 
 export async function initFFmpeg(): Promise<void> {
   if (ffmpeg && ffmpeg.loaded) return;
   if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
+  if (ffmpegInitAttempts >= MAX_FFMPEG_INIT_ATTEMPTS) {
+    throw new Error('FFmpeg initialization retry limit reached');
+  }
+
+  ffmpegInitAttempts++;
+  const instance = new FFmpeg();
 
   ffmpegLoadingPromise = (async () => {
-    const instance = new FFmpeg();
     instance.on('log', ({ message }) => {
       // console.log('[FFmpeg]', message);
     });
@@ -20,7 +27,11 @@ export async function initFFmpeg(): Promise<void> {
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
     });
     ffmpeg = instance;
+    ffmpegInitAttempts = 0;
   })().catch((err) => {
+    try {
+      instance.terminate();
+    } catch {}
     ffmpegLoadingPromise = null;
     ffmpeg = null;
     throw err;
@@ -29,7 +40,21 @@ export async function initFFmpeg(): Promise<void> {
   return ffmpegLoadingPromise;
 }
 
+function hasOggCapturePattern(buf: Uint8Array): boolean {
+  return (
+    buf.byteLength >= 4 &&
+    buf[0] === 0x4f && // 'O'
+    buf[1] === 0x67 && // 'g'
+    buf[2] === 0x67 && // 'g'
+    buf[3] === 0x53    // 'S'
+  );
+}
+
 export async function reencodeOgg(inputBuffer: Uint8Array): Promise<Uint8Array | null> {
+  if (!inputBuffer || !hasOggCapturePattern(inputBuffer)) {
+    return null;
+  }
+
   let inputName = '';
   let outputName = '';
   try {
@@ -40,10 +65,14 @@ export async function reencodeOgg(inputBuffer: Uint8Array): Promise<Uint8Array |
     inputName = `in_${id}.ogg`;
     outputName = `out_${id}.ogg`;
 
-    await ffmpeg.writeFile(inputName, inputBuffer);
+    // Pass a copy because ffmpeg.writeFile transfers inputBuffer.buffer to its worker
+    await ffmpeg.writeFile(inputName, new Uint8Array(inputBuffer));
 
     // Re-encode to 44100Hz stereo OGG Vorbis
-    await ffmpeg.exec(['-i', inputName, '-c:a', 'libvorbis', '-ar', '44100', '-ac', '2', '-q:a', '4', outputName]);
+    const exitCode = await ffmpeg.exec(['-i', inputName, '-c:a', 'libvorbis', '-ar', '44100', '-ac', '2', '-q:a', '4', outputName]);
+    if (exitCode !== 0) {
+      return null;
+    }
 
     const data = await ffmpeg.readFile(outputName);
     return new Uint8Array(data as Uint8Array);

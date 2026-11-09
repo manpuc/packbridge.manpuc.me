@@ -50,7 +50,10 @@ export type AnalyticsEventMap = {
   };
   conversion_failed: {
     direction: ConversionDirection;
+    java_version: string;
+    bedrock_version: string;
     error_category: 'INVALID_ARCHIVE' | 'OUT_OF_MEMORY' | 'WORKER_CRASH' | 'FFMPEG_ERROR' | 'ZERO_CONVERTED' | 'UNKNOWN';
+    error_message: string;
     opt_audio_reencode: boolean;
     size_tier: '<10MB' | '10-50MB' | '50-100MB' | '>100MB';
   };
@@ -211,6 +214,50 @@ export function categorizeError(err: unknown): 'INVALID_ARCHIVE' | 'OUT_OF_MEMOR
     return 'INVALID_ARCHIVE';
   }
   return 'UNKNOWN';
+}
+
+/**
+ * エラーメッセージからファイル名・パス・URL・個人情報を除去し、先頭200文字に制限する
+ */
+export function sanitizeErrorMessage(err: unknown): string {
+  if (!err) return 'unknown';
+
+  let raw = '';
+  if (err instanceof Error) {
+    raw = err.name && err.name !== 'Error' ? `${err.name}: ${err.message}` : err.message;
+  } else if (typeof ErrorEvent !== 'undefined' && err instanceof ErrorEvent) {
+    raw = `ErrorEvent: ${err.message || 'worker error'}`;
+  } else if (
+    typeof err === 'object' &&
+    'message' in err &&
+    typeof (err as { message?: unknown }).message === 'string'
+  ) {
+    raw = (err as { message: string }).message || String(err);
+  } else {
+    raw = String(err);
+  }
+
+  // 1行目のみを採用してスタックトレース混入を防止
+  const firstLine = raw.split(/\r?\n/)[0] ?? '';
+
+  const sanitized = firstLine
+    // URL (http/https/blob/file)
+    .replace(/\b(?:https?|blob|file):\/\/[^\s)'"`<>]+/gi, '[url]')
+    // メールアドレス
+    .replace(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g, '[email]')
+    // Windowsドライブパス (C:\... or C:/...)
+    .replace(/\b[a-zA-Z]:[\\/][^\s:'"`<>|]+/g, '[path]')
+    // スラッシュを含むファイルパス (/assets/... or foo/bar.png)
+    .replace(/(?:\/|[a-zA-Z0-9_.-]+\/)[a-zA-Z0-9_./\\-]+/g, '[path]')
+    // 拡張子付きの単独ファイル名
+    .replace(
+      /\b[^\s/\\:'"`<>|]+\.(?:zip|mcpack|png|tga|ogg|fsb|wav|mp3|json|mcmeta|lang|properties|jem|jpm|fsh|vsh|glsl|txt|js|mjs|wasm|rar|7z|jar)\b/gi,
+      '[file]'
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return (sanitized || 'unknown').slice(0, 200);
 }
 
 /**
