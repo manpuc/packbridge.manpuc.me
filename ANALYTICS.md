@@ -21,7 +21,7 @@ It is formatted to serve both as a development specification and as context for 
 The following fields are strictly forbidden from being collected or ingested:
 1. `file.name` / Pack names / Descriptions in `pack.mcmeta`
 2. Texture / asset internal paths (e.g., `textures/entity/...`)
-3. Raw error messages or stack traces (to prevent path leaks like `C:\Users\<username>\...`)
+3. Raw error messages or stack traces (to prevent path leaks like `C:\Users\<username>\...`). *Exception: Sanitized first-line error messages (up to 200 characters, with filenames, paths, URLs, and PII masked via `sanitizeErrorMessage`) are permitted in `conversion_failed.error_message`.*
 4. Pack UUIDs (`manifest.json` UUIDs)
 5. User IDs / Persistent tracking tokens
 6. Precise file sizes in bytes (all sizes must be bucketed)
