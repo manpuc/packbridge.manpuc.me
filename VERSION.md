@@ -5,8 +5,14 @@
   * **メモリ上限の適正化**: 解凍サイズ上限を 2GB から 1GB へ引き下げ、大容量パック変換時のブラウザタブ OOM（メモリ不足クラッシュ）リスクを軽減。
   * **Worker エラー処理とリソース解放**: `worker-client.ts` で読み込み失敗時に `Error` オブジェクトを正しく返却し、`arrayBuffer()` 失敗時にも確実に `worker.terminate()` を実行するよう修正。
   * **重複エンジンの統合**: ほぼ同一だったメインスレッド版 `converter.ts` と到達不能フォールバック分岐を削除し、変換コアロジックを `convert-core.ts` へ集約（`converter.worker.ts` は薄いラッパーへ整理）。
-  * **変換レポート集計の整合性修正**: GUI スプライト処理エラー時の `errorCount` 加算漏れおよび二重計上を解消し、音声・TGA フォールバック時のステータス重複を修正。
-  * **変換コアの単体テスト追加**: `vitest` を導入し、Java ⇄ Bedrock 変換の基本パス・メタデータ出力を検証するテストを追加。
+  * **変換レポート集計の整合性修正**: GUI スプライト処理エラー時の `errorCount` 加算漏れおよび二重計上を解消し、音声・TGA フォールバック時および `.texture_set.json` メタデータ処理のステータス重複を修正。
+  * **変換コアの単体テスト追加**: `vitest` を導入し、Java ⇄ Bedrock・Java バージョン変換およびマッピング精度を検証するテストを追加。
+* **パックフォーマット・バージョン判定の正確化**:
+  * **公式 `version.json` 準拠への修正**: Java `26.3.0` の `pack_format` を `95` → `97`（`max_format: [97, 1]`）、`1.19.3`（`12`）と `1.19.0 - 1.19.2`（`9`）を分離、`1.18.2` を `9` → `8` へ修正。SEO ページの Bedrock `min_engine_version` 表記（`1.21.50` / `1.20.80`）も修正。
+  * **`pack.mcmeta` 判定・更新ロジックの改善**: `extractPackFormat()` により `max_format` / `supported_formats` にも対応し、`java-to-java` 変換時に古い `supported_formats` が残存して非互換扱いになる不具合を解消。
+* **マッピング生成（`update-mappings`）と変換ロジックのバグ修正**:
+  * **バージョン解決と誤マップ・重複衝突の解消**: `minecraft-data` 参照の最近接バージョン解決とメモ化、Geyser サウンドのクリーン置換、`empty_slot_*`・`clock_*` / `compass_*`・`entity/bed`・`entity/piglin`・`entity/skeleton`・`Flowering_azalea_leaves.png`・`.ogg -> .fsb` 等の誤衝突を一掃し、Java `26.3` / Bedrock `1.26.60`（Poplar 等）を追加。`rules.ts` の `26.x` バージョン距離計算も修正。
+  * **アニメーション・アトラス・レガシー変換の修正**: Bedrock `flipbook_textures.json` / `terrain_texture.json` の `atlas_tile` 名（`still_lava` 等およびサブフォルダ除去）と `.png.mcmeta` の辞書ベース解決を修正し、Java 1.8 / 1.12 レガシー変換の草・染料・熱帯魚の改名不備を解消。
 
 ## v1.6.7
 * **音声再エンコード (`ffmpeg.wasm`) の安定性改善**:
