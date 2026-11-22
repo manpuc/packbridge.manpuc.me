@@ -558,6 +558,23 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/block/poplar_log_top.png": "textures/blocks/poplar_log_top.png",
   "assets/minecraft/textures/block/stripped_poplar_log.png": "textures/blocks/stripped_poplar_log_side.png",
   "assets/minecraft/textures/block/stripped_poplar_log_top.png": "textures/blocks/stripped_poplar_log_top.png",
+
+  // Collision & Entity fixes
+  "assets/minecraft/textures/entity/bed/brown.png": "textures/entity/bed/brown.png",
+  "assets/minecraft/textures/entity/bed/red.png": "textures/entity/bed/red.png",
+  "assets/minecraft/textures/entity/bed/white.png": "textures/entity/bed/white.png",
+  "assets/minecraft/textures/entity/skeleton/skeleton.png": "textures/entity/skeleton/skeleton.png",
+  "assets/minecraft/textures/entity/skeleton/wither_skeleton.png": "textures/entity/skeleton/wither_skeleton.png",
+  "assets/minecraft/textures/entity/piglin/piglin.png": "textures/entity/piglin/piglin.png",
+  "assets/minecraft/textures/entity/shield/creeper.png": "textures/entity/shield_patterns/creeper.png",
+  "assets/minecraft/textures/block/bamboo_stage0.png": "textures/blocks/bamboo_sapling.png",
+  "assets/minecraft/textures/block/redstone_dust_dot.png": "textures/blocks/redstone_dust_cross.png",
+  "assets/minecraft/textures/block/tall_seagrass_top.png": "textures/blocks/seagrass_doubletall_top_a.png",
+  "assets/minecraft/textures/block/tall_seagrass_bottom.png": "textures/blocks/seagrass_doubletall_bottom_a.png",
+  "assets/minecraft/textures/block/water_still.png": "textures/blocks/water_still_grey.png",
+  "assets/minecraft/textures/block/water_flow.png": "textures/blocks/water_flow_grey.png",
+  "assets/minecraft/textures/block/lava_still.png": "textures/blocks/lava_still.png",
+  "assets/minecraft/textures/block/lava_flow.png": "textures/blocks/lava_flow.png",
 };
 
 // Many-to-one Bedrock -> Java aliases (preserved across `pnpm run update-mappings` without clobbering java_to_bedrock)
@@ -620,6 +637,26 @@ function applyTextureOverrides(content: any, isFallback = false) {
   delete content.java_to_bedrock['assets/textures/block/conduit.png'];
   delete content.java_to_bedrock['assets/minecraft/textures/block/Flowering_azalea_leaves.png'];
   delete content.java_to_bedrock['assets/textures/block/Flowering_azalea_leaves.png'];
+
+  const pollutedKeyPatterns = [
+    /\/item\/empty_slot_/,
+    /\/item\/(clock|compass|recovery_compass)_\d+\.png$/,
+    /\/item\/(leather_.*_overlay|wolf_armor_overlay|filled_map_markings|spyglass_model|bundle_filled|spectral_arrow|pitcher_plant)\.png$/,
+    /\/blocks?\/(bamboo_fence_particle|bamboo_fence_gate_particle|big_dripleaf_tip|dried_kelp_bottom|redstone_dust_line1|redstone_dust_overlay)\.png$/,
+    /\/entity\/banner\//,
+    /\/entity\/(villager|zombie_villager)\/(profession|profession_level|type)\//,
+    /\/entity\/equipment\/(llama_body|horse_body|humanoid|humanoid_baby|humanoid_leggings|nautilus_body)\//,
+  ];
+  for (const key of Object.keys(content.java_to_bedrock)) {
+    if (pollutedKeyPatterns.some(rx => rx.test(key))) {
+      delete content.java_to_bedrock[key];
+      continue;
+    }
+    const target = content.java_to_bedrock[key];
+    if (key.endsWith('.ogg') && typeof target === 'string' && target.endsWith('.fsb')) {
+      content.java_to_bedrock[key] = target.replace(/\.fsb$/, '.ogg');
+    }
+  }
 
   for (const [javaFull, bedrockPath] of Object.entries(AUTHORITATIVE_TEXTURE_OVERRIDES)) {
     const javaKey = isFallback ? javaFull.replace(/^assets\/minecraft\//, 'assets/') : javaFull;

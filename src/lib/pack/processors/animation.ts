@@ -10,6 +10,42 @@ export interface FlipbookEntry {
 export const MAX_ANIMATION_FRAME_TIME = 1200; // Max 60 seconds per frame at 20 TPS
 export const MAX_TOTAL_EXPANDED_FRAMES = 4096;
 
+// Vanilla Bedrock atlas_tile names that differ from their texture filename
+export const BEDROCK_FLIPBOOK_ATLAS_TILES: Record<string, string> = {
+  'textures/blocks/water_still_grey': 'still_water_grey',
+  'textures/blocks/water_flow_grey': 'flowing_water_grey',
+  'textures/blocks/water_still': 'still_water',
+  'textures/blocks/water_flow': 'flowing_water',
+  'textures/blocks/lava_still': 'still_lava',
+  'textures/blocks/lava_flow': 'flowing_lava',
+  'textures/blocks/prismarine_rough': 'prismarine',
+  'textures/blocks/campfire': 'campfire_fire',
+  'textures/blocks/soul_campfire': 'soul_campfire_fire',
+  'textures/blocks/seagrass': 'seagrass_short',
+  'textures/blocks/seagrass_doubletall_bottom_a': 'seagrass_tall_bot_a',
+  'textures/blocks/seagrass_doubletall_bottom_b': 'seagrass_tall_bot_b',
+  'textures/blocks/seagrass_doubletall_top_a': 'seagrass_tall_top_a',
+  'textures/blocks/seagrass_doubletall_top_b': 'seagrass_tall_top_b',
+  'textures/blocks/respawn_anchor_top_off': 'respawn_anchor_top',
+  'textures/blocks/sculk_catalyst_side_bloom': 'sculk_catalyst_side',
+  'textures/blocks/sculk_catalyst_top_bloom': 'sculk_catalyst_top',
+  'textures/blocks/sculk_shrieker_can_summon_inner_top': 'sculk_shrieker_inner_top',
+  'textures/blocks/firefly_bush_firefly': 'firefly_bush',
+  'textures/blocks/command_block_conditional': 'command_block_conditional_side',
+  'textures/blocks/repeating_command_block_front': 'command_block_repeating_front',
+  'textures/blocks/repeating_command_block_back': 'command_block_repeating_back',
+  'textures/blocks/repeating_command_block_side': 'command_block_repeating_side',
+  'textures/blocks/repeating_command_block_conditional': 'command_block_repeating_conditional_side',
+  'textures/blocks/chain_command_block_front': 'command_block_chain_front',
+  'textures/blocks/chain_command_block_back': 'command_block_chain_back',
+  'textures/blocks/chain_command_block_side': 'command_block_chain_side',
+  'textures/blocks/chain_command_block_conditional': 'command_block_chain_conditional_side',
+};
+
+export function getBedrockAtlasTile(texturePathNoExt: string): string {
+  return BEDROCK_FLIPBOOK_ATLAS_TILES[texturePathNoExt] ?? (texturePathNoExt.split('/').pop() || texturePathNoExt);
+}
+
 /**
  * Parses a Java .mcmeta file and returns a Bedrock Flipbook Entry if it contains animation.
  */
@@ -20,8 +56,8 @@ export function parseJavaAnimation(mcmetaContent: string, bedrockPath: string): 
 
     if (!bedrockPath) return null;
 
-    const shortName = bedrockPath.replace('textures/blocks/', '').replace('textures/items/', '').replace('.png', '');
-    const texturePath = bedrockPath.replace('.png', '');
+    const texturePath = bedrockPath.replace(/\.(png|tga)$/i, '');
+    const shortName = getBedrockAtlasTile(texturePath);
 
     const rawFrametime = Number(data.animation.frametime);
     const defaultTime = Number.isFinite(rawFrametime) && rawFrametime >= 1

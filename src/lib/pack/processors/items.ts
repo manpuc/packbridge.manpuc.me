@@ -15,11 +15,9 @@ export function generateItemTexture(convertedItems: Set<string>): string {
   for (const javaPath of convertedItems) {
     const bedrockPath = getTargetContext(javaPath, 'java-to-bedrock');
     if (bedrockPath && bedrockPath.startsWith('textures/items/')) {
-      // Remove textures/items/ prefix and .png extension for the short name
-      // e.g. textures/items/apple.png -> apple
-      const shortName = bedrockPath.replace('textures/items/', '').replace(/\.(png|tga)$/, '');
-      if (!shortName || isUnsafeObjectKey(shortName)) continue;
       const texturePath = bedrockPath.replace(/\.(png|tga)$/, '');
+      const shortName = texturePath.split('/').pop() || '';
+      if (!shortName || isUnsafeObjectKey(shortName)) continue;
 
       itemTexture.texture_data[shortName] = {
         textures: texturePath

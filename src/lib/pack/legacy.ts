@@ -93,7 +93,7 @@ export const blockRenames: Record<string, string> = {
   "stonebrick_mossy": "mossy_stone_bricks",
   "stonebrick_cracked": "cracked_stone_bricks",
   "stonebrick_carved": "chiseled_stone_bricks",
-  "tallgrass": "tall_grass",
+  "tallgrass": "short_grass",
   "torch_on": "torch",
   "trapdoor": "oak_trapdoor",
   "waterlily": "lily_pad",
@@ -135,14 +135,14 @@ export const itemRenames: Record<string, string> = {
   "dye_powder_orange": "orange_dye",
   "dye_powder_pink": "pink_dye",
   "dye_powder_purple": "purple_dye",
-  "dye_powder_red": "rose_red",
+  "dye_powder_red": "red_dye",
   "dye_powder_silver": "light_gray_dye",
   "dye_powder_white": "bone_meal",
-  "dye_powder_yellow": "dandelion_yellow",
+  "dye_powder_yellow": "yellow_dye",
   "fireworks": "firework_rocket",
   "fireworks_charge": "firework_star",
   "fireworks_charge_overlay": "firework_star_overlay",
-  "fish_clownfish_raw": "clownfish",
+  "fish_clownfish_raw": "tropical_fish",
   "fish_cod_cooked": "cooked_cod",
   "fish_cod_raw": "cod",
   "fish_pufferfish_raw": "pufferfish",
@@ -188,10 +188,18 @@ export function normalizeLegacyPath(path: string, packFormat: number): string {
     const suffix = match[3] || '';
 
     if (prefix.includes('/block/')) {
+      if (name === 'tallgrass' && packFormat >= 4 && packFormat < 22) {
+        return `${prefix}grass${suffix}`;
+      }
       if (blockRenames[name]) {
         return `${prefix}${blockRenames[name]}${suffix}`;
       }
     } else if (prefix.includes('/item/')) {
+      if (packFormat === 4) {
+        if (name === 'dye_powder_red') return `${prefix}rose_red${suffix}`;
+        if (name === 'dye_powder_yellow') return `${prefix}dandelion_yellow${suffix}`;
+        if (name === 'dye_powder_green') return `${prefix}cactus_green${suffix}`;
+      }
       if (itemRenames[name]) {
         return `${prefix}${itemRenames[name]}${suffix}`;
       }
@@ -207,7 +215,7 @@ export const blockRenamesInverse: Record<string, string> = Object.entries(blockR
     acc[modern] = legacy;
     return acc;
   },
-  {} as Record<string, string>
+  { grass: 'tallgrass' } as Record<string, string>
 );
 
 export const itemRenamesInverse: Record<string, string> = Object.entries(itemRenames).reduce(
@@ -215,7 +223,12 @@ export const itemRenamesInverse: Record<string, string> = Object.entries(itemRen
     acc[modern] = legacy;
     return acc;
   },
-  {} as Record<string, string>
+  {
+    rose_red: 'dye_powder_red',
+    dandelion_yellow: 'dye_powder_yellow',
+    cactus_green: 'dye_powder_green',
+    clownfish: 'fish_clownfish_raw',
+  } as Record<string, string>
 );
 
 export function downgradeLegacyPath(path: string, targetPackFormat: number): string {

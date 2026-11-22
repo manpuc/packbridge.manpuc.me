@@ -4,7 +4,7 @@ import { getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import { javaToBedrockLang, bedrockToJavaLang } from './processors/lang';
 import { javaToBedrockSounds, bedrockToJavaSounds } from './processors/sounds';
-import { generateBlocksJson, generateTerrainTexture } from './processors/blocks';
+import { generateTerrainTexture } from './processors/blocks';
 import { generateItemTexture } from './processors/items';
 import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, extractPackFormat } from './versions';
@@ -316,18 +316,14 @@ export async function convertBuffer(
             if (pbrInfo.type === 'texture_set') {
               const parsedTs = parseTextureSetJson(strFromU8(content));
               const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
-              if (parsedTs && baseJava) {
-                const formattedBase = formatTargetJavaPath(baseJava);
-                report.convertedCount++;
-                report.details.push({
-                  filename: path,
-                  status: 'converted',
-                  outputPath: formattedBase.replace(/\.png$/i, '_s.png')
-                });
-              } else {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Unmapped PBR texture_set reference' });
-              }
+              report.skippedCount++;
+              report.details.push({
+                filename: path,
+                status: 'skipped',
+                reason: parsedTs && baseJava
+                  ? 'PBR texture_set metadata applied to _s/_n maps'
+                  : 'Unmapped PBR texture_set reference'
+              });
               continue;
             }
 
@@ -493,8 +489,7 @@ export async function convertBuffer(
               (relativePath.endsWith('.json') && targetPath.startsWith('texts/')) ||
               relativePath.endsWith('sounds.json') ||
               relativePath === 'assets/minecraft/texts/splashes.txt' ||
-              relativePath.endsWith('.png.mcmeta') ||
-              (relativePath.startsWith('assets/minecraft/models/') && relativePath.endsWith('.json'))
+              relativePath.endsWith('.png.mcmeta')
             ) {
               needsProcessing = true;
             }
@@ -551,21 +546,6 @@ export async function convertBuffer(
                 }
                 finalBytes = strToU8(javaToBedrockSounds(strFromU8(content)));
                 targetPath = 'sounds/sound_definitions.json';
-              } else if (relativePath.startsWith('assets/minecraft/models/') && relativePath.endsWith('.json')) {
-                if (!options.enableModelConversion) {
-                  report.skippedCount++;
-                  report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is experimental and disabled' });
-                  continue;
-                }
-                const modelName = relativePath.split('/').pop()?.replace('.json', '') || 'custom';
-                const geoJson = javaToBedrockGeometry(strFromU8(content), modelName);
-                if (geoJson) {
-                  finalBytes = strToU8(geoJson);
-                } else {
-                  report.skippedCount++;
-                  report.details.push({ filename: path, status: 'skipped', reason: 'Model has no elements/cubes to convert' });
-                  continue;
-                }
               } else if (relativePath === 'assets/minecraft/texts/splashes.txt') {
                 const lines = strFromU8(content).split(/\r?\n/).filter(l => l.trim().length > 0);
                 finalBytes = strToU8(JSON.stringify({ splashes: lines }, null, 2));

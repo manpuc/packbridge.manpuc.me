@@ -94,6 +94,9 @@ const mappingModules = import.meta.glob<{ default: MappingsData }>('./mappings/*
 
 function parseSemver(v: string): [number, number, number] {
   const parts = v.split('.').map(n => parseInt(n, 10) || 0);
+  if (parts[0] >= 26) {
+    return [1, parts[0], (parts[1] || 0) * 10 + (parts[2] || 0)];
+  }
   return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
 }
 
@@ -160,6 +163,10 @@ export function getTargetContext(path: string, direction: ConversionDirection): 
   }
 
   if (direction === 'java-to-bedrock') {
+    if (path.endsWith('.mcmeta')) {
+      const baseMapped = getTargetContext(path.slice(0, -7), 'java-to-bedrock');
+      return baseMapped ? `${baseMapped}.mcmeta` : null;
+    }
     // Active version mapping uses full Java path ('assets/minecraft/...')
     if (Object.hasOwn(activeMappings.java_to_bedrock, path)) {
       return activeMappings.java_to_bedrock[path];
