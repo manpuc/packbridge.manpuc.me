@@ -9,11 +9,20 @@ export default defineConfig({
     defaultStrategy: 'viewport',
   },
   integrations: [react(), sitemap({
+    filter: (page) => {
+      const p = new URL(page).pathname.replace(/\/$/, '');
+      if (p === '' || /^\/(convert|terms|report)(\/|$)/.test(p)) return false;
+      return !/^\/[a-z]{2}\/(terms|report)$/.test(p);
+    },
     serialize(item) {
-      if (item.url.endsWith('/terms') || item.url.endsWith('/terms/')) {
-        item.changefreq = 'monthly';
-        item.priority = 0.5;
-      } else if (item.url.includes('/convert')) {
+      item.url = item.url.replace(/\/$/, '');
+      if (item.links) {
+        item.links = item.links.map((link) => ({
+          ...link,
+          url: link.url.replace(/\/$/, ''),
+        }));
+      }
+      if (item.url.includes('/convert')) {
         item.changefreq = 'monthly';
         item.priority = 0.8;
       } else {
