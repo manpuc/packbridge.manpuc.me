@@ -62,7 +62,7 @@ const BASE_PAIRS: BasePairConfig[] = [
     bedrockSlug: '26.6',
     javaVersionId: '26.3.0',
     bedrockVersionId: '1.26.60',
-    javaPackFormat: 95,
+    javaPackFormat: 97,
     bedrockMinEngineVersion: [1, 26, 60],
   },
   {
@@ -72,7 +72,7 @@ const BASE_PAIRS: BasePairConfig[] = [
     javaVersionId: '1.21.4',
     bedrockVersionId: '1.21.50',
     javaPackFormat: 46,
-    bedrockMinEngineVersion: [1, 21, 5],
+    bedrockMinEngineVersion: [1, 21, 50],
   },
   {
     basePairKey: '1.20.4_to_1.20.80',
@@ -81,7 +81,7 @@ const BASE_PAIRS: BasePairConfig[] = [
     javaVersionId: '1.20.3',
     bedrockVersionId: '1.20.80',
     javaPackFormat: 22,
-    bedrockMinEngineVersion: [1, 20, 8],
+    bedrockMinEngineVersion: [1, 20, 80],
   },
   {
     basePairKey: '1.16.5_to_1.16.200',

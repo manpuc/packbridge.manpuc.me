@@ -3,7 +3,7 @@
  */
 
 export const MAX_SAFE_FILE_COUNT = 25000;
-export const MAX_SAFE_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB safe limit
+export const MAX_SAFE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024; // 1 GB safe limit to avoid tab OOM
 export const MAX_SAFE_COMPRESSION_RATIO = 100; // e.g. 10MB compressing to <100KB is suspicious
 export const LARGE_FILE_WARN_THRESHOLD_BYTES = 350 * 1024 * 1024; // 350 MB threshold to alert user
 export const MAX_INPUT_FILE_SIZE_BYTES = LARGE_FILE_WARN_THRESHOLD_BYTES;

@@ -11,7 +11,7 @@ export interface BedrockVersion {
 }
 
 export const JAVA_VERSIONS: JavaVersion[] = [
-  { id: '26.3.0', name: '26.3', packFormat: 95 },
+  { id: '26.3.0', name: '26.3', packFormat: 97 },
   { id: '26.2.0', name: '26.2', packFormat: 88 },
   { id: '26.1.0', name: '26.1', packFormat: 84 },
   { id: '1.21.11', name: '1.21.11', packFormat: 75 },
@@ -27,8 +27,9 @@ export const JAVA_VERSIONS: JavaVersion[] = [
   { id: '1.20.2', name: '1.20.2', packFormat: 18 },
   { id: '1.20.0', name: '1.20.0 - 1.20.1', packFormat: 15 },
   { id: '1.19.4', name: '1.19.4', packFormat: 13 },
-  { id: '1.19.0', name: '1.19.0 - 1.19.3', packFormat: 12 },
-  { id: '1.18.2', name: '1.18.2', packFormat: 9 },
+  { id: '1.19.3', name: '1.19.3', packFormat: 12 },
+  { id: '1.19.0', name: '1.19.0 - 1.19.2', packFormat: 9 },
+  { id: '1.18.2', name: '1.18.2', packFormat: 8 },
   { id: '1.18.0', name: '1.18.0 - 1.18.1', packFormat: 8 },
   { id: '1.17.0', name: '1.17.x', packFormat: 7 },
   { id: '1.16.2', name: '1.16.2 - 1.16.5', packFormat: 6 },
@@ -76,5 +77,17 @@ export function getBedrockVersionByEngineVersion(version: number[]): string | nu
     }
     return true; // 完全に一致する場合
   })?.id ?? null;
+}
+
+export function extractPackFormat(pack: Record<string, any> | undefined | null): number | null {
+  if (!pack || typeof pack !== 'object') return null;
+  const toNum = (v: unknown): number | null =>
+    typeof v === 'number' ? v : (Array.isArray(v) && typeof v[0] === 'number' ? v[0] : null);
+  const maxFmt = toNum(pack.max_format);
+  if (maxFmt !== null) return maxFmt;
+  const sf = pack.supported_formats;
+  if (Array.isArray(sf) && typeof sf[sf.length - 1] === 'number') return sf[sf.length - 1];
+  if (sf && typeof sf === 'object' && typeof sf.max_inclusive === 'number') return sf.max_inclusive;
+  return toNum(pack.pack_format) ?? toNum(pack.min_format);
 }
 

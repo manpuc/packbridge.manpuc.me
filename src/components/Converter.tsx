@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import { convertPackWithWorker } from '@/lib/pack/worker-client';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
 import type { Translation, Language } from '@/lib/i18n';
-import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion } from '@/lib/pack/versions';
+import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion, extractPackFormat } from '@/lib/pack/versions';
 import { useFileDrop } from '@/hooks/useFileDrop';
 import { Bug } from 'lucide-react';
 import { getReportStrings, reportHref, LAST_CONVERSION_KEY } from '@/lib/i18n/report';
@@ -405,8 +405,8 @@ export default function Converter({
             const content = await packMcmetaEntry.async('string');
             if (!isMounted) return;
             const json = JSON.parse(content);
-            const rawFormat = json?.pack?.pack_format ?? (Array.isArray(json?.pack?.min_format) ? json.pack.min_format[0] : json?.pack?.min_format);
-            if (typeof rawFormat === 'number') {
+            const rawFormat = extractPackFormat(json?.pack);
+            if (rawFormat !== null) {
               const detected = getJavaVersionByPackFormat(rawFormat);
               if (detected) {
                 setSourceJavaVersion(detected);

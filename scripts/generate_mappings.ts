@@ -38,18 +38,60 @@ async function fetchGeyserSounds(): Promise<{ java_to_bedrock: Record<string, st
   return { java_to_bedrock: j2b, bedrock_to_java: b2j };
 }
 
+function parseVer(v: string): [number, number, number] {
+  const parts = v.replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function resolveClosestMcDataVersion(target: string, list: string[]): string {
+  const trimmed = target.replace(/\.0$/, '');
+  if (list.includes(target)) return target;
+  if (list.includes(trimmed)) return trimmed;
+
+  const targetSemver = parseVer(target);
+  let best = list[list.length - 1] || target;
+  let bestScore = Infinity;
+
+  for (const ver of list) {
+    if (!/^\d+\.\d+(\.\d+)?$/.test(ver)) continue;
+    const cand = parseVer(ver);
+    const score =
+      Math.abs(targetSemver[0] - cand[0]) * 1_000_000 +
+      Math.abs(targetSemver[1] - cand[1]) * 1_000 +
+      Math.abs(targetSemver[2] - cand[2]);
+    if (score < bestScore) {
+      bestScore = score;
+      best = ver;
+    }
+  }
+  return best;
+}
+
+const langCache = new Map<string, { java_to_bedrock: Record<string, string>; bedrock_to_java: Record<string, string> }>();
+
 // Generate language and item mapping from PrismarineJS minecraft-data
 function getPrismarineLanguageMappings(javaVerId: string, bedrockVerId: string) {
+  const jClean = javaVerId.split('.').slice(0, 3).join('.');
+  const bClean = bedrockVerId.split('.').slice(0, 3).join('.');
+  const supported = (minecraftData as any).supportedVersions || {};
+  const pcList: string[] = Array.isArray(supported.pc) ? supported.pc : [];
+  const bedrockList: string[] = Array.isArray(supported.bedrock) ? supported.bedrock : [];
+
+  const resolvedJava = pcList.length > 0 ? resolveClosestMcDataVersion(jClean, pcList) : jClean;
+  const resolvedBedrock = bedrockList.length > 0 ? resolveClosestMcDataVersion(bClean, bedrockList) : bClean;
+  const cacheKey = `${resolvedJava}_${resolvedBedrock}`;
+
+  const cached = langCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const j2b: Record<string, string> = {};
   const b2j: Record<string, string> = {};
 
   try {
-    // Clean versions for minecraft-data lookup
-    const jClean = javaVerId.split('.').slice(0, 3).join('.');
-    const bClean = bedrockVerId.split('.').slice(0, 3).join('.');
-
-    const javaData = minecraftData(jClean) || minecraftData('1.21.4');
-    const bedData = minecraftData(`bedrock_${bClean}`) || minecraftData('bedrock_1.21.0');
+    const javaData = minecraftData(resolvedJava) || minecraftData('1.21.4');
+    const bedData = minecraftData(`bedrock_${resolvedBedrock}`) || minecraftData('bedrock_1.21.0');
 
     if (javaData?.language && bedData?.language) {
       const valToBKey = new Map<string, string>();
@@ -67,13 +109,15 @@ function getPrismarineLanguageMappings(javaVerId: string, bedrockVerId: string) 
           if (!b2j[bk]) b2j[bk] = jk;
         }
       }
-      console.log(`  PrismarineJS matched ${Object.keys(j2b).length} language keys for Java ${jClean} <-> Bedrock ${bClean}`);
+      console.log(`  PrismarineJS matched ${Object.keys(j2b).length} language keys for Java ${resolvedJava} <-> Bedrock ${resolvedBedrock}`);
     }
   } catch (e) {
     console.warn(`  Warning matching PrismarineJS language keys:`, e);
   }
 
-  return { java_to_bedrock: j2b, bedrock_to_java: b2j };
+  const result = { java_to_bedrock: j2b, bedrock_to_java: b2j };
+  langCache.set(cacheKey, result);
+  return result;
 }
 
 // Authoritative texture overrides verified against Mojang/bedrock-samples
@@ -222,7 +266,6 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/block/cocoa_stage1.png": "textures/blocks/cocoa_stage_1.png",
   "assets/minecraft/textures/block/cocoa_stage2.png": "textures/blocks/cocoa_stage_2.png",
   "assets/minecraft/textures/block/torchflower_crop_stage1.png": "textures/blocks/torchflower_crop_stage_1.png",
-  "assets/minecraft/textures/block/Flowering_azalea_leaves.png": "textures/blocks/azalea_leaves_flowers_opaque.png",
   "assets/minecraft/textures/block/flowering_azalea_leaves.png": "textures/blocks/azalea_leaves_flowers_opaque.png",
   "assets/minecraft/textures/block/lilac_bottom.png": "textures/blocks/double_plant_syringa_bottom.png",
   "assets/minecraft/textures/block/lilac_top.png": "textures/blocks/double_plant_syringa_top.png",
@@ -509,6 +552,12 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/environment/sun.png": "textures/environment/sun.png",
   "assets/minecraft/textures/environment/rain.png": "textures/environment/weather.png",
   "assets/minecraft/textures/misc/pumpkinblur.png": "textures/misc/pumpkinblur.png",
+
+  // 26.3+ Poplar Wood
+  "assets/minecraft/textures/block/poplar_log.png": "textures/blocks/poplar_log_side.png",
+  "assets/minecraft/textures/block/poplar_log_top.png": "textures/blocks/poplar_log_top.png",
+  "assets/minecraft/textures/block/stripped_poplar_log.png": "textures/blocks/stripped_poplar_log_side.png",
+  "assets/minecraft/textures/block/stripped_poplar_log_top.png": "textures/blocks/stripped_poplar_log_top.png",
 };
 
 // Many-to-one Bedrock -> Java aliases (preserved across `pnpm run update-mappings` without clobbering java_to_bedrock)
@@ -552,6 +601,11 @@ const AUTHORITATIVE_B2J_ONLY_OVERRIDES: Record<string, string> = {
   "textures/entity/zombie_villager2/zombie-villager.png": "assets/minecraft/textures/entity/zombie_villager/zombie_villager.png",
   "textures/items/boat_dark_oak.png": "assets/minecraft/textures/item/dark_oak_boat.png",
   "textures/items/boat.png": "assets/minecraft/textures/item/oak_boat.png",
+  "textures/blocks/orange_poplar_leaves_opaque.png": "assets/minecraft/textures/block/orange_poplar_leaves.png",
+  "textures/blocks/red_poplar_leaves_opaque.png": "assets/minecraft/textures/block/red_poplar_leaves.png",
+  "textures/blocks/yellow_poplar_leaves_opaque.png": "assets/minecraft/textures/block/yellow_poplar_leaves.png",
+  "textures/blocks/hanging_pale_moss_middle.png": "assets/minecraft/textures/block/pale_hanging_moss.png",
+  "textures/blocks/hanging_pale_moss_tip.png": "assets/minecraft/textures/block/pale_hanging_moss_tip.png",
 };
 
 function applyTextureOverrides(content: any, isFallback = false) {
@@ -564,6 +618,8 @@ function applyTextureOverrides(content: any, isFallback = false) {
   delete content.java_to_bedrock['assets/textures/blocks/grass_side_overlay.png'];
   delete content.java_to_bedrock['assets/minecraft/textures/block/conduit.png'];
   delete content.java_to_bedrock['assets/textures/block/conduit.png'];
+  delete content.java_to_bedrock['assets/minecraft/textures/block/Flowering_azalea_leaves.png'];
+  delete content.java_to_bedrock['assets/textures/block/Flowering_azalea_leaves.png'];
 
   for (const [javaFull, bedrockPath] of Object.entries(AUTHORITATIVE_TEXTURE_OVERRIDES)) {
     const javaKey = isFallback ? javaFull.replace(/^assets\/minecraft\//, 'assets/') : javaFull;
@@ -615,20 +671,16 @@ async function updateMappings() {
       // Apply authoritative Mojang texture overrides
       applyTextureOverrides(content, false);
 
-      // Merge Geyser sounds and Prismarine language keys
-      content.sounds_java_to_bedrock = {
-        ...(content.sounds_java_to_bedrock || {}),
-        ...geyserSounds.java_to_bedrock
-      };
-      content.sounds_bedrock_to_java = {
-        ...(content.sounds_bedrock_to_java || {}),
-        ...geyserSounds.bedrock_to_java
-      };
+      // Replace sounds cleanly when Geyser fetch succeeds so stale fuzzy entries are purged
+      if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+        content.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
+        content.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+      }
       content.lang_java_to_bedrock = langMap.java_to_bedrock;
       content.lang_bedrock_to_java = langMap.bedrock_to_java;
 
       await fs.writeFile(filePath, JSON.stringify(content, null, 2));
-      console.log(`  Updated ${file} with Geyser sounds (${Object.keys(content.sounds_java_to_bedrock).length}) and Prismarine lang (${Object.keys(content.lang_java_to_bedrock).length})`);
+      console.log(`  Updated ${file} with Geyser sounds (${Object.keys(content.sounds_java_to_bedrock || {}).length}) and Prismarine lang (${Object.keys(content.lang_java_to_bedrock).length})`);
     } catch (e) {
       console.error(`  Failed to update ${file}:`, e);
     }
@@ -638,19 +690,15 @@ async function updateMappings() {
   console.log("Updating fallback mappings.json...");
   try {
     const baseContent = JSON.parse(await fs.readFile(baseMappingPath, 'utf8'));
-    const defaultLang = getPrismarineLanguageMappings('1.21.4', '1.21.50');
+    const defaultLang = getPrismarineLanguageMappings('26.3.0', '1.26.60');
 
     // Apply authoritative Mojang texture overrides
     applyTextureOverrides(baseContent, true);
 
-    baseContent.sounds_java_to_bedrock = {
-      ...(baseContent.sounds_java_to_bedrock || {}),
-      ...geyserSounds.java_to_bedrock
-    };
-    baseContent.sounds_bedrock_to_java = {
-      ...(baseContent.sounds_bedrock_to_java || {}),
-      ...geyserSounds.bedrock_to_java
-    };
+    if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+      baseContent.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
+      baseContent.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+    }
     baseContent.lang_java_to_bedrock = defaultLang.java_to_bedrock;
     baseContent.lang_bedrock_to_java = defaultLang.bedrock_to_java;
 

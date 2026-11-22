@@ -74,7 +74,7 @@ export function generateMcmetaContent(description: unknown, packFormat: number):
 
   if (packFormat >= 69) {
     packObj.min_format = packFormat;
-    packObj.max_format = packFormat;
+    packObj.max_format = packFormat === 97 ? [97, 1] : packFormat;
   }
 
   return JSON.stringify({
