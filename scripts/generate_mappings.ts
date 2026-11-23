@@ -345,6 +345,7 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/block/destroy_stage_9.png": "textures/environment/destroy_stage_9.png",
 
   // Items
+  "assets/minecraft/textures/item/bow.png": "textures/items/bow_standby.png",
   "assets/minecraft/textures/item/bucket.png": "textures/items/bucket_empty.png",
   "assets/minecraft/textures/item/cod_bucket.png": "textures/items/bucket_cod.png",
   "assets/minecraft/textures/item/cooked_cod.png": "textures/items/fish_cooked.png",

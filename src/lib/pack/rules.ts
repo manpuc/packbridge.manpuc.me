@@ -1,4 +1,5 @@
 import type { ConversionDirection } from './types';
+import { blockRenamesInverse, itemRenamesInverse } from './legacy';
 import mappings from './mappings.json';
 
 export interface PathRule {
@@ -19,10 +20,12 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
   { match: /^assets\/minecraft\/textures\/item\/(.*)_bed\.png$/, replace: 'textures/items/bed_$1.png' },
   { match: /^assets\/minecraft\/textures\/item\/(.*)_spawn_egg\.png$/, replace: 'textures/items/spawn_eggs/spawn_egg_$1.png' },
   // Generic regex rules as fallback
+  { match: /^assets\/minecraft\/textures\/item\/bow\.png$/, replace: 'textures/items/bow_standby.png' },
   { match: /^assets\/minecraft\/textures\/blocks?\/(.*)$/, replace: 'textures/blocks/$1' },
   { match: /^assets\/minecraft\/textures\/items?\/(.*)$/, replace: 'textures/items/$1' },
   { match: /^assets\/minecraft\/textures\/models\/armor\/(.*)_layer_([12])\.png$/, replace: 'textures/models/armor/$1_$2.png' },
   { match: /^assets\/minecraft\/textures\/entity\/(.*)$/, replace: 'textures/entity/$1' },
+  { match: /^assets\/minecraft\/textures\/gui\/title\/background\/(panorama_[0-5]|panorama_overlay)\.png$/, replace: 'textures/ui/$1.png' },
   { match: /^assets\/minecraft\/textures\/gui\/(.*)$/, replace: 'textures/ui/$1' },
   { match: /^assets\/minecraft\/textures\/(.*)\.mcmeta$/, replace: 'textures/$1.mcmeta' },
   { match: /^assets\/minecraft\/textures\/(.*)$/, replace: 'textures/$1' },
@@ -64,6 +67,7 @@ export const BEDROCK_TO_JAVA_RULES: PathRule[] = [
   { match: /^textures\/models\/armor\/(.*)_(layer_)?([12])\.(png|tga)$/, replace: 'assets/minecraft/textures/models/armor/$1_layer_$3.png' },
   { match: /^textures\/entity\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/entity/$1.png' },
   { match: /^textures\/gui\/realms\/(.*)\.(png|tga)$/, replace: 'assets/realms/textures/$1.png' },
+  { match: /^textures\/ui\/(panorama_[0-5]|panorama_overlay)\.(png|tga)$/, replace: 'assets/minecraft/textures/gui/title/background/$1.png' },
   { match: /^textures\/ui\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/gui/$1.png' },
   { match: /^textures\/(.*)\.(png|tga)$/, replace: 'assets/minecraft/textures/$1.png' },
   { match: /^sounds\/sound_definitions\.json$/, replace: 'assets/minecraft/sounds.json' },
@@ -175,6 +179,18 @@ export function getTargetContext(path: string, direction: ConversionDirection): 
     const lookupPath = path.replace(/^assets\/minecraft\//, 'assets/');
     if (Object.hasOwn(fallbackMappings.java_to_bedrock, lookupPath)) {
       return fallbackMappings.java_to_bedrock[lookupPath];
+    }
+    // Legacy-normalized paths (e.g. item/bow.png -> items/bow_standby.png) may match legacy activeMappings
+    const renamedMatch = path.match(/^assets\/minecraft\/textures\/(block|item)\/(.+)\.png$/);
+    if (renamedMatch) {
+      const [, kind, name] = renamedMatch;
+      const legacyName = kind === 'block' ? blockRenamesInverse[name] : itemRenamesInverse[name];
+      if (legacyName) {
+        const legacyKey = `assets/minecraft/textures/${kind}s/${legacyName}.png`;
+        if (Object.hasOwn(activeMappings.java_to_bedrock, legacyKey)) {
+          return activeMappings.java_to_bedrock[legacyKey];
+        }
+      }
     }
   } else if (direction === 'bedrock-to-java') {
     const normalizedLookup = path.replace(/\.tga$/i, '.png');
