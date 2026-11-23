@@ -16,6 +16,17 @@
 * **マッピング生成（`update-mappings`）と変換ロジックのバグ修正**:
   * **バージョン解決と誤マップ・重複衝突の解消**: `minecraft-data` 参照の最近接バージョン解決とメモ化、Geyser サウンドのクリーン置換、`empty_slot_*`・`clock_*` / `compass_*`・`entity/bed`・`entity/piglin`・`entity/skeleton`・`Flowering_azalea_leaves.png`・`.ogg -> .fsb` 等の誤衝突を一掃し、Java `26.3` / Bedrock `1.26.60`（Poplar 等）を追加。`rules.ts` の `26.x` バージョン距離計算も修正。
   * **アニメーション・アトラス・レガシー変換の修正**: Bedrock `flipbook_textures.json` / `terrain_texture.json` の `atlas_tile` 名（`still_lava` 等およびサブフォルダ除去）と `.png.mcmeta` の辞書ベース解決を修正し、Java 1.8 / 1.12 レガシー変換の草・染料・熱帯魚の改名不備を解消。
+* **GUI・コンテナ GUI・スカイボックス変換の強化**:
+  * **1.20.2+ 分割 GUI スプライト・ホットバーの双方向変換**: `icons.png` / `widgets.png` / `bars.png` と Java 1.20.2+ 個別スプライトおよび Bedrock `textures/ui/` の相互変換・バージョン間分割/再合成に対応。`tRNS` 透過 PNG の保持、スプライト優先順位ガード、非標準解像度スケーリング、`air_empty` / `villager2` 等のバージョン別分岐を整備。
+  * **コンテナ GUI の双方向変換・移行**: Java コンテナシート（インベントリ・かまど・醸造台・ビーコン・エンチャント台・金床・機織り機・村人等）と Bedrock 9-slice テーマ（`dialog_background_opaque` / `cell_image`）・UI パーツ・スロットアイコン（1.21.4+ `sprites/container/slot/`・26.3+ `effect_background` 含む）の相互変換および Java バージョン間移行に対応。
+  * **カスタムスカイボックス・パノラマ対応**: OptiFine/MCPatcher `world0` の 3×2 スカイボックスと Bedrock `overworld_cubemap`（`cubemap_0..5`）の相互変換および `mcpatcher/` ⇄ `optifine/` パス・`.properties` 移行に対応。タイトル画面パノラマの双方向変換も GUI 変換設定と独立してサポート。
+* **葉・草ブロック・TGA→PNG・PBR 変換の精度向上とバグ修正**:
+  * **葉・草ブロックテクスチャの双方向処理**: Java の葉 PNG から Bedrock 用 Fancy（`.tga`/`.png`）・Opaque（`_opaque.png`）・Carried（`_carried.tga`）と `terrain_texture.json` 定義を自動生成し、Bedrock → Java では ZIP 順に依らず Fancy を優先して `_carried` を除外。草ブロック側面（`grass_block_side` / `grass_side.tga`）のアルファマスク合成・分離にも対応。
+  * **TGA デコーダ修正と省メモリ化**: 15bit TrueColor・16bit ARGB1555（1bit アルファ）・16bit グレースケール＋アルファ（Type 3 / 11）に対応し、ヘッダ検証を強化。原点反転時の二重バッファ確保を廃止して単一バッファ直接書き込みへ改善し、不要な `async` と重複関数を整理。
+  * **TGA ルーティング・PBR・重複制御の修正**: `.tga` → `.png` 変換を `bedrock-to-java` に限定して `bedrock-to-bedrock` での `.tga` 破損を防止。PBR `.tga` の `enableTgaConversion` 無効化反映、非対応 MER PNG の生出力フォールバック除去、大文字 `.TGA` のパスルール・パノラマ対応、同名 `.png`/`.tga` 共存時の PNG 優先と変換件数の重複カウント防止を実装（テストを 28 件へ拡充）。
+* **メタデータ検出・OGP の整備**:
+  * **パック判定とバージョン検出の安定化**: `pack.mcmeta` / `manifest.json` 探索時に `__MACOSX` や隠しファイルを除外して最浅階層を優先し、ファイル再選択時にソースバージョン状態をリセットするよう修正。
+  * **OGP 画像・メタタグ刷新**: 全 8 言語の OGP 画像生成スクリプト（`generate_og.ts`）を追加し、OGP / Twitter Card メタタグを整備。
 
 ## v1.6.7
 * **音声再エンコード (`ffmpeg.wasm`) の安定性改善**:
