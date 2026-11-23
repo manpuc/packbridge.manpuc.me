@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { convertBuffer } from './convert-core';
 import { convertPackWithWorker } from './worker-client';
-import { encodeRgbaToPngSync, getPngDimensions } from './processors/tga';
+import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, getPngDimensions } from './processors/tga';
 import { decodePngToRgbaSync } from './processors/pbr';
+import { processGuiSpriteSheet } from './processors/gui';
+import { zlibSync } from 'fflate';
 import { extractPackFormat, detectEditionAutoSwitch } from './versions';
 import { analyzeReportSafety, categorizeError } from '../analytics';
 import { createZipSafetyFilter } from './security';
@@ -956,5 +958,248 @@ describe('convertBuffer', () => {
     const downFur = decodePngToRgbaSync(downOut['assets/minecraft/textures/gui/container/furnace.png']);
     expect(downFur?.rgba[(0 * 256 + 176) * 4]).toBe(250);
     expect(downOut['assets/minecraft/textures/item/empty_armor_slot_helmet.png']).toEqual(helmet);
+  });
+
+  it('converts tree leaves Java -> Bedrock with Fancy TGA, Opaque PNG, Carried TGA, terrain_texture, and LabPBR', async () => {
+    const leafRgba = new Uint8Array(16 * 16 * 4);
+    for (let i = 0; i < 16 * 16; i++) {
+      const idx = i * 4;
+      if (i % 2 === 0) {
+        leafRgba[idx] = 200; leafRgba[idx + 1] = 200; leafRgba[idx + 2] = 200; leafRgba[idx + 3] = 255;
+      }
+    }
+    const leafPng = encodeRgbaToPngSync(16, 16, leafRgba);
+    const specPng = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(128));
+
+    const j2b = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Leaves' } })),
+        'assets/minecraft/textures/block/oak_leaves.png': leafPng,
+        'assets/minecraft/textures/block/oak_leaves_s.png': specPng,
+        'assets/minecraft/textures/block/dark_oak_leaves.png': leafPng,
+        'assets/minecraft/textures/block/mangrove_leaves.png': leafPng,
+        'assets/minecraft/textures/block/flowering_azalea_leaves.png': leafPng,
+        'assets/minecraft/textures/block/cherry_leaves.png': leafPng,
+        'assets/minecraft/textures/block/pale_oak_leaves.png': leafPng,
+      })),
+      'leaves-java.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.26.60' }
+    );
+    expect(j2b.report.errorCount).toBe(0);
+    const out = unzipSync(j2b.buffer);
+
+    const fancyOak = decodeTgaToRgba(out['textures/blocks/leaves_oak.tga']);
+    expect(fancyOak?.width).toBe(16);
+    expect(fancyOak?.rgba[3]).toBe(255);
+    expect(fancyOak?.rgba[7]).toBe(0);
+
+    const opaqueOak = decodePngToRgbaSync(out['textures/blocks/leaves_oak_opaque.png'])!;
+    for (let i = 3; i < opaqueOak.rgba.length; i += 4) {
+      expect(opaqueOak.rgba[i]).toBe(255);
+    }
+    expect(opaqueOak.rgba[4]).toBe(50);
+
+    const carriedOak = decodeTgaToRgba(out['textures/blocks/leaves_oak_carried.tga'])!;
+    expect(carriedOak.rgba[1]).toBeGreaterThan(carriedOak.rgba[0]);
+    expect(carriedOak.rgba[7]).toBe(0);
+
+    expect(out['textures/blocks/leaves_big_oak.tga']).toBeDefined();
+    expect(out['textures/blocks/leaves_big_oak_opaque.png']).toBeDefined();
+    expect(out['textures/blocks/leaves_big_oak_carried.tga']).toBeDefined();
+    expect(out['textures/blocks/mangrove_leaves.tga']).toBeDefined();
+    expect(out['textures/blocks/mangrove_leaves_carried.tga']).toBeDefined();
+    expect(out['textures/blocks/azalea_leaves_flowers.tga']).toBeDefined();
+    expect(out['textures/blocks/cherry_leaves.tga']).toBeDefined();
+    expect(out['textures/blocks/pale_oak_leaves.tga']).toBeDefined();
+    expect(out['textures/blocks/leaves_oak_mer.png']).toBeDefined();
+    expect(out['textures/blocks/leaves_oak.texture_set.json']).toBeDefined();
+
+    const terrain = JSON.parse(strFromU8(out['textures/terrain_texture.json']));
+    expect(terrain.texture_data.oak_leaves.textures).toEqual(['textures/blocks/leaves_oak', 'textures/blocks/leaves_oak_opaque']);
+    expect(terrain.texture_data.oak_leaves_carried.textures).toEqual(['textures/blocks/leaves_oak_carried', 'textures/blocks/leaves_oak_carried']);
+    expect(terrain.texture_data.big_oak_leaves.textures).toEqual(['textures/blocks/leaves_big_oak', 'textures/blocks/leaves_big_oak_opaque']);
+    expect(terrain.texture_data.azalea_leaves_flowered.textures).toEqual(['textures/blocks/azalea_leaves_flowers', 'textures/blocks/azalea_leaves_flowers_opaque']);
+    expect(terrain.texture_data.leaves_oak_opaque).toBeUndefined();
+
+    // Legacy Java 1.8 -> Bedrock
+    const legOut = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
+        'assets/minecraft/textures/blocks/leaves_oak.png': leafPng,
+      })),
+      'leaves-1.8.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    )).buffer);
+    expect(legOut['textures/blocks/leaves_oak.tga']).toBeDefined();
+    expect(legOut['textures/blocks/leaves_oak_opaque.png']).toBeDefined();
+    expect(legOut['textures/blocks/leaves_oak_carried.tga']).toBeDefined();
+  });
+
+  it('prefers Fancy leaves over _opaque in Bedrock -> Java regardless of ZIP order and skips _carried', async () => {
+    const fancyRgba = new Uint8Array(16 * 16 * 4);
+    fancyRgba[0] = 180; fancyRgba[1] = 180; fancyRgba[2] = 180; fancyRgba[3] = 255;
+    const fancyTga = encodeRgbaToTgaSync(16, 16, fancyRgba);
+    const fancyPng = encodeRgbaToPngSync(16, 16, fancyRgba);
+    const opaquePng = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(255));
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'BLeaves', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+
+    // Order A: Fancy before Opaque; Order B: Opaque before Fancy
+    for (const files of [
+      {
+        'manifest.json': manifest,
+        'textures/blocks/leaves_oak.tga': fancyTga,
+        'textures/blocks/leaves_oak_opaque.png': opaquePng,
+        'textures/blocks/leaves_oak_carried.tga': fancyTga,
+        'textures/blocks/azalea_leaves.png': fancyPng,
+        'textures/blocks/azalea_leaves_opaque.png': opaquePng,
+      },
+      {
+        'manifest.json': manifest,
+        'textures/blocks/leaves_oak_opaque.png': opaquePng,
+        'textures/blocks/leaves_oak.tga': fancyTga,
+        'textures/blocks/leaves_oak_carried.tga': fancyTga,
+        'textures/blocks/azalea_leaves_opaque.png': opaquePng,
+        'textures/blocks/azalea_leaves.png': fancyPng,
+      },
+    ]) {
+      const res = await convertBuffer(toArrayBuffer(zipSync(files)), 'b-leaves.mcpack', {
+        ...baseOptions,
+        direction: 'bedrock-to-java',
+        javaVersionId: '1.21.4',
+      });
+      const jOut = unzipSync(res.buffer);
+      expect(decodePngToRgbaSync(jOut['assets/minecraft/textures/block/oak_leaves.png'])!.rgba[7]).toBe(0);
+      expect(decodePngToRgbaSync(jOut['assets/minecraft/textures/block/azalea_leaves.png'])!.rgba[7]).toBe(0);
+      expect(jOut['assets/minecraft/textures/block/leaves_oak_carried.png']).toBeUndefined();
+    }
+
+    // Opaque-only fallback + 1.19.4 mangrove_leaves_opaque.png
+    const fallbackOut = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/leaves_oak_opaque.png': opaquePng,
+        'textures/blocks/mangrove_leaves_opaque.png': opaquePng,
+      })),
+      'b-opaque.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.19.4', bedrockVersionId: '1.19.0' }
+    )).buffer);
+    expect(fallbackOut['assets/minecraft/textures/block/oak_leaves.png']).toBeDefined();
+    expect(fallbackOut['assets/minecraft/textures/block/mangrove_leaves.png']).toBeDefined();
+  });
+
+  it('converts grass_block_side bidirectionally with alpha mask compositing and splitting', async () => {
+    const sideRgba = new Uint8Array(16 * 16 * 4);
+    for (let i = 0; i < 16 * 16; i++) {
+      sideRgba[i * 4] = 120; sideRgba[i * 4 + 1] = 85; sideRgba[i * 4 + 2] = 55; sideRgba[i * 4 + 3] = 255;
+    }
+    const overlayRgba = new Uint8Array(16 * 16 * 4);
+    for (let x = 0; x < 16; x++) {
+      overlayRgba[x * 4] = 200; overlayRgba[x * 4 + 1] = 200; overlayRgba[x * 4 + 2] = 200; overlayRgba[x * 4 + 3] = 255;
+    }
+
+    const j2b = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Grass' } })),
+        'assets/minecraft/textures/block/grass_block_side.png': encodeRgbaToPngSync(16, 16, sideRgba),
+        'assets/minecraft/textures/block/grass_block_side_overlay.png': encodeRgbaToPngSync(16, 16, overlayRgba),
+      })),
+      'grass-j.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    );
+    const bOut = unzipSync(j2b.buffer);
+    const grassTga = decodeTgaToRgba(bOut['textures/blocks/grass_side.tga'])!;
+    expect(grassTga.rgba[3]).toBe(255); // top overlay pixel
+    expect(grassTga.rgba[(15 * 16) * 4 + 3]).toBe(0); // dirt pixel
+    expect(bOut['textures/blocks/grass_side_carried.png']).toBeDefined();
+    expect(bOut['textures/blocks/grass_block_side_overlay.png']).toBeUndefined();
+
+    const b2j = await convertBuffer(toArrayBuffer(j2b.buffer), 'grass-b.mcpack', {
+      ...baseOptions,
+      direction: 'bedrock-to-java',
+    });
+    const jOut = unzipSync(b2j.buffer);
+    const jSide = decodePngToRgbaSync(jOut['assets/minecraft/textures/block/grass_block_side.png'])!;
+    const jOverlay = decodePngToRgbaSync(jOut['assets/minecraft/textures/block/grass_block_side_overlay.png'])!;
+    expect(jSide.rgba[3]).toBe(255);
+    expect(jSide.rgba[(15 * 16) * 4 + 3]).toBe(255);
+    expect(jOverlay.rgba[3]).toBe(255);
+    expect(jOverlay.rgba[(15 * 16) * 4 + 3]).toBe(0);
+  });
+
+  it('preserves GUI transparency for RGB tRNS PNGs, semi-transparent Bedrock slots, and clear Java container panels', async () => {
+    // 1. RGB PNG (colorType 2) with tRNS key [255, 0, 255]
+    const makeRgbTrnsPng = () => {
+      const crcTable = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        crcTable[n] = c >>> 0;
+      }
+      const chunk = (type: string, data: Uint8Array) => {
+        const out = new Uint8Array(12 + data.length);
+        const v = new DataView(out.buffer);
+        v.setUint32(0, data.length, false);
+        for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+        out.set(data, 8);
+        let c = 0xffffffff;
+        for (let i = 4; i < 8 + data.length; i++) c = crcTable[(c ^ out[i]) & 0xff] ^ (c >>> 8);
+        v.setUint32(8 + data.length, (c ^ 0xffffffff) >>> 0, false);
+        return out;
+      };
+      const ihdr = new Uint8Array([0,0,0,2, 0,0,0,1, 8, 2, 0, 0, 0]);
+      const trns = new Uint8Array([0,255, 0,0, 0,255]);
+      const idat = zlibSync(new Uint8Array([0, 255, 0, 255, 10, 20, 30]));
+      const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      const c1 = chunk('IHDR', ihdr), c2 = chunk('tRNS', trns), c3 = chunk('IDAT', idat), c4 = chunk('IEND', new Uint8Array(0));
+      const png = new Uint8Array(sig.length + c1.length + c2.length + c3.length + c4.length);
+      let p = 0;
+      for (const part of [sig, c1, c2, c3, c4]) { png.set(part, p); p += part.length; }
+      return png;
+    };
+    const sliced = await processGuiSpriteSheet(makeRgbTrnsPng(), { 'a.png': { x: 0, y: 0, w: 2, h: 1 } }, { baseWidth: 2 });
+    const decodedSliced = decodePngToRgbaSync(sliced['a.png'])!;
+    expect(Array.from(decodedSliced.rgba)).toEqual([255, 0, 255, 0, 10, 20, 30, 255]);
+
+    // 2. Semi-transparent cell_image alpha-blended over opaque dialog_background_opaque
+    const bg = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(200));
+    const cellRgba = new Uint8Array(10 * 10 * 4);
+    for (let i = 0; i < 100; i++) {
+      cellRgba[i * 4] = 0; cellRgba[i * 4 + 1] = 0; cellRgba[i * 4 + 2] = 0; cellRgba[i * 4 + 3] = 128;
+    }
+    const b2jGui = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': strToU8(JSON.stringify({
+          format_version: 2,
+          header: { name: 'AlphaGui', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+          modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+        })),
+        'textures/ui/dialog_background_opaque.png': bg,
+        'textures/ui/cell_image.png': encodeRgbaToPngSync(10, 10, cellRgba),
+      })),
+      'alpha-gui.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.19.4', enableGuiConversion: true }
+    );
+    const inv = decodePngToRgbaSync(unzipSync(b2jGui.buffer)['assets/minecraft/textures/gui/container/inventory.png'])!;
+    const slotPx = (85 * 256 + 9) * 4;
+    expect(inv.rgba[slotPx + 3]).toBeGreaterThan(200);
+    expect(inv.rgba[slotPx]).toBeLessThan(120);
+
+    // 3. Clear Java furnace.png still exports transparent in-panel flame_empty_image.png
+    const clearFurnace = encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4));
+    const j2bClear = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Clear' } })),
+        'assets/minecraft/textures/gui/container/furnace.png': clearFurnace,
+      })),
+      'clear-furnace.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: true }
+    );
+    const clearOut = unzipSync(j2bClear.buffer);
+    expect(clearOut['textures/ui/flame_empty_image.png']).toBeDefined();
+    expect(clearOut['textures/ui/arrow_active.png']).toBeUndefined();
   });
 });

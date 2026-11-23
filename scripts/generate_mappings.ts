@@ -178,7 +178,18 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/block/dark_oak_log_top.png": "textures/blocks/log_big_oak_top.png",
   "assets/minecraft/textures/block/dark_oak_planks.png": "textures/blocks/planks_big_oak.png",
   "assets/minecraft/textures/block/dark_oak_sapling.png": "textures/blocks/sapling_roofed_oak.png",
-  "assets/minecraft/textures/block/dark_oak_leaves.png": "textures/blocks/leaves_big_oak_opaque.png",
+  "assets/minecraft/textures/block/oak_leaves.png": "textures/blocks/leaves_oak.png",
+  "assets/minecraft/textures/block/spruce_leaves.png": "textures/blocks/leaves_spruce.png",
+  "assets/minecraft/textures/block/birch_leaves.png": "textures/blocks/leaves_birch.png",
+  "assets/minecraft/textures/block/jungle_leaves.png": "textures/blocks/leaves_jungle.png",
+  "assets/minecraft/textures/block/acacia_leaves.png": "textures/blocks/leaves_acacia.png",
+  "assets/minecraft/textures/block/dark_oak_leaves.png": "textures/blocks/leaves_big_oak.png",
+  "assets/minecraft/textures/block/mangrove_leaves.png": "textures/blocks/mangrove_leaves.png",
+  "assets/minecraft/textures/block/azalea_leaves.png": "textures/blocks/azalea_leaves.png",
+  "assets/minecraft/textures/block/cherry_leaves.png": "textures/blocks/cherry_leaves.png",
+  "assets/minecraft/textures/block/orange_poplar_leaves.png": "textures/blocks/orange_poplar_leaves.png",
+  "assets/minecraft/textures/block/red_poplar_leaves.png": "textures/blocks/red_poplar_leaves.png",
+  "assets/minecraft/textures/block/yellow_poplar_leaves.png": "textures/blocks/yellow_poplar_leaves.png",
   "assets/minecraft/textures/block/cherry_log.png": "textures/blocks/cherry_log_side.png",
   "assets/minecraft/textures/block/stripped_cherry_log.png": "textures/blocks/stripped_cherry_log_side.png",
   "assets/minecraft/textures/block/mangrove_log.png": "textures/blocks/mangrove_log_side.png",
@@ -233,7 +244,7 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/block/jack_o_lantern.png": "textures/blocks/pumpkin_face_on.png",
 
   // Dirt, Grass, Plants, Crops
-  "assets/minecraft/textures/block/grass_block_side.png": "textures/blocks/grass_side_carried.png",
+  "assets/minecraft/textures/block/grass_block_side.png": "textures/blocks/grass_side.png",
   "assets/minecraft/textures/block/grass_block_snow.png": "textures/blocks/grass_side_snowed.png",
   "assets/minecraft/textures/block/rooted_dirt.png": "textures/blocks/dirt_with_roots.png",
   "assets/minecraft/textures/block/farmland_moist.png": "textures/blocks/farmland_wet.png",
@@ -266,7 +277,7 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
   "assets/minecraft/textures/block/cocoa_stage1.png": "textures/blocks/cocoa_stage_1.png",
   "assets/minecraft/textures/block/cocoa_stage2.png": "textures/blocks/cocoa_stage_2.png",
   "assets/minecraft/textures/block/torchflower_crop_stage1.png": "textures/blocks/torchflower_crop_stage_1.png",
-  "assets/minecraft/textures/block/flowering_azalea_leaves.png": "textures/blocks/azalea_leaves_flowers_opaque.png",
+  "assets/minecraft/textures/block/flowering_azalea_leaves.png": "textures/blocks/azalea_leaves_flowers.png",
   "assets/minecraft/textures/block/lilac_bottom.png": "textures/blocks/double_plant_syringa_bottom.png",
   "assets/minecraft/textures/block/lilac_top.png": "textures/blocks/double_plant_syringa_top.png",
   "assets/minecraft/textures/block/peony_bottom.png": "textures/blocks/double_plant_paeonia_bottom.png",
@@ -580,17 +591,18 @@ const AUTHORITATIVE_TEXTURE_OVERRIDES: Record<string, string> = {
 
 // Many-to-one Bedrock -> Java aliases (preserved across `pnpm run update-mappings` without clobbering java_to_bedrock)
 const AUTHORITATIVE_B2J_ONLY_OVERRIDES: Record<string, string> = {
-  "textures/blocks/leaves_oak.png": "assets/minecraft/textures/block/oak_leaves.png",
-  "textures/blocks/leaves_spruce.png": "assets/minecraft/textures/block/spruce_leaves.png",
-  "textures/blocks/leaves_birch.png": "assets/minecraft/textures/block/birch_leaves.png",
-  "textures/blocks/leaves_jungle.png": "assets/minecraft/textures/block/jungle_leaves.png",
-  "textures/blocks/leaves_acacia.png": "assets/minecraft/textures/block/acacia_leaves.png",
-  "textures/blocks/leaves_big_oak.png": "assets/minecraft/textures/block/dark_oak_leaves.png",
+  "textures/blocks/leaves_oak_opaque.png": "assets/minecraft/textures/block/oak_leaves.png",
+  "textures/blocks/leaves_spruce_opaque.png": "assets/minecraft/textures/block/spruce_leaves.png",
+  "textures/blocks/leaves_birch_opaque.png": "assets/minecraft/textures/block/birch_leaves.png",
+  "textures/blocks/leaves_jungle_opaque.png": "assets/minecraft/textures/block/jungle_leaves.png",
+  "textures/blocks/leaves_acacia_opaque.png": "assets/minecraft/textures/block/acacia_leaves.png",
+  "textures/blocks/leaves_big_oak_opaque.png": "assets/minecraft/textures/block/dark_oak_leaves.png",
+  "textures/blocks/mangrove_leaves_opaque.png": "assets/minecraft/textures/block/mangrove_leaves.png",
   "textures/blocks/azalea_leaves_opaque.png": "assets/minecraft/textures/block/azalea_leaves.png",
-  "textures/blocks/azalea_leaves_flowers.png": "assets/minecraft/textures/block/flowering_azalea_leaves.png",
+  "textures/blocks/azalea_leaves_flowers_opaque.png": "assets/minecraft/textures/block/flowering_azalea_leaves.png",
   "textures/blocks/cherry_leaves_opaque.png": "assets/minecraft/textures/block/cherry_leaves.png",
   "textures/blocks/pale_oak_leaves_opaque.png": "assets/minecraft/textures/block/pale_oak_leaves.png",
-  "textures/blocks/grass_side.png": "assets/minecraft/textures/block/grass_block_side.png",
+  "textures/blocks/grass_side_carried.png": "assets/minecraft/textures/block/grass_block_side.png",
   "textures/blocks/grass_block_snow.png": "assets/minecraft/textures/block/grass_block_snow.png",
   "textures/blocks/grass_carried.png": "assets/minecraft/textures/block/grass_block_top.png",
   "textures/blocks/seagrass_doubletall_bottom_a.png": "assets/minecraft/textures/block/tall_seagrass_bottom.png",
@@ -656,6 +668,12 @@ function applyTextureOverrides(content: any, isFallback = false) {
     const target = content.java_to_bedrock[key];
     if (key.endsWith('.ogg') && typeof target === 'string' && target.endsWith('.fsb')) {
       content.java_to_bedrock[key] = target.replace(/\.fsb$/, '.ogg');
+    } else if (!isFallback && typeof target === 'string') {
+      if (/^assets\/minecraft\/textures\/blocks\/leaves_(oak|spruce|birch|jungle|acacia|big_oak)\.png$/.test(key)) {
+        content.java_to_bedrock[key] = target.replace(/_opaque\.png$/, '.png');
+      } else if (key === 'assets/minecraft/textures/blocks/grass_side.png') {
+        content.java_to_bedrock[key] = 'textures/blocks/grass_side.png';
+      }
     }
   }
 
@@ -684,8 +702,11 @@ function applyTextureOverrides(content: any, isFallback = false) {
 }
 
 async function updateMappings() {
+  const texturesOnly = process.argv.includes('--textures-only');
   // 1. Fetch Geyser sound mappings
-  const geyserSounds = await fetchGeyserSounds();
+  const geyserSounds = texturesOnly
+    ? { java_to_bedrock: {}, bedrock_to_java: {} }
+    : await fetchGeyserSounds();
 
   const mappingsDir = path.join(__dirname, '../src/lib/pack/mappings');
   const baseMappingPath = path.join(__dirname, '../src/lib/pack/mappings.json');
@@ -704,18 +725,18 @@ async function updateMappings() {
       const javaVer = parts[0] || '1.21.4';
       const bedrockVer = parts[1] || '1.21.50';
 
-      const langMap = getPrismarineLanguageMappings(javaVer, bedrockVer);
-
       // Apply authoritative Mojang texture overrides
       applyTextureOverrides(content, false);
 
-      // Replace sounds cleanly when Geyser fetch succeeds so stale fuzzy entries are purged
-      if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
-        content.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
-        content.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+      if (!texturesOnly) {
+        const langMap = getPrismarineLanguageMappings(javaVer, bedrockVer);
+        if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+          content.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
+          content.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+        }
+        content.lang_java_to_bedrock = langMap.java_to_bedrock;
+        content.lang_bedrock_to_java = langMap.bedrock_to_java;
       }
-      content.lang_java_to_bedrock = langMap.java_to_bedrock;
-      content.lang_bedrock_to_java = langMap.bedrock_to_java;
 
       await fs.writeFile(filePath, JSON.stringify(content, null, 2));
       console.log(`  Updated ${file} with Geyser sounds (${Object.keys(content.sounds_java_to_bedrock || {}).length}) and Prismarine lang (${Object.keys(content.lang_java_to_bedrock).length})`);
@@ -728,17 +749,19 @@ async function updateMappings() {
   console.log("Updating fallback mappings.json...");
   try {
     const baseContent = JSON.parse(await fs.readFile(baseMappingPath, 'utf8'));
-    const defaultLang = getPrismarineLanguageMappings('26.3.0', '1.26.60');
 
     // Apply authoritative Mojang texture overrides
     applyTextureOverrides(baseContent, true);
 
-    if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
-      baseContent.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
-      baseContent.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+    if (!texturesOnly) {
+      const defaultLang = getPrismarineLanguageMappings('26.3.0', '1.26.60');
+      if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+        baseContent.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
+        baseContent.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+      }
+      baseContent.lang_java_to_bedrock = defaultLang.java_to_bedrock;
+      baseContent.lang_bedrock_to_java = defaultLang.bedrock_to_java;
     }
-    baseContent.lang_java_to_bedrock = defaultLang.java_to_bedrock;
-    baseContent.lang_bedrock_to_java = defaultLang.bedrock_to_java;
 
     await fs.writeFile(baseMappingPath, JSON.stringify(baseContent, null, 2));
     console.log("Fallback mappings.json updated successfully!");

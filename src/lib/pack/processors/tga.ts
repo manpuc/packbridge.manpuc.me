@@ -247,6 +247,41 @@ export function encodeRgbaToPngSync(width: number, height: number, rgba: Uint8Ar
   return out;
 }
 
+/**
+ * Encodes RGBA pixel data into an uncompressed 32-bit BGRA TGA (bottom-left origin, 8-bit alpha).
+ */
+export function encodeRgbaToTgaSync(width: number, height: number, rgba: Uint8Array): Uint8Array {
+  if (width <= 0 || height <= 0 || width > MAX_TGA_DIMENSION || height > MAX_TGA_DIMENSION) {
+    throw new Error(`Invalid TGA dimensions: ${width}x${height}`);
+  }
+  const pixelCount = width * height;
+  if (rgba.length < pixelCount * 4) {
+    throw new Error(`RGBA buffer too small for ${width}x${height} TGA`);
+  }
+
+  const out = new Uint8Array(18 + pixelCount * 4);
+  out[2] = 2; // Uncompressed True-Color
+  out[12] = width & 0xff;
+  out[13] = (width >> 8) & 0xff;
+  out[14] = height & 0xff;
+  out[15] = (height >> 8) & 0xff;
+  out[16] = 32; // 32-bit BGRA
+  out[17] = 0x08; // bottom-left origin, 8-bit alpha
+
+  let dst = 18;
+  for (let y = 0; y < height; y++) {
+    const srcRow = (height - 1 - y) * width * 4;
+    for (let x = 0; x < width; x++) {
+      const sIdx = srcRow + x * 4;
+      out[dst++] = rgba[sIdx + 2]; // B
+      out[dst++] = rgba[sIdx + 1]; // G
+      out[dst++] = rgba[sIdx];     // R
+      out[dst++] = rgba[sIdx + 3]; // A
+    }
+  }
+  return out;
+}
+
 export function isValidPngHeader(bytes: Uint8Array): boolean {
   return (
     bytes.length > 24 &&

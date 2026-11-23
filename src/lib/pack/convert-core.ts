@@ -4,7 +4,13 @@ import { getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import { javaToBedrockLang, bedrockToJavaLang } from './processors/lang';
 import { javaToBedrockSounds, bedrockToJavaSounds } from './processors/sounds';
-import { generateTerrainTexture } from './processors/blocks';
+import {
+  generateTerrainTexture,
+  getBedrockLeafSpec,
+  synthesizeBedrockLeafTextures,
+  isBedrockOpaqueLeafPath,
+  isBedrockCarriedLeafPath,
+} from './processors/blocks';
 import { generateItemTexture } from './processors/items';
 import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, extractPackFormat } from './versions';
@@ -29,7 +35,11 @@ import {
 import { convertTgaToPng, ensureValidPngBytes, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
 import { reencodeOgg } from './processors/audio';
 import { javaToBedrockGeometry, bedrockToJavaModel, isBedrockModelPath, isJavaModelPath } from './processors/models';
-import { compositeSnowyGrassSide } from './processors/grass';
+import {
+  compositeSnowyGrassSide,
+  compositeJavaGrassSideToBedrockTga,
+  splitBedrockGrassSideForJava,
+} from './processors/grass';
 import {
   classifyBedrockPbrPath,
   classifyJavaLabPbrPath,
@@ -273,6 +283,9 @@ export async function convertBuffer(
   };
   const pendingGuiSheetBases: Partial<Record<'icons' | 'widgets' | 'bars', Uint8Array>> = {};
   let hasWidgetButtonSprite = false;
+  let pendingJavaGrassSide: { sourcePath: string; bytes: Uint8Array } | null = null;
+  let pendingJavaGrassSideOverlay: { sourcePath: string; bytes: Uint8Array } | null = null;
+  const fallbackBlockTargets = new Set<string>();
 
   const writeSlicedOutputs = (sourcePath: string, files: Record<string, Uint8Array>, mcmetas?: Record<string, string>) => {
     for (const [outPath, outData] of Object.entries(files)) {
@@ -753,6 +766,45 @@ export async function convertBuffer(
         }
       }
 
+      if (direction === 'java-to-bedrock') {
+        if (relativePath === 'assets/minecraft/textures/block/grass_block_side.png') {
+          pendingJavaGrassSide = { sourcePath: path, bytes: content };
+          continue;
+        }
+        if (relativePath === 'assets/minecraft/textures/block/grass_block_side_overlay.png') {
+          pendingJavaGrassSideOverlay = { sourcePath: path, bytes: content };
+          continue;
+        }
+        if (getBedrockLeafSpec(relativePath)) {
+          const leafOutputs = synthesizeBedrockLeafTextures(relativePath, content);
+          if (leafOutputs) {
+            for (const [outPath, outBytes] of Object.entries(leafOutputs)) {
+              if (!isSafePath(outPath)) continue;
+              targetFiles[outPath] = [outBytes, { level: getFileCompressionLevel(outPath) }];
+              allTargetTextures.add(outPath);
+              report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: outPath });
+            }
+            convertedBlockTextures.add(relativePath);
+          }
+          continue;
+        }
+      }
+
+      if (direction === 'bedrock-to-java' && isBedrockCarriedLeafPath(relativePath)) {
+        report.skippedCount++;
+        report.details.push({
+          filename: path,
+          status: 'skipped',
+          reason: 'Bedrock inventory-only leaf texture (Java derives inventory icon from block texture)',
+        });
+        continue;
+      }
+
+      const isLowPriorityBlockFallback =
+        direction === 'bedrock-to-java' &&
+        (isBedrockOpaqueLeafPath(relativePath) || /^textures\/blocks?\/grass_side_carried\.(png|tga)$/i.test(relativePath));
+
       let targetPath: string | null = null;
       let isModernSpriteHandled = false;
       const isJavaModernSpritePath =
@@ -829,6 +881,12 @@ export async function convertBuffer(
 
       if ((direction === 'bedrock-to-java' || direction === 'java-to-java') && targetPath) {
         targetPath = formatTargetJavaPath(targetPath);
+      }
+
+      if (isLowPriorityBlockFallback && targetPath && targetFiles[targetPath]) {
+        report.skippedCount++;
+        report.details.push({ filename: path, status: 'skipped', reason: 'Primary texture already present' });
+        continue;
       }
 
       let needsProcessing = false;
@@ -1083,7 +1141,7 @@ export async function convertBuffer(
             }
           } else {
             const pngTarget = targetPath.replace(/\.tga$/i, '.png');
-            if (direction === 'bedrock-to-java' && allTargetTextures.has(pngTarget)) {
+            if (direction === 'bedrock-to-java' && allTargetTextures.has(pngTarget) && !fallbackBlockTargets.has(pngTarget)) {
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
               continue;
@@ -1121,6 +1179,25 @@ export async function convertBuffer(
             }
           } catch (e) {
             console.warn("Snowy grass compositing failed:", e);
+          }
+        }
+
+        if (direction === 'bedrock-to-java' && /^textures\/blocks?\/grass_side\.(png|tga)$/i.test(relativePath)) {
+          const split = splitBedrockGrassSideForJava(finalBytes);
+          if (split) {
+            finalBytes = split.sidePng;
+            if (split.overlayPng) {
+              const overlayTarget = formatTargetJavaPath('assets/minecraft/textures/block/grass_block_side_overlay.png');
+              const normOverlay = normalizeJavaBlockAtlasPng(overlayTarget, split.overlayPng, decodePngToRgbaSync);
+              if (normOverlay && isSafePath(overlayTarget) && isValidJavaAssetPath(overlayTarget) && !targetFiles[overlayTarget]) {
+                targetFiles[overlayTarget] = [normOverlay, { level: getFileCompressionLevel(overlayTarget) }];
+                allTargetTextures.add(overlayTarget);
+                const oDims = getPngDimensions(normOverlay);
+                if (oDims) javaOutputPngDims.set(overlayTarget, oDims);
+                report.convertedCount++;
+                report.details.push({ filename: path, status: 'converted', outputPath: overlayTarget });
+              }
+            }
           }
         }
 
@@ -1184,8 +1261,18 @@ export async function convertBuffer(
           allTargetTextures.add(targetPath);
         }
 
+        const replacedFallback =
+          direction === 'bedrock-to-java' && !isLowPriorityBlockFallback && fallbackBlockTargets.has(targetPath);
+        if (isLowPriorityBlockFallback) {
+          fallbackBlockTargets.add(targetPath);
+        } else if (replacedFallback) {
+          fallbackBlockTargets.delete(targetPath);
+        }
+
         targetFiles[targetPath] = [finalBytes, { level: getFileCompressionLevel(targetPath) }];
-        report.convertedCount++;
+        if (!replacedFallback) {
+          report.convertedCount++;
+        }
         report.details.push({
           filename: path,
           status: 'converted',
@@ -1449,6 +1536,29 @@ export async function convertBuffer(
         status: 'error',
         reason: 'Failed to decode Bedrock overworld cubemap',
       });
+    }
+  }
+
+  // Grass block side composition phase (Java grass_block_side + _overlay -> Bedrock grass_side.tga)
+  if (direction === 'java-to-bedrock' && (pendingJavaGrassSide || pendingJavaGrassSideOverlay)) {
+    const grassTga = compositeJavaGrassSideToBedrockTga(
+      pendingJavaGrassSide?.bytes ?? null,
+      pendingJavaGrassSideOverlay?.bytes ?? null
+    );
+    const sourceLabel = pendingJavaGrassSide?.sourcePath ?? pendingJavaGrassSideOverlay!.sourcePath;
+    if (grassTga) {
+      const outPath = 'textures/blocks/grass_side.tga';
+      targetFiles[outPath] = [grassTga, { level: getFileCompressionLevel(outPath) }];
+      allTargetTextures.add(outPath);
+      report.convertedCount++;
+      report.details.push({ filename: sourceLabel, status: 'converted', outputPath: outPath });
+    }
+    if (pendingJavaGrassSide) {
+      const carriedPath = 'textures/blocks/grass_side_carried.png';
+      targetFiles[carriedPath] = [pendingJavaGrassSide.bytes, { level: getFileCompressionLevel(carriedPath) }];
+      allTargetTextures.add(carriedPath);
+      report.convertedCount++;
+      report.details.push({ filename: pendingJavaGrassSide.sourcePath, status: 'converted', outputPath: carriedPath });
     }
   }
 

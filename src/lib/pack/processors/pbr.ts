@@ -88,8 +88,9 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     height <= 0 ||
     width > MAX_PBR_DIMENSION ||
     height > MAX_PBR_DIMENSION ||
-    ![1, 2, 4, 8].includes(bitDepth) ||
+    ![1, 2, 4, 8, 16].includes(bitDepth) ||
     (bitDepth < 8 && colorType !== 0 && colorType !== 3) ||
+    (bitDepth === 16 && colorType === 3) ||
     interlace !== 0 ||
     totalIdatLen === 0
   ) {
@@ -151,8 +152,64 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     }
   }
 
-  if (colorType === 6) {
+  if (colorType === 6 && bitDepth === 8) {
     return { width, height, rgba: unfiltered };
+  }
+
+  const totalPixels = width * height;
+  const rgba = new Uint8Array(totalPixels * 4);
+
+  if (bitDepth === 16) {
+    if (colorType === 6) {
+      for (let i = 0; i < totalPixels; i++) {
+        const s = i * 8;
+        const d = i * 4;
+        rgba[d] = unfiltered[s];
+        rgba[d + 1] = unfiltered[s + 2];
+        rgba[d + 2] = unfiltered[s + 4];
+        rgba[d + 3] = unfiltered[s + 6];
+      }
+    } else if (colorType === 2) {
+      const hasTrns = trns !== null && trns.length >= 6;
+      const trnsR = hasTrns ? (trns![0] << 8) | trns![1] : -1;
+      const trnsG = hasTrns ? (trns![2] << 8) | trns![3] : -1;
+      const trnsB = hasTrns ? (trns![4] << 8) | trns![5] : -1;
+      for (let i = 0; i < totalPixels; i++) {
+        const s = i * 6;
+        const d = i * 4;
+        const r16 = (unfiltered[s] << 8) | unfiltered[s + 1];
+        const g16 = (unfiltered[s + 2] << 8) | unfiltered[s + 3];
+        const b16 = (unfiltered[s + 4] << 8) | unfiltered[s + 5];
+        rgba[d] = unfiltered[s];
+        rgba[d + 1] = unfiltered[s + 2];
+        rgba[d + 2] = unfiltered[s + 4];
+        rgba[d + 3] = hasTrns && r16 === trnsR && g16 === trnsG && b16 === trnsB ? 0 : 255;
+      }
+    } else if (colorType === 0) {
+      const hasTrns = trns !== null && trns.length >= 2;
+      const trnsGray = hasTrns ? (trns![0] << 8) | trns![1] : -1;
+      for (let i = 0; i < totalPixels; i++) {
+        const s = i * 2;
+        const d = i * 4;
+        const v16 = (unfiltered[s] << 8) | unfiltered[s + 1];
+        const v = unfiltered[s];
+        rgba[d] = v;
+        rgba[d + 1] = v;
+        rgba[d + 2] = v;
+        rgba[d + 3] = hasTrns && v16 === trnsGray ? 0 : 255;
+      }
+    } else if (colorType === 4) {
+      for (let i = 0; i < totalPixels; i++) {
+        const s = i * 4;
+        const d = i * 4;
+        const v = unfiltered[s];
+        rgba[d] = v;
+        rgba[d + 1] = v;
+        rgba[d + 2] = v;
+        rgba[d + 3] = unfiltered[s + 2];
+      }
+    }
+    return { width, height, rgba };
   }
 
   // Unpack sub-byte samples (bitDepth 1, 2, 4) into 1-byte indices per pixel
@@ -171,27 +228,34 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     }
   }
 
-  const totalPixels = width * height;
-  const rgba = new Uint8Array(totalPixels * 4);
-
   if (colorType === 2) {
+    const hasTrns = trns !== null && trns.length >= 6;
+    const trnsR = hasTrns ? ((trns![0] << 8) | trns![1]) & 0xff : -1;
+    const trnsG = hasTrns ? ((trns![2] << 8) | trns![3]) & 0xff : -1;
+    const trnsB = hasTrns ? ((trns![4] << 8) | trns![5]) & 0xff : -1;
     for (let i = 0; i < totalPixels; i++) {
       const s = i * 3;
       const d = i * 4;
-      rgba[d] = samples[s];
-      rgba[d + 1] = samples[s + 1];
-      rgba[d + 2] = samples[s + 2];
-      rgba[d + 3] = 255;
+      const r = samples[s];
+      const g = samples[s + 1];
+      const b = samples[s + 2];
+      rgba[d] = r;
+      rgba[d + 1] = g;
+      rgba[d + 2] = b;
+      rgba[d + 3] = hasTrns && r === trnsR && g === trnsG && b === trnsB ? 0 : 255;
     }
   } else if (colorType === 0) {
+    const hasTrns = trns !== null && trns.length >= 2;
+    const trnsGray = hasTrns ? (trns![0] << 8) | trns![1] : -1;
     const scale = 255 / ((1 << bitDepth) - 1);
     for (let i = 0; i < totalPixels; i++) {
-      const v = Math.round(samples[i] * scale);
+      const raw = samples[i];
+      const v = Math.round(raw * scale);
       const d = i * 4;
       rgba[d] = v;
       rgba[d + 1] = v;
       rgba[d + 2] = v;
-      rgba[d + 3] = 255;
+      rgba[d + 3] = hasTrns && raw === trnsGray ? 0 : 255;
     }
   } else if (colorType === 4) {
     for (let i = 0; i < totalPixels; i++) {

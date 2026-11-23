@@ -40,6 +40,13 @@ export const BEDROCK_FLIPBOOK_ATLAS_TILES: Record<string, string> = {
   'textures/blocks/chain_command_block_back': 'command_block_chain_back',
   'textures/blocks/chain_command_block_side': 'command_block_chain_side',
   'textures/blocks/chain_command_block_conditional': 'command_block_chain_conditional_side',
+  'textures/blocks/leaves_oak': 'oak_leaves',
+  'textures/blocks/leaves_spruce': 'spruce_leaves',
+  'textures/blocks/leaves_birch': 'birch_leaves',
+  'textures/blocks/leaves_jungle': 'jungle_leaves',
+  'textures/blocks/leaves_acacia': 'acacia_leaves',
+  'textures/blocks/leaves_big_oak': 'big_oak_leaves',
+  'textures/blocks/azalea_leaves_flowers': 'azalea_leaves_flowered',
 };
 
 export function getBedrockAtlasTile(texturePathNoExt: string): string {

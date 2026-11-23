@@ -9,7 +9,7 @@
  */
 
 import { decodeImageToRgbaSync, type DecodedRgbaImage } from './pbr';
-import { encodeRgbaToPngSync } from './tga';
+import { encodeRgbaToPngSync, encodeRgbaToTgaSync } from './tga';
 
 async function decodeImageAsync(bytes: Uint8Array): Promise<DecodedRgbaImage | null> {
   const sync = decodeImageToRgbaSync(bytes);
@@ -131,4 +131,107 @@ function generateFallbackDirtRgba(width: number, height: number): { width: numbe
   }
 
   return { width, height, rgba };
+}
+
+/**
+ * Composites Java `grass_block_side.png` + optional `grass_block_side_overlay.png` into Bedrock `grass_side.tga`.
+ * Bedrock uses alpha=255 for biome-tinted grass blade pixels and alpha=0 for untinted dirt pixels.
+ */
+export function compositeJavaGrassSideToBedrockTga(
+  sideBytes: Uint8Array | null,
+  overlayBytes: Uint8Array | null
+): Uint8Array | null {
+  const sideImg = sideBytes ? decodeImageToRgbaSync(sideBytes) : null;
+  const overlayImg = overlayBytes ? decodeImageToRgbaSync(overlayBytes) : null;
+  if (!sideImg && !overlayImg) return null;
+
+  const width = sideImg ? sideImg.width : overlayImg!.width;
+  const height = sideImg ? sideImg.height : overlayImg!.height;
+  const baseImg = sideImg ?? generateFallbackDirtRgba(width, height);
+  const outRgba = new Uint8Array(width * height * 4);
+
+  if (!overlayImg) {
+    for (let i = 0; i < width * height; i++) {
+      const idx = i * 4;
+      outRgba[idx] = baseImg.rgba[idx];
+      outRgba[idx + 1] = baseImg.rgba[idx + 1];
+      outRgba[idx + 2] = baseImg.rgba[idx + 2];
+      outRgba[idx + 3] = 0;
+    }
+    return encodeRgbaToTgaSync(width, height, outRgba);
+  }
+
+  for (let y = 0; y < height; y++) {
+    const oy = Math.min(overlayImg.height - 1, Math.floor((y * overlayImg.height) / height));
+    for (let x = 0; x < width; x++) {
+      const ox = Math.min(overlayImg.width - 1, Math.floor((x * overlayImg.width) / width));
+      const dIdx = (y * width + x) * 4;
+      const oIdx = (oy * overlayImg.width + ox) * 4;
+      if (overlayImg.rgba[oIdx + 3] > 0) {
+        outRgba[dIdx] = overlayImg.rgba[oIdx];
+        outRgba[dIdx + 1] = overlayImg.rgba[oIdx + 1];
+        outRgba[dIdx + 2] = overlayImg.rgba[oIdx + 2];
+        outRgba[dIdx + 3] = 255;
+      } else {
+        outRgba[dIdx] = baseImg.rgba[dIdx];
+        outRgba[dIdx + 1] = baseImg.rgba[dIdx + 1];
+        outRgba[dIdx + 2] = baseImg.rgba[dIdx + 2];
+        outRgba[dIdx + 3] = 0;
+      }
+    }
+  }
+
+  return encodeRgbaToTgaSync(width, height, outRgba);
+}
+
+/**
+ * Splits Bedrock alpha-masked `grass_side.(tga|png)` into Java `grass_block_side.png` (opaque)
+ * and `grass_block_side_overlay.png` (grayscale grass blades).
+ */
+export function splitBedrockGrassSideForJava(
+  grassSideBytes: Uint8Array
+): { sidePng: Uint8Array; overlayPng: Uint8Array | null } | null {
+  const img = decodeImageToRgbaSync(grassSideBytes);
+  if (!img) return null;
+
+  const { width, height, rgba } = img;
+  const totalPixels = width * height;
+  let hasZeroAlpha = false;
+  let hasHighAlpha = false;
+  for (let i = 3; i < rgba.length; i += 4) {
+    if (rgba[i] === 0) hasZeroAlpha = true;
+    else if (rgba[i] >= 128) hasHighAlpha = true;
+    if (hasZeroAlpha && hasHighAlpha) break;
+  }
+
+  if (!hasZeroAlpha || !hasHighAlpha) {
+    return { sidePng: encodeRgbaToPngSync(width, height, rgba), overlayPng: null };
+  }
+
+  const sideRgba = new Uint8Array(totalPixels * 4);
+  const overlayRgba = new Uint8Array(totalPixels * 4);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    if (rgba[idx + 3] >= 128) {
+      sideRgba[idx] = Math.round((rgba[idx] * 121) / 255);
+      sideRgba[idx + 1] = Math.round((rgba[idx + 1] * 192) / 255);
+      sideRgba[idx + 2] = Math.round((rgba[idx + 2] * 90) / 255);
+      sideRgba[idx + 3] = 255;
+
+      overlayRgba[idx] = rgba[idx];
+      overlayRgba[idx + 1] = rgba[idx + 1];
+      overlayRgba[idx + 2] = rgba[idx + 2];
+      overlayRgba[idx + 3] = 255;
+    } else {
+      sideRgba[idx] = rgba[idx];
+      sideRgba[idx + 1] = rgba[idx + 1];
+      sideRgba[idx + 2] = rgba[idx + 2];
+      sideRgba[idx + 3] = 255;
+    }
+  }
+
+  return {
+    sidePng: encodeRgbaToPngSync(width, height, sideRgba),
+    overlayPng: encodeRgbaToPngSync(width, height, overlayRgba),
+  };
 }

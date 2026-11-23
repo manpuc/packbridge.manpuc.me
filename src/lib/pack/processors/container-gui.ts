@@ -663,7 +663,12 @@ export function extractBedrockContainerAssetsFromJava(
 
     for (const extra of found.spec.panelBedrockExtras ?? []) {
       const cropped = cropRgba(found.img, extra.box, scale);
-      if (!hasNonTransparentPixels(cropped)) continue;
+      const isInsidePanel =
+        extra.box.x >= found.spec.panelBox.x &&
+        extra.box.y >= found.spec.panelBox.y &&
+        extra.box.x + extra.box.w <= found.spec.panelBox.x + found.spec.panelBox.w &&
+        extra.box.y + extra.box.h <= found.spec.panelBox.y + found.spec.panelBox.h;
+      if (!isInsidePanel && !hasNonTransparentPixels(cropped)) continue;
       const sw = Math.max(1, Math.round(extra.box.w * scale));
       const sh = Math.max(1, Math.round(extra.box.h * scale));
       const png = encodeRgbaToPngSync(sw, sh, cropped);
@@ -676,6 +681,25 @@ export function extractBedrockContainerAssetsFromJava(
   }
 
   return results;
+}
+
+function alphaBlendPixel(dst: Uint8Array, dIdx: number, sr: number, sg: number, sb: number, sa: number) {
+  if (sa === 0) return;
+  if (sa === 255 || dst[dIdx + 3] === 0) {
+    dst[dIdx] = sr;
+    dst[dIdx + 1] = sg;
+    dst[dIdx + 2] = sb;
+    dst[dIdx + 3] = sa;
+    return;
+  }
+  const srcA = sa / 255;
+  const dstA = dst[dIdx + 3] / 255;
+  const outA = srcA + dstA * (1 - srcA);
+  if (outA <= 0) return;
+  dst[dIdx] = Math.round((sr * srcA + dst[dIdx] * dstA * (1 - srcA)) / outA);
+  dst[dIdx + 1] = Math.round((sg * srcA + dst[dIdx + 1] * dstA * (1 - srcA)) / outA);
+  dst[dIdx + 2] = Math.round((sb * srcA + dst[dIdx + 2] * dstA * (1 - srcA)) / outA);
+  dst[dIdx + 3] = Math.round(outA * 255);
 }
 
 function drawNineSlice(
@@ -713,10 +737,7 @@ function drawNineSlice(
       const a = src.rgba[sIdx + 3];
       if (a === 0) continue;
       const dIdx = (dy * dstW + dx) * 4;
-      dst[dIdx] = src.rgba[sIdx];
-      dst[dIdx + 1] = src.rgba[sIdx + 1];
-      dst[dIdx + 2] = src.rgba[sIdx + 2];
-      dst[dIdx + 3] = a;
+      alphaBlendPixel(dst, dIdx, src.rgba[sIdx], src.rgba[sIdx + 1], src.rgba[sIdx + 2], a);
     }
   }
 }
@@ -754,10 +775,7 @@ function blitScaledNearest(
       const sIdx = (sy * src.width + sx) * 4;
       if (src.rgba[sIdx + 3] === 0) continue;
       const dIdx = (py * dstW + px) * 4;
-      dst[dIdx] = src.rgba[sIdx];
-      dst[dIdx + 1] = src.rgba[sIdx + 1];
-      dst[dIdx + 2] = src.rgba[sIdx + 2];
-      dst[dIdx + 3] = src.rgba[sIdx + 3];
+      alphaBlendPixel(dst, dIdx, src.rgba[sIdx], src.rgba[sIdx + 1], src.rgba[sIdx + 2], src.rgba[sIdx + 3]);
     }
   }
 }
