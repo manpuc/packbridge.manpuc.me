@@ -59,10 +59,13 @@ const tl: Translation = {
 	errorNoFile: "Mangyaring pumili ng file.",
 	errorInvalidFile: "Maling format ng file. Pumili ng .zip o .mcpack na file.",
 	errorConversion: "Nagkaroon ng error habang nagko-convert.",
+	errorFileExpired: "Nag-expire ang reference ng file. Pakipili muli ang file.",
 	errorZeroConverted: "Walang nakitang maikokumberteng file. Pakitiyak na ito ay isang wastong Minecraft resource pack archive.",
 	warnPossibleBedrock: "Maaaring ang napiling file (.mcpack) ay isa nang Bedrock Edition resource pack. Kapag nag-convert mula sa Java, karaniwan kang pumipili ng Java Edition .zip file.",
 	warnPossibleJava: "Maaaring ang napiling file ay isa nang Java Edition resource pack. Kapag nag-convert mula sa Bedrock, siguraduhing pumili ng Bedrock Edition na .mcpack o .zip file.",
 	warnNotMinecraftPack: "Maaaring hindi ito Minecraft resource pack (walang natagpuang pack.mcmeta, manifest.json, o folder ng texture).",
+	noticeAutoSwitchedToBedrockToJava: "May natuklasang Bedrock pack — awtomatikong inilipat ang direksyon sa Bedrock → Java.",
+	noticeAutoSwitchedToJavaToBedrock: "May natuklasang Java pack — awtomatikong inilipat ang direksyon sa Java → Bedrock.",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Kasunduan sa Serbisyo",

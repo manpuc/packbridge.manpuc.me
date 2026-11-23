@@ -59,10 +59,13 @@ const de: Translation = {
 	errorNoFile: "Bitte wählen Sie eine Datei aus.",
 	errorInvalidFile: "Ungültiges Dateiformat. Bitte wählen Sie eine .zip oder .mcpack Datei.",
 	errorConversion: "Bei der Konvertierung ist ein Fehler aufgetreten.",
+	errorFileExpired: "Die Dateireferenz ist abgelaufen. Bitte wählen Sie die Datei erneut aus.",
 	errorZeroConverted: "Keine konvertierbaren Dateien gefunden. Bitte stellen Sie sicher, dass es sich um ein gültiges Minecraft-Ressourcenpaket-Archiv handelt.",
 	warnPossibleBedrock: "Die gewählte Datei (.mcpack) ist möglicherweise bereits ein Bedrock-Paket. Für eine Konvertierung von Java wählen Sie normalerweise eine .zip-Datei der Java Edition.",
 	warnPossibleJava: "Die gewählte Datei ist möglicherweise bereits ein Java-Paket. Für eine Konvertierung von Bedrock stellen Sie sicher, dass Sie eine .mcpack oder .zip der Bedrock Edition wählen.",
 	warnNotMinecraftPack: "Dies ist möglicherweise kein Minecraft-Ressourcenpaket (keine pack.mcmeta, manifest.json oder Texturordner gefunden).",
+	noticeAutoSwitchedToBedrockToJava: "Bedrock-Paket erkannt — Richtung automatisch auf Bedrock → Java umgestellt.",
+	noticeAutoSwitchedToJavaToBedrock: "Java-Paket erkannt — Richtung automatisch auf Java → Bedrock umgestellt.",
 
 	footer: "PackBridge | Minecraft Ressourcenpaket- & Texturenpaket-Konverter",
 	terms: "Nutzungsbedingungen",

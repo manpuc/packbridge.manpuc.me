@@ -1,9 +1,12 @@
 ---
 import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "@/lib/i18n/config";
+import { getTranslation } from "@/lib/i18n";
 
 // Client-side instant redirection script
 const supported = JSON.stringify(SUPPORTED_LANGUAGES);
 const defaultLang = JSON.stringify(DEFAULT_LANGUAGE);
+const t = getTranslation("ja");
+const ogImageUrl = "https://packbridge.manpuc.me/og-image-ja.png?v=2";
 ---
 
 <!doctype html>
@@ -15,6 +18,25 @@ const defaultLang = JSON.stringify(DEFAULT_LANGUAGE);
 		<meta name="robots" content="noindex, follow" />
 		<link rel="canonical" href="https://packbridge.manpuc.me/ja" />
 		<meta http-equiv="refresh" content="0;url=/ja" />
+
+		<!-- OGP -->
+		<meta property="og:title" content={t.title} />
+		<meta property="og:description" content={t.metaDescription} />
+		<meta property="og:url" content="https://packbridge.manpuc.me/" />
+		<meta property="og:type" content="website" />
+		<meta property="og:locale" content="ja_JP" />
+		<meta property="og:site_name" content="PackBridge" />
+		<meta property="og:image" content={ogImageUrl} />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content={t.title} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@manpuc" />
+		<meta name="twitter:title" content={t.title} />
+		<meta name="twitter:description" content={t.metaDescription} />
+		<meta name="twitter:image" content={ogImageUrl} />
+		<meta name="twitter:image:alt" content={t.title} />
 		<script is:inline define:vars={{ supportedLangs: SUPPORTED_LANGUAGES, defaultLang: DEFAULT_LANGUAGE }}>
 			(function () {
 				try {

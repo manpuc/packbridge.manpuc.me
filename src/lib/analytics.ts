@@ -71,11 +71,11 @@ export type AnalyticsEventMap = {
   file_rejected: {
     stage: 'extension_check' | 'archive_parse' | 'safety_limit';
     reason:
-      | 'unsupported_extension'
-      | 'corrupt_or_unreadable'
-      | 'too_many_files'
-      | 'uncompressed_too_large'
-      | 'empty_drop';
+    | 'unsupported_extension'
+    | 'corrupt_or_unreadable'
+    | 'too_many_files'
+    | 'uncompressed_too_large'
+    | 'empty_drop';
     ext_class: 'rar' | 'jar' | '7z' | 'folder_or_none' | 'other';
     input_method: 'drop' | 'file_picker';
     size_tier?: '<10MB' | '10-50MB' | '50-100MB' | '>100MB';
@@ -210,7 +210,7 @@ export function categorizeError(err: unknown): 'INVALID_ARCHIVE' | 'OUT_OF_MEMOR
   if (str.includes('worker') || str.includes('terminated')) {
     return 'WORKER_CRASH';
   }
-  if (str.includes('zip') || str.includes('corrupt') || str.includes('end of data') || str.includes('format')) {
+  if (str.includes('zip') || str.includes('corrupt') || str.includes('end of data') || str.includes('format') || str.includes('offset is out of bounds')) {
     return 'INVALID_ARCHIVE';
   }
   return 'UNKNOWN';
@@ -280,7 +280,7 @@ export function analyzeReportSafety(report: PackReport) {
 
     if (item.status === 'skipped') {
       const reason = (item.reason || '').toLowerCase();
-      if (reason.includes('mapping') || reason.includes('not found') || reason.includes('unknown')) {
+      if (reason.includes('mapping') || reason.includes('unmapped') || reason.includes('not found') || reason.includes('unknown')) {
         noMappingCount++;
       } else {
         unsupportedFormatCount++;

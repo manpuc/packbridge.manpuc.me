@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import { convertPackWithWorker } from '@/lib/pack/worker-client';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
 import type { Translation, Language } from '@/lib/i18n';
-import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion, extractPackFormat } from '@/lib/pack/versions';
+import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion, extractPackFormat, detectEditionAutoSwitch } from '@/lib/pack/versions';
 import { useFileDrop } from '@/hooks/useFileDrop';
 import { Bug } from 'lucide-react';
 import { getReportStrings, reportHref, LAST_CONVERSION_KEY } from '@/lib/i18n/report';
@@ -23,7 +23,7 @@ import {
   analyzeReportSafety,
   getExtClass
 } from '@/lib/analytics';
-import { LARGE_FILE_WARN_THRESHOLD_BYTES, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES } from '@/lib/pack/security';
+import { LARGE_FILE_WARN_THRESHOLD_BYTES, MAX_SAFE_FILE_COUNT, MAX_SAFE_UNCOMPRESSED_BYTES, MAX_PRELOAD_BUFFER_BYTES } from '@/lib/pack/security';
 
 // Sub-components
 import { DirectionSettings } from './converter/DirectionSettings';
@@ -59,6 +59,7 @@ export default function Converter({
   const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
@@ -73,6 +74,8 @@ export default function Converter({
 
   const hasTrackedInteractRef = useRef(false);
   const lastInputMethodRef = useRef<'drop' | 'file_picker'>('drop');
+  const fileBufferRef = useRef<ArrayBuffer | null>(null);
+  const autoSwitchedFileRef = useRef<File | null>(null);
 
   const trackUploadInteract = useCallback((action: 'picker_open' | 'drag_enter') => {
     if (hasTrackedInteractRef.current) return;
@@ -136,6 +139,9 @@ export default function Converter({
 
   const handleFile = useCallback((selectedFile: File, inputMethod: 'drop' | 'file_picker' = 'drop') => {
     lastInputMethodRef.current = inputMethod;
+    fileBufferRef.current = null;
+    autoSwitchedFileRef.current = null;
+    setNotice(null);
     const lowerName = selectedFile.name.toLowerCase();
 
     if (lowerName.endsWith('.zip') || lowerName.endsWith('.mcpack')) {
@@ -228,11 +234,20 @@ export default function Converter({
 
     let isMounted = true;
     let currentIconUrl: string | null = null;
+    fileBufferRef.current = null;
 
     const loadZipAndIcon = async () => {
       try {
         const jszip = new JSZip();
-        const zip = await jszip.loadAsync(file);
+        let rawBuffer: ArrayBuffer | null = null;
+        let zip: JSZip;
+        if (file.size <= MAX_PRELOAD_BUFFER_BYTES) {
+          rawBuffer = await file.arrayBuffer();
+          if (!isMounted) return;
+          zip = await jszip.loadAsync(rawBuffer);
+        } else {
+          zip = await jszip.loadAsync(file);
+        }
         if (!isMounted) return;
 
         const fileKeys = Object.keys(zip.files).filter(k => !zip.files[k].dir && !k.endsWith('/'));
@@ -270,6 +285,9 @@ export default function Converter({
           }
         }
 
+        if (rawBuffer) {
+          fileBufferRef.current = rawBuffer;
+        }
         setZipInstance(zip);
 
         // Icon extraction ( max 10MB guard )
@@ -304,6 +322,7 @@ export default function Converter({
     loadZipAndIcon();
     return () => {
       isMounted = false;
+      fileBufferRef.current = null;
       if (currentIconUrl) URL.revokeObjectURL(currentIconUrl);
     };
   }, [file, t.errorConversion, t.errorInvalidFile]);
@@ -333,6 +352,20 @@ export default function Converter({
         }
 
         const sourceEdition = actualSource;
+
+        if (!isVersionUpdate && autoSwitchedFileRef.current !== file) {
+          const switched = detectEditionAutoSwitch(direction, Boolean(packMcmetaEntry), Boolean(manifestEntry), file.name);
+          if (switched) {
+            autoSwitchedFileRef.current = file;
+            setDirection(switched);
+            setNotice(
+              switched === 'bedrock-to-java'
+                ? (t.noticeAutoSwitchedToBedrockToJava || null)
+                : (t.noticeAutoSwitchedToJavaToBedrock || null)
+            );
+            return;
+          }
+        }
 
         const isLargeFile = file.size > LARGE_FILE_WARN_THRESHOLD_BYTES;
         const mb = (file.size / (1024 * 1024)).toFixed(0);
@@ -490,9 +523,16 @@ export default function Converter({
         enablePbrConversion,
         enableModelConversion
       };
-      const result = await convertPackWithWorker(file, options, (processed, total) => {
-        setProgress({ processed, total });
-      });
+      const preloadedBuffer = fileBufferRef.current;
+      fileBufferRef.current = null;
+      const result = await convertPackWithWorker(
+        file,
+        options,
+        (processed, total) => {
+          setProgress({ processed, total });
+        },
+        preloadedBuffer
+      );
 
       // Zero-converted guard: if no files were converted, prevent producing an empty pack
       if (result.report.convertedCount === 0) {
@@ -534,7 +574,8 @@ export default function Converter({
       });
     } catch (err) {
       console.error(err);
-      setError(t.errorConversion);
+      const isNotFound = err instanceof Error && (err.name === 'NotFoundError' || /could not be found/i.test(err.message));
+      setError(isNotFound ? (t.errorFileExpired || t.errorConversion) : t.errorConversion);
       saveContext(`[fatal] ${err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err)}`);
 
       trackEvent('conversion_failed', {
@@ -575,9 +616,12 @@ export default function Converter({
     }
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     if (iconUrl) URL.revokeObjectURL(iconUrl);
+    fileBufferRef.current = null;
+    autoSwitchedFileRef.current = null;
     setFile(null);
     setZipInstance(null);
     setIconUrl(null);
+    setNotice(null);
     setReport(null);
     setProgress(null);
     setDownloadUrl(null);
@@ -626,7 +670,10 @@ export default function Converter({
 
       <DirectionSettings
         direction={direction}
-        setDirection={setDirection}
+        setDirection={(d) => {
+          setNotice(null);
+          setDirection(d);
+        }}
         selectedJavaVersion={selectedJavaVersion}
         setSelectedJavaVersion={setSelectedJavaVersion}
         selectedBedrockVersion={selectedBedrockVersion}
@@ -665,6 +712,7 @@ export default function Converter({
             iconUrl={iconUrl}
             error={error}
             warning={warning}
+            notice={notice}
             isProcessing={isProcessing}
             progress={progress}
             onFileSelect={handleFile}

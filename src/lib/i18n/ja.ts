@@ -60,10 +60,13 @@ const ja: Translation = {
 	errorNoFile: "ファイルを選択してください。",
 	errorInvalidFile: "無効なファイル形式です。.zip または .mcpack を選択してください。",
 	errorConversion: "変換中にエラーが発生しました。",
+	errorFileExpired: "ファイルの参照が切れました。もう一度ファイルを選択してください。",
 	errorZeroConverted: "変換可能なファイルが見つかりませんでした。MinecraftリソースパックのZIPファイルであることをご確認ください。",
 	warnPossibleBedrock: "選択されたファイル (.mcpack) は、すでに統合版用のリソースパック（テクスチャパック）である可能性があります。Java版から変換する場合は、通常 Java版の .zip ファイルを選択します。",
 	warnPossibleJava: "選択されたファイルは、すでにJava版用のリソースパック（テクスチャパック）である可能性があります。統合版から変換する場合は、統合版用の .mcpack または .zip ファイルを選択してください。",
 	warnNotMinecraftPack: "Minecraftのリソースパックではない可能性があります（pack.mcmeta や manifest.json、テクスチャフォルダが見つかりません）。",
+	noticeAutoSwitchedToBedrockToJava: "統合版（Bedrock）パックを検出したため、変換方向を「Bedrock → Java」に自動で切り替えました。",
+	noticeAutoSwitchedToJavaToBedrock: "Java版パックを検出したため、変換方向を「Java → Bedrock」に自動で切り替えました。",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "利用規約",

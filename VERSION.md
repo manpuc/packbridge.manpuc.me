@@ -1,6 +1,9 @@
 # Version History
 
 ## v1.6.8
+* **アナリティクス・入力安定性・UX の改善**:
+  * **エディション自動切替と通知**: `Java → Bedrock` ⇄ `Bedrock → Java` で明らかに反対エディションのパックを選択した場合、自動で方向を切り替えて通知を表示するよう改善（`ZERO_CONVERTED` 削減）。
+  * **`NotFoundError` / 破損 ZIP / Zip Bomb 誤検知の対策**: 100MB 以下の入力ファイルを初回読み込み時にキャッシュして Worker へ転送する経路を追加し、モバイル環境等でのファイルハンドル失効を防止。Zip Bomb 単一ファイル閾値を 10MB → 50MB に緩和し、`unzipSync` 破損エラーの分類と `analyzeReportSafety` の `NO_MAPPING` 判定を修正。
 * **変換エンジン・Worker 安定性および保守性の改善**:
   * **メモリ上限の適正化**: 解凍サイズ上限を 2GB から 1GB へ引き下げ、大容量パック変換時のブラウザタブ OOM（メモリ不足クラッシュ）リスクを軽減。
   * **Worker エラー処理とリソース解放**: `worker-client.ts` で読み込み失敗時に `Error` オブジェクトを正しく返却し、`arrayBuffer()` 失敗時にも確実に `worker.terminate()` を実行するよう修正。

@@ -1,3 +1,5 @@
+import type { ConversionDirection } from './types';
+
 export interface JavaVersion {
   id: string;
   name: string;
@@ -89,5 +91,21 @@ export function extractPackFormat(pack: Record<string, any> | undefined | null):
   if (Array.isArray(sf) && typeof sf[sf.length - 1] === 'number') return sf[sf.length - 1];
   if (sf && typeof sf === 'object' && typeof sf.max_inclusive === 'number') return sf.max_inclusive;
   return toNum(pack.pack_format) ?? toNum(pack.min_format);
+}
+
+export function detectEditionAutoSwitch(
+  direction: ConversionDirection,
+  hasMcmeta: boolean,
+  hasManifest: boolean,
+  fileName: string
+): ConversionDirection | null {
+  const isMcpack = fileName.toLowerCase().endsWith('.mcpack');
+  if (direction === 'java-to-bedrock' && !hasMcmeta && (hasManifest || isMcpack)) {
+    return 'bedrock-to-java';
+  }
+  if (direction === 'bedrock-to-java' && !hasManifest && !isMcpack && hasMcmeta) {
+    return 'java-to-bedrock';
+  }
+  return null;
 }
 

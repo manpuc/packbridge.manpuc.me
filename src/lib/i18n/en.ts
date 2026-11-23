@@ -60,10 +60,13 @@ const en: Translation = {
 	errorNoFile: "Please select a file.",
 	errorInvalidFile: "Invalid file format. Please select a .zip or .mcpack file.",
 	errorConversion: "An error occurred during conversion.",
+	errorFileExpired: "The file reference expired. Please select the file again.",
 	errorZeroConverted: "No convertible files found. Please ensure this is a valid Minecraft resource pack archive.",
 	warnPossibleBedrock: "The selected file (.mcpack) may already be a Bedrock Edition resource pack. When converting from Java, you usually select a Java Edition .zip file.",
 	warnPossibleJava: "The selected file may already be a Java Edition resource pack. When converting from Bedrock, please ensure you select a Bedrock Edition .mcpack or .zip file.",
 	warnNotMinecraftPack: "This archive might not be a Minecraft resource pack (no pack.mcmeta, manifest.json, or texture folders found).",
+	noticeAutoSwitchedToBedrockToJava: "Bedrock pack detected — automatically switched direction to Bedrock → Java.",
+	noticeAutoSwitchedToJavaToBedrock: "Java pack detected — automatically switched direction to Java → Bedrock.",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Terms of Service",

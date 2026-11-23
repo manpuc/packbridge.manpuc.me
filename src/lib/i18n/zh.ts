@@ -58,10 +58,13 @@ const zh: Translation = {
 	errorNoFile: "请选择一个文件。",
 	errorInvalidFile: "无效的文件格式。请选择 .zip 或 .mcpack 文件。",
 	errorConversion: "转换过程中发生错误。",
+	errorFileExpired: "文件引用已失效，请重新选择文件。",
 	errorZeroConverted: "未找到可转换的文件。请确保这是有效的 Minecraft 材质包压缩包。",
 	warnPossibleBedrock: "所选文件 (.mcpack) 可能已经是基岩版资源包。从 Java 版转换时，通常应选择 Java 版的 .zip 文件。",
 	warnPossibleJava: "所选文件可能已经是 Java 版资源包。从基岩版转换时，请确保选择基岩版的 .mcpack 或 .zip 文件。",
 	warnNotMinecraftPack: "可能不是 Minecraft 材质包（未找到 pack.mcmeta、manifest.json 或材质文件夹）。",
+	noticeAutoSwitchedToBedrockToJava: "检测到基岩版资源包，已自动将转换方向切换为 Bedrock → Java。",
+	noticeAutoSwitchedToJavaToBedrock: "检测到 Java 版资源包，已自动将转换方向切换为 Java → Bedrock。",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "服务条款",

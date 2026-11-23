@@ -63,10 +63,13 @@ export interface Translation {
 	errorNoFile: string;
 	errorInvalidFile: string;
 	errorConversion: string;
+	errorFileExpired?: string;
 	errorZeroConverted: string;
 	warnPossibleBedrock: string;
 	warnPossibleJava: string;
 	warnNotMinecraftPack: string;
+	noticeAutoSwitchedToBedrockToJava?: string;
+	noticeAutoSwitchedToJavaToBedrock?: string;
 
 	footer: string;
 	terms: string;

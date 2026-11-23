@@ -57,9 +57,17 @@ export async function convertBuffer(
   await loadMappings(options.javaVersionId, options.bedrockVersionId);
 
     const tracker: ZipSafetyTracker = { totalUncompressedBytes: 0, fileCount: 0 };
-    const sourceFiles = unzipSync(new Uint8Array(fileBuffer), {
-      filter: createZipSafetyFilter(tracker)
-    });
+    let sourceFiles: Record<string, Uint8Array>;
+    try {
+      sourceFiles = unzipSync(new Uint8Array(fileBuffer), {
+        filter: createZipSafetyFilter(tracker)
+      });
+    } catch (err) {
+      if (err instanceof Error && (err as { isZipSafetyError?: boolean }).isZipSafetyError) {
+        throw err;
+      }
+      throw new Error(`Invalid or corrupted ZIP archive: ${err instanceof Error ? err.message : String(err)}`);
+    }
     const targetFiles: Zippable = Object.create(null);
 
     const report: PackReport = {

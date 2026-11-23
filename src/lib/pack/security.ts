@@ -4,9 +4,20 @@
 
 export const MAX_SAFE_FILE_COUNT = 25000;
 export const MAX_SAFE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024; // 1 GB safe limit to avoid tab OOM
-export const MAX_SAFE_COMPRESSION_RATIO = 100; // e.g. 10MB compressing to <100KB is suspicious
+export const MAX_SAFE_COMPRESSION_RATIO = 100; // e.g. 50MB compressing to <500KB is suspicious
 export const LARGE_FILE_WARN_THRESHOLD_BYTES = 350 * 1024 * 1024; // 350 MB threshold to alert user
 export const MAX_INPUT_FILE_SIZE_BYTES = LARGE_FILE_WARN_THRESHOLD_BYTES;
+export const MAX_PRELOAD_BUFFER_BYTES = 100 * 1024 * 1024; // 100 MB cap for preloading input buffer
+
+export interface ZipSafetyError extends Error {
+  isZipSafetyError: true;
+}
+
+function createSafetyError(message: string): ZipSafetyError {
+  const err = new Error(message) as ZipSafetyError;
+  err.isZipSafetyError = true;
+  return err;
+}
 
 const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -71,20 +82,20 @@ export function createZipSafetyFilter(tracker: ZipSafetyTracker) {
 
     tracker.fileCount++;
     if (tracker.fileCount > MAX_SAFE_FILE_COUNT) {
-      throw new Error(`Archive contains too many files (exceeds limit of ${MAX_SAFE_FILE_COUNT.toLocaleString()} files)`);
+      throw createSafetyError(`Archive contains too many files (exceeds limit of ${MAX_SAFE_FILE_COUNT.toLocaleString()} files)`);
     }
 
     const uncompressed = file.originalSize ?? file.size ?? 0;
     tracker.totalUncompressedBytes += uncompressed;
 
     if (tracker.totalUncompressedBytes > MAX_SAFE_UNCOMPRESSED_BYTES) {
-      throw new Error(`Archive exceeds maximum uncompressed size limit (${(MAX_SAFE_UNCOMPRESSED_BYTES / (1024 * 1024 * 1024)).toFixed(0)} GB)`);
+      throw createSafetyError(`Archive exceeds maximum uncompressed size limit (${(MAX_SAFE_UNCOMPRESSED_BYTES / (1024 * 1024 * 1024)).toFixed(0)} GB)`);
     }
 
     // Protect against classic zip bombs with astronomical compression ratios
     const compressed = file.size ?? 0;
-    if (compressed > 0 && uncompressed > 10 * 1024 * 1024 && uncompressed / compressed > MAX_SAFE_COMPRESSION_RATIO) {
-      throw new Error(`Suspicious compression ratio detected in ${file.name} (possible Zip Bomb)`);
+    if (compressed > 0 && uncompressed > 50 * 1024 * 1024 && uncompressed / compressed > MAX_SAFE_COMPRESSION_RATIO) {
+      throw createSafetyError(`Suspicious compression ratio detected in ${file.name} (possible Zip Bomb)`);
     }
 
     return true;

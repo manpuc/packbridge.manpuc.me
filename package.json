@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "update-mappings": "node scripts/generate_mappings.ts",
+    "generate-og": "node scripts/generate_og.ts",
     "test": "vitest run"
   },
   "keywords": [],

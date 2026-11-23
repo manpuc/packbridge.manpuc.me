@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { convertBuffer } from './convert-core';
+import { convertPackWithWorker } from './worker-client';
 import { encodeRgbaToPngSync } from './processors/tga';
-import { extractPackFormat } from './versions';
+import { extractPackFormat, detectEditionAutoSwitch } from './versions';
+import { analyzeReportSafety, categorizeError } from '../analytics';
+import { createZipSafetyFilter } from './security';
 import type { ConversionOptions } from './types';
 
 function toArrayBuffer(u8: Uint8Array): ArrayBuffer {
@@ -155,5 +158,115 @@ describe('convertBuffer', () => {
     const terrain = JSON.parse(strFromU8(bOut['textures/terrain_texture.json']));
     expect(terrain.texture_data['still_lava']).toBeDefined();
     expect(terrain.texture_data['crimson_log_side']).toBeDefined();
+  });
+
+  it('detects edition auto-switch, classifies analytics safely, and separates safety errors from corrupt zips', async () => {
+    // 1. Edition auto-switch
+    expect(detectEditionAutoSwitch('java-to-bedrock', false, true, 'pack.zip')).toBe('bedrock-to-java');
+    expect(detectEditionAutoSwitch('java-to-bedrock', false, false, 'pack.mcpack')).toBe('bedrock-to-java');
+    expect(detectEditionAutoSwitch('bedrock-to-java', true, false, 'pack.zip')).toBe('java-to-bedrock');
+    expect(detectEditionAutoSwitch('java-to-bedrock', true, true, 'mixed.zip')).toBeNull();
+    expect(detectEditionAutoSwitch('java-to-java', false, true, 'pack.mcpack')).toBeNull();
+
+    // 2. Analytics classification
+    const safety = analyzeReportSafety({
+      totalFiles: 1,
+      convertedCount: 0,
+      skippedCount: 1,
+      errorCount: 0,
+      details: [{ filename: 'assets/minecraft/textures/block/custom.png', status: 'skipped', reason: 'Unsupported or unmapped file' }],
+    });
+    expect(safety.skipReasonTop).toBe('NO_MAPPING');
+
+    expect(categorizeError(new RangeError('offset is out of bounds'))).toBe('INVALID_ARCHIVE');
+    expect(categorizeError(new DOMException('A requested file or directory could not be found', 'NotFoundError'))).toBe('UNKNOWN');
+
+    // 3. Zip safety filter threshold (15MB @ 150x passes; 60MB @ 150x throws ZipSafetyError)
+    const filterPass = createZipSafetyFilter({ totalUncompressedBytes: 0, fileCount: 0 });
+    expect(filterPass({ name: 'tex.tga', originalSize: 15 * 1024 * 1024, size: 100 * 1024 })).toBe(true);
+
+    const filterBlock = createZipSafetyFilter({ totalUncompressedBytes: 0, fileCount: 0 });
+    let caught: unknown;
+    try {
+      filterBlock({ name: 'bomb.tga', originalSize: 60 * 1024 * 1024, size: 400 * 1024 });
+    } catch (e) {
+      caught = e;
+    }
+    expect((caught as { isZipSafetyError?: boolean })?.isZipSafetyError).toBe(true);
+
+    // 4. Truncated ZIP throws Invalid or corrupted ZIP archive
+    const brokenZip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00]);
+    await expect(
+      convertBuffer(toArrayBuffer(brokenZip), 'broken.zip', { ...baseOptions, direction: 'java-to-bedrock' })
+    ).rejects.toThrow(/Invalid or corrupted ZIP archive/);
+
+    // 5. Safety filter error passes through convertBuffer without being wrapped as corrupted ZIP
+    const bombZip = zipSync({ 'bomb.tga': [new Uint8Array(52 * 1024 * 1024), { level: 1 }] });
+    let bombErr: unknown;
+    try {
+      await convertBuffer(toArrayBuffer(bombZip), 'bomb.zip', { ...baseOptions, direction: 'java-to-bedrock' });
+    } catch (e) {
+      bombErr = e;
+    }
+    expect(bombErr).toBeInstanceOf(Error);
+    expect((bombErr as Error).message).toMatch(/Suspicious compression ratio/);
+    expect((bombErr as Error).message).not.toMatch(/Invalid or corrupted ZIP archive/);
+  });
+
+  it('uses preloadedBuffer when available and terminates worker on NotFoundError fallback', async () => {
+    const origWorker = globalThis.Worker;
+    let lastWorker: { terminated: boolean } | null = null;
+    class FakeWorker {
+      terminated = false;
+      onmessage: ((e: MessageEvent) => void) | null = null;
+      onerror: ((e: ErrorEvent) => void) | null = null;
+      constructor() {
+        lastWorker = this;
+      }
+      postMessage() {
+        const out = new ArrayBuffer(8);
+        this.onmessage?.({
+          data: {
+            type: 'complete',
+            buffer: out,
+            report: { totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0, details: [] },
+          },
+        } as MessageEvent);
+      }
+      terminate() {
+        this.terminated = true;
+      }
+    }
+    (globalThis as any).Worker = FakeWorker;
+
+    try {
+      let arrayBufferCalled = false;
+      const expiredFile = {
+        name: 'pack.zip',
+        arrayBuffer: async () => {
+          arrayBufferCalled = true;
+          throw new DOMException('A requested file or directory could not be found', 'NotFoundError');
+        },
+      } as unknown as File;
+
+      // Case A: preloadedBuffer provided (<=100MB path) -> skips file.arrayBuffer()
+      const res = await convertPackWithWorker(
+        expiredFile,
+        { ...baseOptions, direction: 'java-to-bedrock' },
+        undefined,
+        new ArrayBuffer(16)
+      );
+      expect(arrayBufferCalled).toBe(false);
+      expect(res.report.convertedCount).toBe(1);
+
+      // Case B: no preloadedBuffer (>100MB fallback) -> rejects with NotFoundError and terminates worker
+      await expect(
+        convertPackWithWorker(expiredFile, { ...baseOptions, direction: 'java-to-bedrock' }, undefined, null)
+      ).rejects.toThrow(/could not be found/);
+      expect(arrayBufferCalled).toBe(true);
+      expect((lastWorker as { terminated: boolean } | null)?.terminated).toBe(true);
+    } finally {
+      globalThis.Worker = origWorker;
+    }
   });
 });

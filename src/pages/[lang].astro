@@ -32,7 +32,7 @@ const t = getTranslation(lang);
 	<main class="container">
 		<header>
 			<div class="brand-name">{t.heading}</div>
-			<h1>{t.h1Title}</h1>
+			<h1>{t.h1Title.replace(/ \/ /g, '\u00A0/ ')}</h1>
 			<p class="description">{t.description}</p>
 		</header>
 

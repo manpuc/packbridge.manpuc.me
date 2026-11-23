@@ -59,10 +59,13 @@ const ko: Translation = {
 	errorNoFile: "파일을 선택해 주세요.",
 	errorInvalidFile: "유효하지 않은 파일 형식입니다. .zip 또는 .mcpack을 선택해 주세요.",
 	errorConversion: "변환 중 오류가 발생했습니다.",
+	errorFileExpired: "파일 참조가 만료되었습니다. 파일을 다시 선택해 주세요.",
 	errorZeroConverted: "변환할 수 있는 파일이 없습니다. 마인크래프트 리소스 팩 아카이브인지 확인해 주세요.",
 	warnPossibleBedrock: "선택된 파일(.mcpack)은 이미 베드락 에디션용 리소스 팩일 가능성이 있습니다. 자바 에디션에서 변환하려면 일반적으로 자바 에디션용 .zip 파일을 선택합니다.",
 	warnPossibleJava: "선택된 파일은 이미 자바 에디션용 리소스 팩일 가능성이 있습니다. 베드락 에디션에서 변환하려면 베드락 에디션용 .mcpack 또는 .zip 파일을 선택해 주세요.",
 	warnNotMinecraftPack: "마인크래프트 리소스 팩이 아닐 수 있습니다 (pack.mcmeta, manifest.json 또는 텍스처 폴더를 찾을 수 없음).",
+	noticeAutoSwitchedToBedrockToJava: "베드락 팩이 감지되어 변환 방향을 'Bedrock → Java'로 자동 전환했습니다.",
+	noticeAutoSwitchedToJavaToBedrock: "자바 팩이 감지되어 변환 방향을 'Java → Bedrock'으로 자동 전환했습니다.",
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "이용약관",

@@ -9,6 +9,7 @@ interface DropZoneProps {
   iconUrl: string | null;
   error: string | null;
   warning: string | null;
+  notice?: string | null;
   isProcessing: boolean;
   progress?: { processed: number; total: number } | null;
   onFileSelect: (file: File, inputMethod?: 'drop' | 'file_picker') => void;
@@ -26,6 +27,7 @@ export function DropZone({
   iconUrl,
   error,
   warning,
+  notice,
   isProcessing,
   progress,
   onFileSelect,
@@ -235,7 +237,9 @@ export function DropZone({
                     ? `err-${error}`
                     : warning
                       ? `warn-${warning}`
-                      : (file ? 'has-file' : 'no-file')
+                      : notice
+                        ? `notice-${notice}`
+                        : (file ? 'has-file' : 'no-file')
               }
               initial={{ opacity: 0, height: 0, y: 4 }}
               animate={{
@@ -278,6 +282,8 @@ export function DropZone({
                   <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</span>
                 ) : warning ? (
                   <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{warning}</span>
+                ) : notice ? (
+                  <span style={{ color: 'var(--color-accent, #007aff)', fontWeight: 600 }}>{notice}</span>
                 ) : (
                   file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : t.dropzoneSubtitle
                 )}

@@ -6,7 +6,8 @@ import type { PackReport, ConversionOptions } from './types';
 export async function convertPackWithWorker(
   file: File,
   options: ConversionOptions,
-  onProgress?: (processed: number, total: number) => void
+  onProgress?: (processed: number, total: number) => void,
+  preloadedBuffer?: ArrayBuffer | null
 ): Promise<{ blob: Blob; report: PackReport }> {
   return new Promise((resolve, reject) => {
     let worker: Worker;
@@ -17,7 +18,8 @@ export async function convertPackWithWorker(
       return;
     }
 
-    file.arrayBuffer().then(fileBuffer => {
+    const bufferPromise = preloadedBuffer ? Promise.resolve(preloadedBuffer) : file.arrayBuffer();
+    bufferPromise.then(fileBuffer => {
       worker.onmessage = (e) => {
         const data = e.data;
         if (data.type === 'progress') {
