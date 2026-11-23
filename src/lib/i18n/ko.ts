@@ -120,7 +120,7 @@ const ko: Translation = {
 	betaCalloutActive: '활성화됨',
 	betaCalloutPreview: '활성화 시 주의사항',
 	betaWarningAudioReencode: '최초 실행 시 약 20MB의 FFmpeg 라이브러리를 로드하여 변환 시간과 CPU 부하가 크게 증가합니다.',
-	betaWarningModernGuiSprites: '지원되는 Java 1.20.2+ 분할 HUD 스프라이트(textures/gui/sprites/hud/)와 Bedrock textures/ui/를 GUI 변환 설정과 독립적으로 매핑합니다(미지원 스프라이트는 건너뜁니다).',
+	betaWarningModernGuiSprites: 'Java 1.20.2+ 분할 HUD·컨테이너 스프라이트(textures/gui/sprites/) ⇄ Bedrock textures/ui/ 변환 및 Java 버전 간 시트 분할·재합성(< 1.20.2 ⇄ 1.20.2+)을 GUI 변환 설정과 독립적으로 처리합니다(미지원 항목은 건너뜁니다).',
 	betaWarningGuiConversion: 'icons.png와 widgets.png를 동적으로 잘라내므로 고해상도 팩에서 메모리 사용량이 늘어날 수 있습니다. 또한 Java와 Bedrock 간의 GUI 구조 차이로 인해 일부 보관함 또는 컨테이너 화면이 완벽하게 맞지 않을 수 있습니다.',
 	betaWarningTgaConversion: '모든 TGA 이미지를 PNG로 디코딩 변환하므로 TGA 파일이 많은 팩의 경우 완료까지 시간이 걸릴 수 있습니다.',
 	betaWarningPbrConversion: 'Bedrock RTX/Deferred PBR 맵(_mer/_normal)과 Java LabPBR 셰이더 맵(_s/_n)을 상호 변환합니다. 픽셀 단위 연산으로 처리 시간이 늘어나며 Java에서는 Iris/OptiFine 등의 모드가 필요합니다.',

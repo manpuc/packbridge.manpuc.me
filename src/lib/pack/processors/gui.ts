@@ -1,5 +1,5 @@
 import { encodeRgbaToPngSync, getPngDimensions } from './tga';
-import { decodeImageToRgbaSync, decodePngToRgbaSync } from './pbr';
+import { decodeImageToRgba, type DecodedRgbaImage } from './pbr';
 
 export interface CropBox {
   x: number;
@@ -166,7 +166,7 @@ export const JAVA_ICONS_SPRITES: GuiSpriteSpec[] = [
   // Bars & attack indicators
   { javaSprite: `${SPRITE_PREFIX}hud/experience_bar_background.png`, box: { x: 0, y: 64, w: 182, h: 5 } },
   { javaSprite: `${SPRITE_PREFIX}hud/experience_bar_progress.png`, box: { x: 0, y: 69, w: 182, h: 5 } },
-  { javaSprite: `${SPRITE_PREFIX}hud/jump_bar_cooldown.png`, box: { x: 0, y: 74, w: 182, h: 5 } },
+  { javaSprite: `${SPRITE_PREFIX}hud/jump_bar_cooldown.png`, box: { x: 0, y: 74, w: 182, h: 5 }, minJavaFormat: 15 },
   { javaSprite: `${SPRITE_PREFIX}hud/jump_bar_background.png`, box: { x: 0, y: 84, w: 182, h: 5 }, bedrockPath: 'textures/ui/horse_jump_empty.png' },
   { javaSprite: `${SPRITE_PREFIX}hud/jump_bar_progress.png`, box: { x: 0, y: 89, w: 182, h: 5 }, bedrockPath: 'textures/ui/horse_jump_full.png' },
   { javaSprite: `${SPRITE_PREFIX}hud/hotbar_attack_indicator_background.png`, box: { x: 0, y: 94, w: 18, h: 18 }, minJavaFormat: 2 },
@@ -240,31 +240,101 @@ const ALL_BEDROCK_MAPPED_SPECS = [
   ...EXTRA_MODERN_GUI_SPRITES.map((s) => ({ ...s, box: { x: 0, y: 0, w: 0, h: 0 } })),
 ];
 
-export const ICONS_MAPPINGS: Record<string, CropBox> = JAVA_ICONS_SPRITES.reduce((acc, s) => {
-  if (s.bedrockPath && !acc[s.bedrockPath]) acc[s.bedrockPath] = s.box;
-  return acc;
-}, Object.create(null) as Record<string, CropBox>);
-
 export const WIDGETS_MAPPINGS: Record<string, CropBox> = {
   ...HOTBAR_SLICE_MAPPINGS,
   'textures/ui/selected_hotbar_slot.png': { x: 0, y: 22, w: 24, h: 24 },
 };
 
-export const MODERN_GUI_SPRITE_JAVA_TO_BEDROCK: Record<string, string> = ALL_BEDROCK_MAPPED_SPECS.reduce(
-  (acc, s) => {
-    if (!acc[s.javaSprite]) acc[s.javaSprite] = s.bedrockPath;
-    return acc;
-  },
-  Object.create(null) as Record<string, string>
-);
+export function hasNonTransparentPixels(rgba: Uint8Array): boolean {
+  for (let i = 3; i < rgba.length; i += 4) {
+    if (rgba[i] > 0) return true;
+  }
+  return false;
+}
 
-export const MODERN_GUI_SPRITE_BEDROCK_TO_JAVA: Record<string, string> = ALL_BEDROCK_MAPPED_SPECS.reduce(
-  (acc, s) => {
-    if (!acc[s.bedrockPath]) acc[s.bedrockPath] = s.javaSprite;
-    return acc;
-  },
-  Object.create(null) as Record<string, string>
-);
+export function alphaBlendPixel(dst: Uint8Array, dIdx: number, sr: number, sg: number, sb: number, sa: number): void {
+  if (sa === 0) return;
+  if (sa === 255 || dst[dIdx + 3] === 0) {
+    dst[dIdx] = sr;
+    dst[dIdx + 1] = sg;
+    dst[dIdx + 2] = sb;
+    dst[dIdx + 3] = sa;
+    return;
+  }
+  const srcA = sa / 255;
+  const dstA = dst[dIdx + 3] / 255;
+  const outA = srcA + dstA * (1 - srcA);
+  if (outA <= 0) return;
+  dst[dIdx] = Math.round((sr * srcA + dst[dIdx] * dstA * (1 - srcA)) / outA);
+  dst[dIdx + 1] = Math.round((sg * srcA + dst[dIdx + 1] * dstA * (1 - srcA)) / outA);
+  dst[dIdx + 2] = Math.round((sb * srcA + dst[dIdx + 2] * dstA * (1 - srcA)) / outA);
+  dst[dIdx + 3] = Math.round(outA * 255);
+}
+
+export function cropRgbaBox(
+  img: DecodedRgbaImage,
+  box: CropBox,
+  scaleX: number,
+  scaleY = scaleX
+): { width: number; height: number; rgba: Uint8Array } {
+  const sx = Math.round(box.x * scaleX);
+  const sy = Math.round(box.y * scaleY);
+  const ex = Math.round((box.x + box.w) * scaleX);
+  const ey = Math.round((box.y + box.h) * scaleY);
+  const sw = Math.max(1, ex - sx);
+  const sh = Math.max(1, ey - sy);
+  const rgba = new Uint8Array(sw * sh * 4);
+  const srcX0 = Math.max(0, sx);
+  const srcY0 = Math.max(0, sy);
+  const srcX1 = Math.min(img.width, sx + sw);
+  const srcY1 = Math.min(img.height, sy + sh);
+
+  if (srcX1 > srcX0 && srcY1 > srcY0) {
+    const rowBytes = (srcX1 - srcX0) * 4;
+    const dstX0 = srcX0 - sx;
+    const dstY0 = srcY0 - sy;
+    for (let row = 0; row < srcY1 - srcY0; row++) {
+      const srcOff = ((srcY0 + row) * img.width + srcX0) * 4;
+      const dstOff = ((dstY0 + row) * sw + dstX0) * 4;
+      rgba.set(img.rgba.subarray(srcOff, srcOff + rowBytes), dstOff);
+    }
+  }
+  return { width: sw, height: sh, rgba };
+}
+
+export function blitRgbaScaled(
+  dst: Uint8Array,
+  dstW: number,
+  dstH: number,
+  src: DecodedRgbaImage,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+  blend = false
+): void {
+  const x0 = Math.max(0, dx);
+  const y0 = Math.max(0, dy);
+  const x1 = Math.min(dstW, dx + dw);
+  const y1 = Math.min(dstH, dy + dh);
+  for (let y = y0; y < y1; y++) {
+    const sy = Math.min(src.height - 1, Math.floor(((y - dy) * src.height) / dh));
+    for (let x = x0; x < x1; x++) {
+      const sx = Math.min(src.width - 1, Math.floor(((x - dx) * src.width) / dw));
+      const sIdx = (sy * src.width + sx) * 4;
+      const dIdx = (y * dstW + x) * 4;
+      if (blend) {
+        if (src.rgba[sIdx + 3] === 0) continue;
+        alphaBlendPixel(dst, dIdx, src.rgba[sIdx], src.rgba[sIdx + 1], src.rgba[sIdx + 2], src.rgba[sIdx + 3]);
+      } else {
+        dst[dIdx] = src.rgba[sIdx];
+        dst[dIdx + 1] = src.rgba[sIdx + 1];
+        dst[dIdx + 2] = src.rgba[sIdx + 2];
+        dst[dIdx + 3] = src.rgba[sIdx + 3];
+      }
+    }
+  }
+}
 
 export function getLegacyIconsToBedrockMappings(
   sourceJavaFormat: number,
@@ -304,15 +374,25 @@ export function getBedrockToModernJavaGuiPath(
   return spec.javaSprite;
 }
 
+const BEDROCK_GUI_SHEET_WIDGETS = new Set([
+  `${SPRITE_PREFIX}hud/hotbar.png`,
+  `${SPRITE_PREFIX}hud/hotbar_selection.png`,
+  `${SPRITE_PREFIX}widget/button_disabled.png`,
+  `${SPRITE_PREFIX}widget/button.png`,
+  `${SPRITE_PREFIX}widget/button_highlighted.png`,
+]);
+
 export function getJavaSheetToModernSprites(
   sheetPath: string,
   sourceJavaFormat: number,
   targetJavaFormat: number
 ): { mappings: Record<string, CropBox>; mcmetas: Record<string, string> } | null {
+  const isBedrockIcons = sheetPath === 'textures/gui/icons.png';
+  const isBedrockGui = sheetPath === 'textures/gui/gui.png';
   const specs =
-    sheetPath === 'assets/minecraft/textures/gui/icons.png' || sheetPath === 'textures/gui/icons.png'
+    sheetPath === 'assets/minecraft/textures/gui/icons.png' || isBedrockIcons
       ? JAVA_ICONS_SPRITES
-      : sheetPath === 'assets/minecraft/textures/gui/widgets.png' || sheetPath === 'textures/gui/gui.png'
+      : sheetPath === 'assets/minecraft/textures/gui/widgets.png' || isBedrockGui
       ? JAVA_WIDGETS_SPRITES
       : sheetPath === 'assets/minecraft/textures/gui/bars.png'
       ? JAVA_BARS_SPRITES
@@ -322,6 +402,17 @@ export function getJavaSheetToModernSprites(
   const mappings: Record<string, CropBox> = {};
   const mcmetas: Record<string, string> = {};
   for (const s of specs) {
+    if (isBedrockIcons) {
+      if (
+        !s.javaSprite.startsWith(`${SPRITE_PREFIX}hud/`) ||
+        s.javaSprite.includes('attack_indicator') ||
+        s.javaSprite === `${SPRITE_PREFIX}hud/jump_bar_cooldown.png`
+      ) {
+        continue;
+      }
+    } else if (isBedrockGui && !BEDROCK_GUI_SHEET_WIDGETS.has(s.javaSprite)) {
+      continue;
+    }
     const minFmt = s.minJavaFormat ?? 1;
     if (sourceJavaFormat < minFmt || targetJavaFormat < minFmt) continue;
     mappings[s.javaSprite] = s.box;
@@ -347,7 +438,10 @@ export function getJavaModernSpriteSheetTarget(
         sheet: g.sheet,
         box: spec.box,
         isPrimary: spec.primaryBoxOwner !== false,
-        isButton: g.sheet === 'widgets' && javaSpritePath.startsWith(`${SPRITE_PREFIX}widget/`),
+        isButton:
+          javaSpritePath === `${SPRITE_PREFIX}widget/button.png` ||
+          javaSpritePath === `${SPRITE_PREFIX}widget/button_highlighted.png` ||
+          javaSpritePath === `${SPRITE_PREFIX}widget/button_disabled.png`,
       };
     }
   }
@@ -380,7 +474,7 @@ export function getBedrockGuiSheetTarget(
 export async function processGuiSpriteSheet(
   pngData: Uint8Array,
   mappings: Record<string, CropBox>,
-  options?: { baseWidth?: number }
+  options?: { baseWidth?: number; baseHeight?: number; skipTransparent?: boolean }
 ): Promise<Record<string, Uint8Array>> {
   const dims = getPngDimensions(pngData);
   if (!dims) {
@@ -388,92 +482,50 @@ export async function processGuiSpriteSheet(
   }
 
   const baseWidth = options?.baseWidth ?? 256;
-  const scale = dims.width / baseWidth;
+  const scaleX = dims.width / baseWidth;
+  const scaleY = options?.baseHeight ? dims.height / options.baseHeight : scaleX;
+  const decoded = await decodeImageToRgba(pngData, MAX_GUI_DIMENSION);
+  if (!decoded) {
+    throw new Error('Failed to decode GUI PNG image');
+  }
+
   const results: Record<string, Uint8Array> = {};
-
-  const decoded = decodePngToRgbaSync(pngData);
-  if (decoded) {
-    for (const [targetPath, box] of Object.entries(mappings)) {
-      const sx = Math.round(box.x * scale);
-      const sy = Math.round(box.y * scale);
-      const sw = Math.max(1, Math.round(box.w * scale));
-      const sh = Math.max(1, Math.round(box.h * scale));
-
-      const outRgba = new Uint8Array(sw * sh * 4);
-      const srcX0 = Math.max(0, sx);
-      const srcY0 = Math.max(0, sy);
-      const srcX1 = Math.min(decoded.width, sx + sw);
-      const srcY1 = Math.min(decoded.height, sy + sh);
-
-      if (srcX1 > srcX0 && srcY1 > srcY0) {
-        const copyW = srcX1 - srcX0;
-        const rowBytes = copyW * 4;
-        const dstX0 = srcX0 - sx;
-        const dstY0 = srcY0 - sy;
-        for (let row = 0; row < srcY1 - srcY0; row++) {
-          const srcOffset = ((srcY0 + row) * decoded.width + srcX0) * 4;
-          const dstOffset = ((dstY0 + row) * sw + dstX0) * 4;
-          outRgba.set(decoded.rgba.subarray(srcOffset, srcOffset + rowBytes), dstOffset);
-        }
-      }
-
-      results[targetPath] = encodeRgbaToPngSync(sw, sh, outRgba);
-    }
-    return results;
+  for (const [targetPath, box] of Object.entries(mappings)) {
+    const cropped = cropRgbaBox(decoded, box, scaleX, scaleY);
+    if (options?.skipTransparent && !hasNonTransparentPixels(cropped.rgba)) continue;
+    results[targetPath] = encodeRgbaToPngSync(cropped.width, cropped.height, cropped.rgba);
   }
-
-  if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
-    throw new Error('OffscreenCanvas or createImageBitmap is not supported in this environment');
-  }
-
-  const blob = new Blob([pngData as any], { type: 'image/png' });
-  const bitmap = await createImageBitmap(blob);
-
-  try {
-    for (const [targetPath, box] of Object.entries(mappings)) {
-      const sx = Math.round(box.x * scale);
-      const sy = Math.round(box.y * scale);
-      const sw = Math.max(1, Math.round(box.w * scale));
-      const sh = Math.max(1, Math.round(box.h * scale));
-
-      const canvas = new OffscreenCanvas(sw, sh);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Failed to acquire 2D context for OffscreenCanvas');
-      }
-
-      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
-
-      const outBlob = await canvas.convertToBlob({ type: 'image/png' });
-      const buffer = await outBlob.arrayBuffer();
-      results[targetPath] = new Uint8Array(buffer);
-    }
-  } finally {
-    bitmap.close();
-  }
-
   return results;
 }
 
-export function composeGuiSpriteSheet(
+export async function composeGuiSpriteSheet(
   entries: Array<{ bytes: Uint8Array; box: CropBox; isPrimary?: boolean }>,
   sheetWidth: number,
   sheetHeight: number,
   baseSheetBytes?: Uint8Array | null
-): Uint8Array | null {
-  const base = baseSheetBytes ? decodeImageToRgbaSync(baseSheetBytes) : null;
-  const decodedEntries = entries
-    .map((e) => ({ ...e, img: decodeImageToRgbaSync(e.bytes) }))
-    .filter((e): e is typeof e & { img: NonNullable<typeof e.img> } => e.img !== null);
+): Promise<Uint8Array | null> {
+  const base = baseSheetBytes ? await decodeImageToRgba(baseSheetBytes, MAX_GUI_DIMENSION) : null;
+  const decodedEntries: Array<{ bytes: Uint8Array; box: CropBox; isPrimary?: boolean; img: DecodedRgbaImage }> = [];
+  for (const e of entries) {
+    const img = await decodeImageToRgba(e.bytes, MAX_GUI_DIMENSION);
+    if (img) decodedEntries.push({ ...e, img });
+  }
 
   if (!base && decodedEntries.length === 0) return null;
 
   let scale = base ? Math.max(1, Math.round(base.width / sheetWidth)) : 1;
+  let reliableScale = 0;
+  let fallbackScale = 0;
   for (const e of decodedEntries) {
-    if (e.box.w > 0) {
-      scale = Math.max(scale, Math.round(e.img.width / e.box.w));
+    if (e.box.w <= 0 || e.box.h <= 0) continue;
+    const entryScale = Math.min(Math.round(e.img.width / e.box.w), Math.round(e.img.height / e.box.h));
+    if (e.box.w >= 8 && e.box.h >= 8) {
+      reliableScale = Math.max(reliableScale, entryScale);
+    } else {
+      fallbackScale = Math.max(fallbackScale, entryScale);
     }
   }
+  scale = Math.max(scale, reliableScale > 0 ? reliableScale : fallbackScale);
   const maxScale = Math.max(1, Math.floor(Math.min(MAX_GUI_DIMENSION / sheetWidth, MAX_GUI_DIMENSION / sheetHeight)));
   scale = Math.min(scale, maxScale);
 
@@ -481,39 +533,17 @@ export function composeGuiSpriteSheet(
   const outH = sheetHeight * scale;
   const outRgba = new Uint8Array(outW * outH * 4);
 
-  const blitNearest = (
-    src: { width: number; height: number; rgba: Uint8Array },
-    dx: number,
-    dy: number,
-    dw: number,
-    dh: number
-  ) => {
-    const x0 = Math.max(0, dx);
-    const y0 = Math.max(0, dy);
-    const x1 = Math.min(outW, dx + dw);
-    const y1 = Math.min(outH, dy + dh);
-    for (let y = y0; y < y1; y++) {
-      const sy = Math.min(src.height - 1, Math.floor(((y - dy) * src.height) / dh));
-      for (let x = x0; x < x1; x++) {
-        const sx = Math.min(src.width - 1, Math.floor(((x - dx) * src.width) / dw));
-        const sIdx = (sy * src.width + sx) * 4;
-        const dIdx = (y * outW + x) * 4;
-        outRgba[dIdx] = src.rgba[sIdx];
-        outRgba[dIdx + 1] = src.rgba[sIdx + 1];
-        outRgba[dIdx + 2] = src.rgba[sIdx + 2];
-        outRgba[dIdx + 3] = src.rgba[sIdx + 3];
-      }
-    }
-  };
-
   if (base) {
-    blitNearest(base, 0, 0, outW, outH);
+    blitRgbaScaled(outRgba, outW, outH, base, 0, 0, outW, outH);
   }
 
   // Draw secondary/shared-box sprites first so primary sprites win overlapping slots
   const ordered = [...decodedEntries].sort((a, b) => Number(a.isPrimary !== false) - Number(b.isPrimary !== false));
   for (const e of ordered) {
-    blitNearest(
+    blitRgbaScaled(
+      outRgba,
+      outW,
+      outH,
       e.img,
       Math.round(e.box.x * scale),
       Math.round(e.box.y * scale),

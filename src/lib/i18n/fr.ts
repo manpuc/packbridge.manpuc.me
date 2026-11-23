@@ -120,7 +120,7 @@ const fr: Translation = {
 	betaCalloutActive: 'Actif',
 	betaCalloutPreview: 'Impact potentiel',
 	betaWarningAudioReencode: 'Télécharge ~20 Mo de bibliothèques FFmpeg lors de la première utilisation et augmente considérablement le temps de conversion et la charge CPU.',
-	betaWarningModernGuiSprites: 'Convertit les sprites HUD séparés pris en charge de Java 1.20.2+ (textures/gui/sprites/hud/) ⇄ Bedrock textures/ui/ indépendamment de l\'option GUI ; les sprites non pris en charge sont ignorés.',
+	betaWarningModernGuiSprites: 'Convertit les sprites HUD et conteneurs séparés de Java 1.20.2+ (textures/gui/sprites/) ⇄ Bedrock textures/ui/ et migre les feuilles Java (< 1.20.2 ⇄ 1.20.2+) indépendamment de l\'option GUI ; les sprites non pris en charge sont ignorés.',
 	betaWarningGuiConversion: 'Découpe dynamiquement icons.png et widgets.png, ce qui peut augmenter l\'utilisation de la mémoire sur les packs HD. En raison des différences structurelles entre Java et Bedrock, certains inventaires ou conteneurs peuvent ne pas s\'aligner parfaitement.',
 	betaWarningTgaConversion: 'Décode et convertit toutes les images TGA en PNG, ce qui peut rallonger le temps de traitement pour les packs contenant beaucoup de fichiers TGA.',
 	betaWarningPbrConversion: 'Convertit les textures PBR Bedrock (_mer/_normal) et LabPBR Java (_s/_n). Allonge le temps de traitement et nécessite un mod de shaders (Iris/OptiFine) sur Java.',

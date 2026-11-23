@@ -93,6 +93,21 @@ export function extractPackFormat(pack: Record<string, any> | undefined | null):
   return toNum(pack.pack_format) ?? toNum(pack.min_format);
 }
 
+export function extractMinPackFormat(pack: Record<string, any> | undefined | null): number | null {
+  if (!pack || typeof pack !== 'object') return null;
+  const toNum = (v: unknown): number | null =>
+    typeof v === 'number' ? v : (Array.isArray(v) && typeof v[0] === 'number' ? v[0] : null);
+  const candidates: number[] = [];
+  const minFmt = toNum(pack.min_format);
+  if (minFmt !== null) candidates.push(minFmt);
+  const sf = pack.supported_formats;
+  if (Array.isArray(sf) && typeof sf[0] === 'number') candidates.push(sf[0]);
+  else if (sf && typeof sf === 'object' && typeof sf.min_inclusive === 'number') candidates.push(sf.min_inclusive);
+  const pf = toNum(pack.pack_format);
+  if (pf !== null) candidates.push(pf);
+  return candidates.length > 0 ? Math.min(...candidates) : null;
+}
+
 export function detectEditionAutoSwitch(
   direction: ConversionDirection,
   hasMcmeta: boolean,

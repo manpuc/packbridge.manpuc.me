@@ -121,7 +121,7 @@ const ja: Translation = {
 	betaCalloutActive: '有効化中',
 	betaCalloutPreview: '有効化時の影響',
 	betaWarningAudioReencode: '初回に約20MBのFFmpegライブラリのロードが発生し、変換処理時間と端末のCPU負荷が大幅に増加します。',
-	betaWarningModernGuiSprites: 'Java 1.20.2+ の分割 HUD スプライト（textures/gui/sprites/hud/）と統合版 textures/ui/ の対応項目を個別に変換します（GUI変換設定とは独立して動作し、未対応のスプライトはスキップされます）。',
+	betaWarningModernGuiSprites: 'Java 1.20.2+ の分割 HUD・コンテナスプライト（textures/gui/sprites/）と統合版 textures/ui/ の相互変換、および Java バージョン間のシート分割・再合成を行います（GUI変換設定とは独立して動作し、未対応項目はスキップされます）。',
 	betaWarningGuiConversion: 'icons.png / widgets.png の動的切り抜きを行うため高解像度パックではメモリ消費が増加します。また、Java版とBedrock版でGUIのレイアウト構造が異なるため、インベントリやコンテナ画面で一部表示崩れが生じる場合があります。',
 	betaWarningTgaConversion: 'TGA画像をPNGへ全件デコード変換するため、多数のTGAを含むパックでは完了まで時間がかかる場合があります。',
 	betaWarningPbrConversion: '統合版RTX/Deferred PBRマップ（_mer/_normal）とJava版シェーダー規格（LabPBR _s/_n）を相互変換します。ピクセル単位の再計算を行うため処理時間が増加し、Java版ではIrisやOptiFine等のシェーダーModが必要です。',

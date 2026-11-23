@@ -150,6 +150,8 @@ export default function Converter({
       setReport(null);
       setDownloadUrl(null);
       setError(null);
+      setSourceJavaVersion(initialJavaVersion);
+      setSourceBedrockVersion(initialBedrockVersion);
       setIsAutoDetected(false);
 
       if (selectedFile.size > LARGE_FILE_WARN_THRESHOLD_BYTES) {
@@ -335,8 +337,18 @@ export default function Converter({
 
     const analyzeZipMetadata = async () => {
       try {
-        const packMcmetaEntry = zipInstance.file('pack.mcmeta') || zipInstance.file(/(^|\/)pack\.mcmeta$/)[0];
-        const manifestEntry = zipInstance.file('manifest.json') || zipInstance.file(/(^|\/)manifest\.json$/)[0];
+        const findMetadataEntry = (filename: string) => {
+          const matches = zipInstance
+            .filter((relPath, obj) => {
+              if (obj.dir || relPath.includes('__MACOSX')) return false;
+              const base = relPath.split('/').pop() || '';
+              return base === filename && !base.startsWith('.');
+            })
+            .sort((a, b) => a.name.split('/').length - b.name.split('/').length);
+          return matches[0] ?? null;
+        };
+        const packMcmetaEntry = findMetadataEntry('pack.mcmeta');
+        const manifestEntry = findMetadataEntry('manifest.json');
 
         const isVersionUpdate = direction === 'java-to-java' || direction === 'bedrock-to-bedrock';
         let actualSource = direction.startsWith('java') ? 'java' : 'bedrock';
@@ -511,8 +523,8 @@ export default function Converter({
         direction,
         javaVersionId: selectedJavaVersion,
         bedrockVersionId: selectedBedrockVersion,
-        sourceJavaVersionId: sourceJavaVersion,
-        sourceBedrockVersionId: sourceBedrockVersion,
+        sourceJavaVersionId: isAutoDetected && direction.startsWith('java') ? sourceJavaVersion : undefined,
+        sourceBedrockVersionId: isAutoDetected && direction.startsWith('bedrock') ? sourceBedrockVersion : undefined,
         enableGuiConversion,
         enableModernGuiSprites,
         enableTgaConversion,
@@ -627,6 +639,9 @@ export default function Converter({
     setDownloadUrl(null);
     setError(null);
     setWarning(null);
+    setSourceJavaVersion(initialJavaVersion);
+    setSourceBedrockVersion(initialBedrockVersion);
+    setIsAutoDetected(false);
   };
 
   return (

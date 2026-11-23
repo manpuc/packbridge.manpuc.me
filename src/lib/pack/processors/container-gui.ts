@@ -1,6 +1,15 @@
-import { decodeImageToRgbaSync, type DecodedRgbaImage } from './pbr';
+import { decodeImageToRgba, type DecodedRgbaImage } from './pbr';
 import { encodeRgbaToPngSync } from './tga';
-import { compareBedrockVersion, isJavaVillager2Version, type BedrockSemver, type CropBox } from './gui';
+import {
+  alphaBlendPixel,
+  blitRgbaScaled,
+  compareBedrockVersion,
+  cropRgbaBox,
+  hasNonTransparentPixels,
+  isJavaVillager2Version,
+  type BedrockSemver,
+  type CropBox,
+} from './gui';
 
 // shortcut: Bedrock containers use vanilla JSON UI 9-slice/component textures rather than bundled VDX/UIDX JSON UI overrides, so custom per-container decorative artwork outside standard slot/progress regions is not preserved on Bedrock.
 
@@ -14,8 +23,15 @@ interface ContainerSpriteSpec {
   bedrockPath?: string;
   bedrockFallback?: boolean; // true for blast_furnace/smoker/grindstone/smithing sharing furnace/anvil Bedrock UI
   minJavaFormat?: number;
+  maxJavaFormat?: number;
   minBedrockVersion?: BedrockSemver;
 }
+
+const EFFECT_BG_MODERN_MCMETA = JSON.stringify(
+  { gui: { scaling: { type: 'nine_slice', width: 120, height: 32, border: 4 } } },
+  null,
+  2
+);
 
 interface ContainerSheetSpec {
   sheetW: number;
@@ -190,8 +206,8 @@ export const CONTAINER_SHEETS: Record<string, ContainerSheetSpec> = {
     sheetH: 256,
     panelBox: STANDARD_PANEL,
     sprites: [
-      { sprite: 'inventory/effect_background_large.png', box: { x: 0, y: 166, w: 120, h: 32 }, bedrockPath: 'textures/ui/effect_background.png' },
-      { sprite: 'inventory/effect_background_small.png', box: { x: 0, y: 198, w: 32, h: 32 } },
+      { sprite: 'inventory/effect_background_large.png', box: { x: 0, y: 166, w: 120, h: 32 }, bedrockPath: 'textures/ui/effect_background.png', maxJavaFormat: 74 },
+      { sprite: 'inventory/effect_background_small.png', box: { x: 0, y: 198, w: 32, h: 32 }, maxJavaFormat: 74 },
     ],
   },
   horse: {
@@ -229,6 +245,8 @@ const STANDALONE_CONTAINER_SPRITES: ContainerSpriteSpec[] = [
   { sprite: 'crafter/disabled_slot.png', box: { x: 0, y: 0, w: 18, h: 18 }, bedrockPath: 'textures/ui/slot_disabled.png', minJavaFormat: 34, minBedrockVersion: [1, 21, 0] },
   { sprite: 'crafter/powered_redstone.png', box: { x: 0, y: 0, w: 16, h: 16 }, bedrockPath: 'textures/ui/redstone_arrow_powered.png', minJavaFormat: 34, minBedrockVersion: [1, 21, 0] },
   { sprite: 'crafter/unpowered_redstone.png', box: { x: 0, y: 0, w: 16, h: 16 }, bedrockPath: 'textures/ui/redstone_arrow_unpowered.png', minJavaFormat: 34, minBedrockVersion: [1, 21, 0] },
+  { sprite: 'inventory/effect_background.png', box: { x: 0, y: 166, w: 120, h: 32 }, bedrockPath: 'textures/ui/effect_background.png', minJavaFormat: 75 },
+  { sprite: 'inventory/effect_background_ambient.png', box: { x: 0, y: 0, w: 0, h: 0 }, bedrockPath: 'textures/ui/effect_background_ambient.png', minJavaFormat: 75 },
 ];
 
 interface ContainerSlotSpec {
@@ -236,6 +254,7 @@ interface ContainerSlotSpec {
   legacyItem?: string; // e.g. 'assets/minecraft/textures/item/empty_armor_slot_helmet.png'
   legacySprite?: string; // e.g. 'loom/banner_slot.png' (1.20.2 - 1.21.3)
   bedrockPath?: string;
+  inset1px?: boolean;
 }
 
 const CONTAINER_SLOT_SPECS: ContainerSlotSpec[] = [
@@ -249,9 +268,9 @@ const CONTAINER_SLOT_SPECS: ContainerSlotSpec[] = [
   { modernSlot: 'banner', legacySprite: 'loom/banner_slot.png', bedrockPath: 'textures/ui/loom_banner_empty.png' },
   { modernSlot: 'dye', legacySprite: 'loom/dye_slot.png', bedrockPath: 'textures/ui/loom_dye_empty.png' },
   { modernSlot: 'banner_pattern', legacySprite: 'loom/pattern_slot.png', bedrockPath: 'textures/ui/loom_pattern_item_empty.png' },
-  { modernSlot: 'horse_armor', bedrockPath: 'textures/ui/empty_horse_slot_armor.png' },
-  { modernSlot: 'saddle', bedrockPath: 'textures/ui/empty_horse_slot_saddle.png' },
-  { modernSlot: 'llama_armor', bedrockPath: 'textures/ui/empty_llama_slot_carpet.png' },
+  { modernSlot: 'horse_armor', legacySprite: 'horse/armor_slot.png', bedrockPath: 'textures/ui/empty_horse_slot_armor.png', inset1px: true },
+  { modernSlot: 'saddle', legacySprite: 'horse/saddle_slot.png', bedrockPath: 'textures/ui/empty_horse_slot_saddle.png', inset1px: true },
+  { modernSlot: 'llama_armor', legacySprite: 'horse/llama_armor_slot.png', bedrockPath: 'textures/ui/empty_llama_slot_carpet.png', inset1px: true },
   { modernSlot: 'potion', bedrockPath: 'textures/ui/bottle_empty.png' },
   { modernSlot: 'brewing_fuel', bedrockPath: 'textures/ui/brewing_fuel_empty.png' },
   // Java-only 1.21.4 slot migrations
@@ -299,7 +318,12 @@ const BEDROCK_CONTAINER_THEME_AND_PARTS = new Set([
   'textures/ui/dust_unselectable_3.png',
   'textures/ui/crossout.png',
   'textures/ui/effect_background.png',
+  'textures/ui/effect_background_ambient.png',
 ]);
+
+const SLOT_LEGACY_SPRITES = new Set(
+  CONTAINER_SLOT_SPECS.map((s) => s.legacySprite).filter((s): s is string => Boolean(s))
+);
 
 function getContainerKey(path: string): string | null {
   if (!path.startsWith(JAVA_CONTAINER_PREFIX) || !path.endsWith('.png')) return null;
@@ -328,21 +352,24 @@ export function getJavaSlotItemToBedrockUiPath(javaPath: string): string | null 
 export function getModernJavaContainerToBedrockPath(
   javaPath: string,
   targetBedrockMinEngine: BedrockSemver
-): string | null {
+): { path: string; isFallback: boolean } | null {
   if (!javaPath.startsWith(SPRITE_CONTAINER_PREFIX)) return null;
   const rel = javaPath.slice(SPRITE_CONTAINER_PREFIX.length);
 
   for (const s of STANDALONE_CONTAINER_SPRITES) {
     if (s.sprite === rel && s.bedrockPath) {
       if (compareBedrockVersion(targetBedrockMinEngine, s.minBedrockVersion ?? [1, 12, 0]) < 0) return null;
-      return s.bedrockPath;
+      return { path: s.bedrockPath, isFallback: Boolean(s.bedrockFallback) };
     }
   }
 
   for (const slot of CONTAINER_SLOT_SPECS) {
     if (!slot.bedrockPath) continue;
-    if (`slot/${slot.modernSlot}.png` === rel || slot.legacySprite === rel) {
-      return slot.bedrockPath;
+    if (`slot/${slot.modernSlot}.png` === rel) {
+      return { path: slot.bedrockPath, isFallback: false };
+    }
+    if (slot.legacySprite === rel) {
+      return { path: slot.bedrockPath, isFallback: true };
     }
   }
 
@@ -350,7 +377,10 @@ export function getModernJavaContainerToBedrockPath(
     for (const sp of sheet.sprites) {
       if (sp.sprite === rel && sp.bedrockPath) {
         if (compareBedrockVersion(targetBedrockMinEngine, sp.minBedrockVersion ?? [1, 12, 0]) < 0) return null;
-        return sp.bedrockPath;
+        return {
+          path: sp.bedrockPath,
+          isFallback: Boolean(sp.bedrockFallback) || sp.sprite === 'inventory/effect_background_large.png',
+        };
       }
     }
   }
@@ -367,13 +397,22 @@ export function getBedrockContainerToModernJavaPaths(
 
   if (targetJavaFormat >= 18) {
     for (const s of STANDALONE_CONTAINER_SPRITES) {
-      if (s.bedrockPath === normalized && targetJavaFormat >= (s.minJavaFormat ?? 18)) {
+      if (
+        s.bedrockPath === normalized &&
+        targetJavaFormat >= (s.minJavaFormat ?? 18) &&
+        (s.maxJavaFormat === undefined || targetJavaFormat <= s.maxJavaFormat)
+      ) {
         out.push(`${SPRITE_CONTAINER_PREFIX}${s.sprite}`);
       }
     }
     for (const sheet of Object.values(CONTAINER_SHEETS)) {
       for (const sp of sheet.sprites) {
-        if (sp.bedrockPath === normalized && targetJavaFormat >= (sp.minJavaFormat ?? 18)) {
+        if (SLOT_LEGACY_SPRITES.has(sp.sprite)) continue;
+        if (
+          sp.bedrockPath === normalized &&
+          targetJavaFormat >= (sp.minJavaFormat ?? 18) &&
+          (sp.maxJavaFormat === undefined || targetJavaFormat <= sp.maxJavaFormat)
+        ) {
           out.push(`${SPRITE_CONTAINER_PREFIX}${sp.sprite}`);
         }
       }
@@ -395,6 +434,12 @@ export function getBedrockContainerToModernJavaPaths(
 }
 
 export function migrateJavaContainerSlotPath(path: string, targetJavaFormat: number): string {
+  if (targetJavaFormat >= 75 && path === `${SPRITE_CONTAINER_PREFIX}inventory/effect_background_large.png`) {
+    return `${SPRITE_CONTAINER_PREFIX}inventory/effect_background.png`;
+  }
+  if (targetJavaFormat >= 18 && targetJavaFormat < 75 && path === `${SPRITE_CONTAINER_PREFIX}inventory/effect_background.png`) {
+    return `${SPRITE_CONTAINER_PREFIX}inventory/effect_background_large.png`;
+  }
   if (targetJavaFormat >= 46) {
     for (const slot of CONTAINER_SLOT_SPECS) {
       if (slot.legacyItem === path || (slot.legacySprite && `${SPRITE_CONTAINER_PREFIX}${slot.legacySprite}` === path)) {
@@ -410,37 +455,6 @@ export function migrateJavaContainerSlotPath(path: string, targetJavaFormat: num
     }
   }
   return path;
-}
-
-function hasNonTransparentPixels(rgba: Uint8Array): boolean {
-  for (let i = 3; i < rgba.length; i += 4) {
-    if (rgba[i] > 0) return true;
-  }
-  return false;
-}
-
-function cropRgba(img: DecodedRgbaImage, box: CropBox, scale: number): Uint8Array {
-  const sx = Math.round(box.x * scale);
-  const sy = Math.round(box.y * scale);
-  const sw = Math.max(1, Math.round(box.w * scale));
-  const sh = Math.max(1, Math.round(box.h * scale));
-  const out = new Uint8Array(sw * sh * 4);
-  const x0 = Math.max(0, sx);
-  const y0 = Math.max(0, sy);
-  const x1 = Math.min(img.width, sx + sw);
-  const y1 = Math.min(img.height, sy + sh);
-  if (x1 > x0 && y1 > y0) {
-    const copyW = x1 - x0;
-    const rowBytes = copyW * 4;
-    const dx0 = x0 - sx;
-    const dy0 = y0 - sy;
-    for (let row = 0; row < y1 - y0; row++) {
-      const srcOff = ((y0 + row) * img.width + x0) * 4;
-      const dstOff = ((dy0 + row) * sw + dx0) * 4;
-      out.set(img.rgba.subarray(srcOff, srcOff + rowBytes), dstOff);
-    }
-  }
-  return out;
 }
 
 function blitRegion(
@@ -472,31 +486,44 @@ function blitRegion(
   }
 }
 
-export function sliceJavaContainerSheetForModernJava(
+export async function sliceJavaContainerSheetForModernJava(
   sheetRelPath: string,
   pngBytes: Uint8Array,
-  targetJavaFormat: number
-): { sprites: Record<string, Uint8Array>; clippedSheet: Uint8Array | null } | null {
+  targetJavaFormat: number,
+  sourceJavaFormat?: number
+): Promise<{ sprites: Record<string, Uint8Array>; mcmetas: Record<string, string>; clippedSheet: Uint8Array | null } | null> {
   const key = getContainerKey(sheetRelPath);
   if (!key) return null;
+  if (key === 'villager' && sheetRelPath.endsWith('/villager.png') && sourceJavaFormat !== undefined && sourceJavaFormat < 18) {
+    return null;
+  }
   const spec = CONTAINER_SHEETS[key];
   if (spec.sprites.length === 0) return null;
 
-  const img = decodeImageToRgbaSync(pngBytes);
-  if (!img || img.width < 176 || img.width > MAX_CONTAINER_DIMENSION || img.height > MAX_CONTAINER_DIMENSION) {
+  const img = await decodeImageToRgba(pngBytes, MAX_CONTAINER_DIMENSION);
+  if (!img || img.width < spec.sheetW || img.width > MAX_CONTAINER_DIMENSION || img.height > MAX_CONTAINER_DIMENSION) {
     return null;
   }
 
   const scale = img.width / spec.sheetW;
   const sprites: Record<string, Uint8Array> = {};
+  const mcmetas: Record<string, string> = {};
   for (const sp of spec.sprites) {
-    const cropped = cropRgba(img, sp.box, scale);
-    if (!hasNonTransparentPixels(cropped)) continue;
+    if (targetJavaFormat >= 75 && sp.sprite === 'inventory/effect_background_small.png') continue;
+    const slotMeta = targetJavaFormat >= 46
+      ? CONTAINER_SLOT_SPECS.find((s) => s.legacySprite === sp.sprite && s.inset1px)
+      : undefined;
+    const cropBox = slotMeta
+      ? { x: sp.box.x + 1, y: sp.box.y + 1, w: sp.box.w - 2, h: sp.box.h - 2 }
+      : sp.box;
+    const cropped = cropRgbaBox(img, cropBox, scale);
+    if (!hasNonTransparentPixels(cropped.rgba)) continue;
     const rawOut = `${SPRITE_CONTAINER_PREFIX}${sp.sprite}`;
     const outPath = migrateJavaContainerSlotPath(rawOut, targetJavaFormat);
-    const sw = Math.max(1, Math.round(sp.box.w * scale));
-    const sh = Math.max(1, Math.round(sp.box.h * scale));
-    sprites[outPath] = encodeRgbaToPngSync(sw, sh, cropped);
+    sprites[outPath] = encodeRgbaToPngSync(cropped.width, cropped.height, cropped.rgba);
+    if (targetJavaFormat >= 75 && sp.sprite === 'inventory/effect_background_large.png') {
+      mcmetas[`${outPath}.mcmeta`] = EFFECT_BG_MODERN_MCMETA;
+    }
   }
 
   // Clip container sheet to panelBox on a clean canvas
@@ -509,6 +536,7 @@ export function sliceJavaContainerSheetForModernJava(
 
   return {
     sprites,
+    mcmetas,
     clippedSheet: encodeRgbaToPngSync(img.width, img.height, clippedRgba),
   };
 }
@@ -520,8 +548,11 @@ export function getJavaContainerModernSpriteTarget(
 ): { sheetPath: string; box: CropBox; sheetW: number; sheetH: number } | null {
   if (!javaSpritePath.startsWith(SPRITE_CONTAINER_PREFIX)) return null;
   let rel = javaSpritePath.slice(SPRITE_CONTAINER_PREFIX.length);
+  if (rel === 'inventory/effect_background.png') {
+    rel = 'inventory/effect_background_large.png';
+  }
 
-  // Map 1.21.4+ slot/{banner,dye,banner_pattern}.png back to loom/*_slot.png
+  // Map 1.21.4+ slot/{banner,dye,banner_pattern,horse_armor,saddle,llama_armor}.png back to legacy sprites
   for (const slot of CONTAINER_SLOT_SPECS) {
     if (slot.legacySprite && `slot/${slot.modernSlot}.png` === rel) {
       rel = slot.legacySprite;
@@ -599,10 +630,11 @@ function extractBedrockThemeFromContainer(
   };
 }
 
-export function extractBedrockContainerAssetsFromJava(
+export async function extractBedrockContainerAssetsFromJava(
   javaContainers: Map<string, { sourcePath: string; bytes: Uint8Array }>,
-  targetBedrockMinEngine: BedrockSemver
-): Array<{ sourcePath: string; outPath: string; bytes: Uint8Array }> {
+  targetBedrockMinEngine: BedrockSemver,
+  sourceJavaFormat?: number
+): Promise<Array<{ sourcePath: string; outPath: string; bytes: Uint8Array }>> {
   const results: Array<{ sourcePath: string; outPath: string; bytes: Uint8Array }> = [];
   const written = new Set<string>();
 
@@ -610,9 +642,12 @@ export function extractBedrockContainerAssetsFromJava(
   for (const [relPath, entry] of javaContainers.entries()) {
     const key = getContainerKey(relPath);
     if (!key) continue;
+    if (key === 'villager' && relPath.endsWith('/villager.png') && sourceJavaFormat !== undefined && sourceJavaFormat < 18) {
+      continue;
+    }
     const spec = CONTAINER_SHEETS[key];
-    const img = decodeImageToRgbaSync(entry.bytes);
-    if (!img || img.width < 176) continue;
+    const img = await decodeImageToRgba(entry.bytes, MAX_CONTAINER_DIMENSION);
+    if (!img || img.width < spec.sheetW) continue;
     decodedByKey.set(key, { sourcePath: entry.sourcePath, img, spec });
   }
 
@@ -653,25 +688,21 @@ export function extractBedrockContainerAssetsFromJava(
     for (const sp of found.spec.sprites) {
       if (!sp.bedrockPath || written.has(sp.bedrockPath)) continue;
       if (compareBedrockVersion(targetBedrockMinEngine, sp.minBedrockVersion ?? [1, 12, 0]) < 0) continue;
-      const cropped = cropRgba(found.img, sp.box, scale);
-      if (!hasNonTransparentPixels(cropped)) continue;
-      const sw = Math.max(1, Math.round(sp.box.w * scale));
-      const sh = Math.max(1, Math.round(sp.box.h * scale));
+      const cropped = cropRgbaBox(found.img, sp.box, scale);
+      if (!hasNonTransparentPixels(cropped.rgba)) continue;
       written.add(sp.bedrockPath);
-      results.push({ sourcePath: found.sourcePath, outPath: sp.bedrockPath, bytes: encodeRgbaToPngSync(sw, sh, cropped) });
+      results.push({ sourcePath: found.sourcePath, outPath: sp.bedrockPath, bytes: encodeRgbaToPngSync(cropped.width, cropped.height, cropped.rgba) });
     }
 
     for (const extra of found.spec.panelBedrockExtras ?? []) {
-      const cropped = cropRgba(found.img, extra.box, scale);
+      const cropped = cropRgbaBox(found.img, extra.box, scale);
       const isInsidePanel =
         extra.box.x >= found.spec.panelBox.x &&
         extra.box.y >= found.spec.panelBox.y &&
         extra.box.x + extra.box.w <= found.spec.panelBox.x + found.spec.panelBox.w &&
         extra.box.y + extra.box.h <= found.spec.panelBox.y + found.spec.panelBox.h;
-      if (!isInsidePanel && !hasNonTransparentPixels(cropped)) continue;
-      const sw = Math.max(1, Math.round(extra.box.w * scale));
-      const sh = Math.max(1, Math.round(extra.box.h * scale));
-      const png = encodeRgbaToPngSync(sw, sh, cropped);
+      if (!isInsidePanel && !hasNonTransparentPixels(cropped.rgba)) continue;
+      const png = encodeRgbaToPngSync(cropped.width, cropped.height, cropped.rgba);
       for (const bp of extra.bedrockPaths) {
         if (written.has(bp)) continue;
         written.add(bp);
@@ -681,25 +712,6 @@ export function extractBedrockContainerAssetsFromJava(
   }
 
   return results;
-}
-
-function alphaBlendPixel(dst: Uint8Array, dIdx: number, sr: number, sg: number, sb: number, sa: number) {
-  if (sa === 0) return;
-  if (sa === 255 || dst[dIdx + 3] === 0) {
-    dst[dIdx] = sr;
-    dst[dIdx + 1] = sg;
-    dst[dIdx + 2] = sb;
-    dst[dIdx + 3] = sa;
-    return;
-  }
-  const srcA = sa / 255;
-  const dstA = dst[dIdx + 3] / 255;
-  const outA = srcA + dstA * (1 - srcA);
-  if (outA <= 0) return;
-  dst[dIdx] = Math.round((sr * srcA + dst[dIdx] * dstA * (1 - srcA)) / outA);
-  dst[dIdx + 1] = Math.round((sg * srcA + dst[dIdx + 1] * dstA * (1 - srcA)) / outA);
-  dst[dIdx + 2] = Math.round((sb * srcA + dst[dIdx + 2] * dstA * (1 - srcA)) / outA);
-  dst[dIdx + 3] = Math.round(outA * 255);
 }
 
 function drawNineSlice(
@@ -750,32 +762,6 @@ function fillSolidRect(dst: Uint8Array, dstW: number, rx: number, ry: number, rw
       dst[idx + 1] = g;
       dst[idx + 2] = b;
       dst[idx + 3] = 255;
-    }
-  }
-}
-
-function blitScaledNearest(
-  dst: Uint8Array,
-  dstW: number,
-  dstH: number,
-  src: DecodedRgbaImage,
-  dx: number,
-  dy: number,
-  dw: number,
-  dh: number
-) {
-  for (let y = 0; y < dh; y++) {
-    const py = dy + y;
-    if (py < 0 || py >= dstH) continue;
-    const sy = Math.min(src.height - 1, Math.floor((y * src.height) / dh));
-    for (let x = 0; x < dw; x++) {
-      const px = dx + x;
-      if (px < 0 || px >= dstW) continue;
-      const sx = Math.min(src.width - 1, Math.floor((x * src.width) / dw));
-      const sIdx = (sy * src.width + sx) * 4;
-      if (src.rgba[sIdx + 3] === 0) continue;
-      const dIdx = (py * dstW + px) * 4;
-      alphaBlendPixel(dst, dIdx, src.rgba[sIdx], src.rgba[sIdx + 1], src.rgba[sIdx + 2], src.rgba[sIdx + 3]);
     }
   }
 }
@@ -883,17 +869,18 @@ const CONTAINER_SYNTH_LAYOUTS: Record<string, { panel: CropBox; slots: CropBox[]
   },
 };
 
-export function synthesizeJavaContainersFromBedrock(
+export async function synthesizeJavaContainersFromBedrock(
   bedrockParts: Map<string, Uint8Array>,
   targetJavaFormat: number
-): Record<string, Uint8Array> {
-  const decodePart = (p: string): DecodedRgbaImage | null => {
-    const b = bedrockParts.get(p);
-    return b ? decodeImageToRgbaSync(b) : null;
-  };
+): Promise<Record<string, Uint8Array>> {
+  const decodedParts = new Map<string, DecodedRgbaImage>();
+  for (const [k, v] of bedrockParts.entries()) {
+    const d = await decodeImageToRgba(v, MAX_CONTAINER_DIMENSION);
+    if (d) decodedParts.set(k, d);
+  }
 
-  const panelImg = decodePart('textures/ui/dialog_background_opaque.png');
-  const cellImg = decodePart('textures/ui/cell_image.png') ?? decodePart('textures/ui/cell_image_normal.png');
+  const panelImg = decodedParts.get('textures/ui/dialog_background_opaque.png') ?? null;
+  const cellImg = decodedParts.get('textures/ui/cell_image.png') ?? decodedParts.get('textures/ui/cell_image_normal.png') ?? null;
   if (!panelImg && !cellImg) {
     return {};
   }
@@ -901,12 +888,6 @@ export function synthesizeJavaContainersFromBedrock(
   const s = panelImg
     ? Math.max(1, Math.min(4, Math.round(panelImg.width / 16)))
     : Math.max(1, Math.min(4, Math.round((cellImg!.width >= 10 ? cellImg!.width / 10 : cellImg!.width / 5))));
-
-  const decodedParts = new Map<string, DecodedRgbaImage>();
-  for (const [k, v] of bedrockParts.entries()) {
-    const d = decodeImageToRgbaSync(v);
-    if (d) decodedParts.set(k, d);
-  }
 
   const out: Record<string, Uint8Array> = {};
   for (const [key, layout] of Object.entries(CONTAINER_SYNTH_LAYOUTS)) {
@@ -932,7 +913,7 @@ export function synthesizeJavaContainersFromBedrock(
     for (const extra of layout.extras ?? []) {
       const exImg = decodedParts.get(extra.bedrock);
       if (exImg) {
-        blitScaledNearest(rgba, w, h, exImg, extra.box.x * s, extra.box.y * s, extra.box.w * s, extra.box.h * s);
+        blitRgbaScaled(rgba, w, h, exImg, extra.box.x * s, extra.box.y * s, extra.box.w * s, extra.box.h * s, true);
       }
     }
 
@@ -941,7 +922,7 @@ export function synthesizeJavaContainersFromBedrock(
         if (!sp.bedrockPath) continue;
         const spImg = decodedParts.get(sp.bedrockPath);
         if (spImg) {
-          blitScaledNearest(rgba, w, h, spImg, sp.box.x * s, sp.box.y * s, sp.box.w * s, sp.box.h * s);
+          blitRgbaScaled(rgba, w, h, spImg, sp.box.x * s, sp.box.y * s, sp.box.w * s, sp.box.h * s, true);
         }
       }
     }

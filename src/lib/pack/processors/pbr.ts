@@ -295,6 +295,42 @@ export function decodeImageToRgbaSync(bytes: Uint8Array): DecodedRgbaImage | nul
   return decodeTgaToRgba(bytes);
 }
 
+export async function decodeImageToRgba(
+  bytes: Uint8Array,
+  maxDim = MAX_PBR_DIMENSION
+): Promise<DecodedRgbaImage | null> {
+  const sync = decodeImageToRgbaSync(bytes);
+  if (sync && sync.width <= maxDim && sync.height <= maxDim) {
+    return sync;
+  }
+
+  if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
+    return null;
+  }
+
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(new Blob([bytes as any], { type: 'image/png' }));
+    if (bitmap.width <= 0 || bitmap.height <= 0 || bitmap.width > maxDim || bitmap.height > maxDim) {
+      return null;
+    }
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0);
+    const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+    return {
+      width: bitmap.width,
+      height: bitmap.height,
+      rgba: new Uint8Array(imgData.data.buffer, imgData.data.byteOffset, imgData.data.byteLength),
+    };
+  } catch {
+    return null;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 /**
  * Converts Bedrock MER / MERS map (`*_mer.png`, `*_mers.png`, or `.tga`)
  * into Java LabPBR 1.3 Specular Map (`*_s.png`).

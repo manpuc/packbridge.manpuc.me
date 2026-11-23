@@ -120,7 +120,7 @@ const tl: Translation = {
 	betaCalloutActive: 'Aktibo',
 	betaCalloutPreview: 'Potensyal na Epekto',
 	betaWarningAudioReencode: 'Magda-download ng ~20MB na FFmpeg library sa unang paggamit at magpapataas sa oras ng conversion at CPU load.',
-	betaWarningModernGuiSprites: 'Inima-map ang mga suportadong Java 1.20.2+ split HUD sprite (textures/gui/sprites/hud/) ⇄ Bedrock textures/ui/ nang hiwalay sa GUI Conversion toggle; nilalaktawan ang mga hindi suportadong sprite.',
+	betaWarningModernGuiSprites: 'Inima-map ang Java 1.20.2+ split HUD at container sprites (textures/gui/sprites/) ⇄ Bedrock textures/ui/ at nagmi-migrate ng Java sheets (< 1.20.2 ⇄ 1.20.2+) nang hiwalay sa GUI Conversion; nilalaktawan ang mga hindi suportadong sprite.',
 	betaWarningGuiConversion: 'Dinamikong pinuputol ang icons.png at widgets.png, na maaaring magpataas ng paggamit ng memory sa mga HD pack. Dahil sa pagkakaiba ng istraktura sa pagitan ng Java at Bedrock UI, maaaring hindi perpektong mag-align ang ilang screen.',
 	betaWarningTgaConversion: 'Dini-decode at kino-convert ang lahat ng TGA na larawan sa PNG, na maaaring magpatagal sa pagproseso para sa mga pack na may maraming TGA file.',
 	betaWarningPbrConversion: 'Kino-convert ang Bedrock RTX/Deferred PBR maps (_mer/_normal) at Java LabPBR shader maps (_s/_n). Maaaring magpatagal sa pagproseso at nangangailangan ng shader mod (Iris/OptiFine) sa Java.',

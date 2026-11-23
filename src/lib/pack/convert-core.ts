@@ -13,7 +13,7 @@ import {
 } from './processors/blocks';
 import { generateItemTexture } from './processors/items';
 import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from './processors/animation';
-import { JAVA_VERSIONS, BEDROCK_VERSIONS, extractPackFormat } from './versions';
+import { JAVA_VERSIONS, BEDROCK_VERSIONS, extractPackFormat, extractMinPackFormat } from './versions';
 import { normalizeLegacyPath, downgradeLegacyPath, migrateJavaPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
 import {
@@ -139,6 +139,7 @@ export async function convertBuffer(
   let packRoot = "";
   let bestRootDepth = Infinity;
   let detectedSourcePackFormat: number | null = null;
+  let detectedSourceMinPackFormat: number | null = null;
   let detectedSourceBedrockMinEngine: BedrockSemver | null = null;
 
   // 1. First look for pack.mcmeta or manifest.json
@@ -176,6 +177,10 @@ export async function convertBuffer(
           if (rawFormat !== null) {
             detectedSourcePackFormat = rawFormat;
           }
+          const minFmt = extractMinPackFormat(data.pack);
+          if (minFmt !== null) {
+            detectedSourceMinPackFormat = minFmt;
+          }
         }
       } catch { }
     }
@@ -212,6 +217,15 @@ export async function convertBuffer(
     : null;
   const sourceBedrockMinEngine: BedrockSemver =
     detectedSourceBedrockMinEngine ?? sourceBedrockVersion?.minEngineVersion ?? targetBedrockVersion.minEngineVersion;
+
+  const hasModernSpritesInSource =
+    direction === 'java-to-java' &&
+    filePaths.some((p) => p.startsWith(packRoot) && p.substring(packRoot.length).startsWith('assets/minecraft/textures/gui/sprites/'));
+  const shouldSplitLegacyJavaGui =
+    direction === 'java-to-java' &&
+    Boolean(options.enableModernGuiSprites) &&
+    targetJavaVersion.packFormat >= 18 &&
+    (sourcePackFormat < 18 || (!hasModernSpritesInSource && (detectedSourceMinPackFormat ?? sourcePackFormat) < 18));
 
   const formatTargetJavaPath = (jPath: string): string => {
     const formatted = targetJavaVersion.packFormat <= 3
@@ -275,17 +289,18 @@ export async function convertBuffer(
   const pendingJavaContainers = new Map<string, { sourcePath: string; bytes: Uint8Array }>();
   const pendingBedrockContainerUi = new Map<string, { sourcePath: string; bytes: Uint8Array; isTga: boolean }>();
   const pendingJavaContainerBases = new Map<string, { sourcePath: string; bytes: Uint8Array; sheetW: number; sheetH: number }>();
-  const pendingJavaContainerSprites = new Map<string, Array<{ bytes: Uint8Array; box: CropBox }>>();
-  const pendingGuiSheetEntries: Record<'icons' | 'widgets' | 'bars', Array<{ bytes: Uint8Array; box: CropBox; isPrimary?: boolean }>> = {
+  const pendingJavaContainerSprites = new Map<string, Array<{ sourcePath: string; bytes: Uint8Array; box: CropBox }>>();
+  const pendingGuiSheetEntries: Record<'icons' | 'widgets' | 'bars', Array<{ sourcePath: string; bytes: Uint8Array; box: CropBox; isPrimary?: boolean }>> = {
     icons: [],
     widgets: [],
     bars: [],
   };
   const pendingGuiSheetBases: Partial<Record<'icons' | 'widgets' | 'bars', Uint8Array>> = {};
+  const pendingBedrockLegacyGuiSheets: Array<{ sourcePath: string; relativePath: string; bytes: Uint8Array }> = [];
   let hasWidgetButtonSprite = false;
   let pendingJavaGrassSide: { sourcePath: string; bytes: Uint8Array } | null = null;
   let pendingJavaGrassSideOverlay: { sourcePath: string; bytes: Uint8Array } | null = null;
-  const fallbackBlockTargets = new Set<string>();
+  const lowPriorityFallbackTargets = new Set<string>();
 
   const writeSlicedOutputs = (sourcePath: string, files: Record<string, Uint8Array>, mcmetas?: Record<string, string>) => {
     for (const [outPath, outData] of Object.entries(files)) {
@@ -610,7 +625,7 @@ export async function convertBuffer(
         if (options.enableModernGuiSprites && targetJavaVersion.packFormat >= 18) {
           const jPaths = getBedrockContainerToModernJavaPaths(relativePath, targetJavaVersion.packFormat);
           if (jPaths.length > 0) {
-            const pngBytes = isTga ? await ensureValidPngBytes(content) : content;
+            const pngBytes = await ensureValidPngBytes(content);
             if (pngBytes) {
               for (const jp of jPaths) {
                 const formattedJp = formatTargetJavaPath(jp);
@@ -622,6 +637,10 @@ export async function convertBuffer(
                 }
               }
               handled = true;
+            } else if (!handled) {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or corrupt UI image' });
+              continue;
             }
           }
         }
@@ -631,10 +650,10 @@ export async function convertBuffer(
       }
 
       if (direction === 'java-to-java' && options.enableModernGuiSprites) {
-        if (sourcePackFormat < 18 && targetJavaVersion.packFormat >= 18 && isJavaContainerSheetPath(relativePath)) {
-          const sliced = sliceJavaContainerSheetForModernJava(relativePath, content, targetJavaVersion.packFormat);
+        if (shouldSplitLegacyJavaGui && isJavaContainerSheetPath(relativePath)) {
+          const sliced = await sliceJavaContainerSheetForModernJava(relativePath, content, targetJavaVersion.packFormat, sourcePackFormat);
           if (sliced) {
-            writeSlicedOutputs(path, sliced.sprites);
+            writeSlicedOutputs(path, sliced.sprites, sliced.mcmetas);
             if (sliced.clippedSheet) {
               const outSheet = formatTargetJavaPath(
                 migrateJavaGuiContainerPath(relativePath, targetJavaVersion.packFormat, targetJavaVersion.id)
@@ -666,7 +685,7 @@ export async function convertBuffer(
             const hit = getJavaContainerModernSpriteTarget(relativePath, targetJavaVersion.packFormat, targetJavaVersion.id);
             if (hit) {
               const arr = pendingJavaContainerSprites.get(hit.sheetPath) ?? [];
-              arr.push({ bytes: content, box: hit.box });
+              arr.push({ sourcePath: path, bytes: content, box: hit.box });
               pendingJavaContainerSprites.set(hit.sheetPath, arr);
               continue;
             }
@@ -677,7 +696,7 @@ export async function convertBuffer(
       // GUI Version & Edition Routing
       if (direction === 'java-to-bedrock' && options.enableModernGuiSprites && relativePath === 'assets/minecraft/textures/gui/sprites/hud/hotbar.png') {
         try {
-          const hotbarParts = await processGuiSpriteSheet(content, HOTBAR_SLICE_MAPPINGS, { baseWidth: 182 });
+          const hotbarParts = await processGuiSpriteSheet(content, HOTBAR_SLICE_MAPPINGS, { baseWidth: 182, baseHeight: 22 });
           writeSlicedOutputs(path, hotbarParts);
         } catch (e) {
           console.warn('Failed to slice Java hotbar.png:', e);
@@ -719,14 +738,15 @@ export async function convertBuffer(
             report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
             continue;
           }
-          pendingGuiSheetEntries[sheetHit.sheet].push({ bytes: content, box: sheetHit.box, isPrimary: sheetHit.isPrimary });
+          pendingGuiSheetEntries[sheetHit.sheet].push({ sourcePath: path, bytes: content, box: sheetHit.box, isPrimary: sheetHit.isPrimary });
           continue;
         }
       }
 
       if (direction === 'java-to-java' && options.enableModernGuiSprites) {
-        if (sourcePackFormat < 18 && targetJavaVersion.packFormat >= 18) {
-          const sheetSpec = getJavaSheetToModernSprites(relativePath, sourcePackFormat, targetJavaVersion.packFormat);
+        if (shouldSplitLegacyJavaGui) {
+          const effectiveSourceFmt = Math.min(sourcePackFormat, detectedSourceMinPackFormat ?? sourcePackFormat);
+          const sheetSpec = getJavaSheetToModernSprites(relativePath, effectiveSourceFmt, targetJavaVersion.packFormat);
           if (sheetSpec) {
             try {
               const sliced = await processGuiSpriteSheet(content, sheetSpec.mappings);
@@ -755,7 +775,7 @@ export async function convertBuffer(
             if (relativePath.startsWith('assets/minecraft/textures/gui/sprites/') && migrateJavaContainerSlotPath(relativePath, targetJavaVersion.packFormat) === relativePath) {
             const hit = getJavaModernSpriteSheetTarget(relativePath, targetJavaVersion.packFormat);
             if (hit) {
-              pendingGuiSheetEntries[hit.sheet].push({ bytes: content, box: hit.box, isPrimary: hit.isPrimary });
+              pendingGuiSheetEntries[hit.sheet].push({ sourcePath: path, bytes: content, box: hit.box, isPrimary: hit.isPrimary });
               if (hit.isButton) hasWidgetButtonSprite = true;
             } else {
               report.skippedCount++;
@@ -807,16 +827,22 @@ export async function convertBuffer(
 
       let targetPath: string | null = null;
       let isModernSpriteHandled = false;
+      let isLowPriorityGuiFallback = false;
       const isJavaModernSpritePath =
         direction === 'java-to-bedrock' && relativePath.startsWith('assets/minecraft/textures/gui/sprites/');
       if (options.enableModernGuiSprites) {
         if (direction === 'java-to-bedrock') {
-          const bGui =
-            getModernJavaToBedrockGuiPath(relativePath, targetBedrockVersion.minEngineVersion) ??
-            getModernJavaContainerToBedrockPath(relativePath, targetBedrockVersion.minEngineVersion);
+          const bGui = getModernJavaToBedrockGuiPath(relativePath, targetBedrockVersion.minEngineVersion);
           if (bGui) {
             targetPath = bGui;
             isModernSpriteHandled = true;
+          } else {
+            const bContainer = getModernJavaContainerToBedrockPath(relativePath, targetBedrockVersion.minEngineVersion);
+            if (bContainer) {
+              targetPath = bContainer.path;
+              isModernSpriteHandled = true;
+              isLowPriorityGuiFallback = bContainer.isFallback;
+            }
           }
         } else if (direction === 'bedrock-to-java') {
           const jGui = targetJavaVersion.packFormat >= 18 ? getBedrockToModernJavaGuiPath(relativePath, targetJavaVersion.packFormat) : null;
@@ -832,7 +858,7 @@ export async function convertBuffer(
                 report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
                 continue;
               }
-              const pngBytes = isTga ? await ensureValidPngBytes(content) : content;
+              const pngBytes = await ensureValidPngBytes(content);
               if (pngBytes) {
                 for (const jp of jContainerPaths) {
                   const formattedJp = formatTargetJavaPath(jp);
@@ -843,8 +869,11 @@ export async function convertBuffer(
                     report.details.push({ filename: path, status: 'converted', outputPath: formattedJp });
                   }
                 }
-                continue;
+              } else {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or corrupt UI image' });
               }
+              continue;
             }
           }
         }
@@ -856,6 +885,23 @@ export async function convertBuffer(
           filename: path,
           status: 'skipped',
           reason: options.enableModernGuiSprites ? 'Unmapped 1.20.2+ GUI sprite' : 'Modern GUI sprites conversion disabled'
+        });
+        continue;
+      }
+
+      if (
+        direction === 'bedrock-to-java' &&
+        !targetPath &&
+        relativePath.startsWith('textures/ui/') &&
+        !isPanoramaPath(relativePath)
+      ) {
+        report.skippedCount++;
+        report.details.push({
+          filename: path,
+          status: 'skipped',
+          reason: options.enableModernGuiSprites
+            ? 'Unmapped or unsupported Bedrock UI texture for target Java version'
+            : 'Modern GUI sprites conversion disabled',
         });
         continue;
       }
@@ -883,7 +929,8 @@ export async function convertBuffer(
         targetPath = formatTargetJavaPath(targetPath);
       }
 
-      if (isLowPriorityBlockFallback && targetPath && targetFiles[targetPath]) {
+      const isLowPriorityFallback = isLowPriorityBlockFallback || isLowPriorityGuiFallback;
+      if (isLowPriorityFallback && targetPath && targetFiles[targetPath]) {
         report.skippedCount++;
         report.details.push({ filename: path, status: 'skipped', reason: 'Primary texture already present' });
         continue;
@@ -1088,18 +1135,13 @@ export async function convertBuffer(
           targetJavaVersion.packFormat >= 18 &&
           (relativePath === 'textures/gui/icons.png' || relativePath === 'textures/gui/gui.png')
         ) {
-          const sheetSpec = getJavaSheetToModernSprites(relativePath, 15, targetJavaVersion.packFormat);
-          if (sheetSpec) {
-            try {
-              const sliced = await processGuiSpriteSheet(content, sheetSpec.mappings);
-              writeSlicedOutputs(path, sliced, sheetSpec.mcmetas);
-            } catch (e) {
-              console.warn('Failed to slice Bedrock GUI spritesheet:', e);
-              report.errorCount++;
-              report.details.push({ filename: path, status: 'error', reason: 'GUI image processing failed' });
-            }
-            continue;
+          if (options.enableModernGuiSprites) {
+            pendingBedrockLegacyGuiSheets.push({ sourcePath: path, relativePath, bytes: content });
+          } else {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'Modern GUI sprites conversion disabled' });
           }
+          continue;
         } else if (
           options.enableGuiConversion &&
           direction === 'bedrock-to-bedrock' &&
@@ -1141,7 +1183,7 @@ export async function convertBuffer(
             }
           } else {
             const pngTarget = targetPath.replace(/\.tga$/i, '.png');
-            if (direction === 'bedrock-to-java' && allTargetTextures.has(pngTarget) && !fallbackBlockTargets.has(pngTarget)) {
+            if (direction === 'bedrock-to-java' && allTargetTextures.has(pngTarget) && !lowPriorityFallbackTargets.has(pngTarget)) {
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
               continue;
@@ -1261,12 +1303,11 @@ export async function convertBuffer(
           allTargetTextures.add(targetPath);
         }
 
-        const replacedFallback =
-          direction === 'bedrock-to-java' && !isLowPriorityBlockFallback && fallbackBlockTargets.has(targetPath);
-        if (isLowPriorityBlockFallback) {
-          fallbackBlockTargets.add(targetPath);
+        const replacedFallback = !isLowPriorityFallback && lowPriorityFallbackTargets.has(targetPath);
+        if (isLowPriorityFallback) {
+          lowPriorityFallbackTargets.add(targetPath);
         } else if (replacedFallback) {
-          fallbackBlockTargets.delete(targetPath);
+          lowPriorityFallbackTargets.delete(targetPath);
         }
 
         targetFiles[targetPath] = [finalBytes, { level: getFileCompressionLevel(targetPath) }];
@@ -1340,17 +1381,33 @@ export async function convertBuffer(
     const endCap = pendingBedrockHotbarParts.get('textures/ui/hotbar_end_cap.png');
     if (endCap) entries.push({ bytes: endCap, box: HOTBAR_SLICE_MAPPINGS['textures/ui/hotbar_end_cap.png'] });
 
-    const stitchedHotbar = composeGuiSpriteSheet(entries, 182, 22);
+    const stitchedHotbar = await composeGuiSpriteSheet(entries, 182, 22);
     if (stitchedHotbar) {
       const outPath = 'assets/minecraft/textures/gui/sprites/hud/hotbar.png';
       targetFiles[outPath] = [stitchedHotbar, { level: getFileCompressionLevel(outPath) }];
       allTargetTextures.add(outPath);
       report.convertedCount++;
       report.details.push({ filename: 'textures/ui/hotbar_*.png', status: 'converted', outputPath: outPath });
+    } else {
+      report.errorCount++;
+      report.details.push({ filename: 'textures/ui/hotbar_*.png', status: 'error', reason: 'Failed to decode Bedrock hotbar textures' });
     }
   }
 
-  const composeLegacyJavaSheet = (
+  for (const sheet of pendingBedrockLegacyGuiSheets) {
+    const sheetSpec = getJavaSheetToModernSprites(sheet.relativePath, 15, targetJavaVersion.packFormat);
+    if (!sheetSpec) continue;
+    try {
+      const sliced = await processGuiSpriteSheet(sheet.bytes, sheetSpec.mappings, { skipTransparent: true });
+      writeSlicedOutputs(sheet.sourcePath, sliced, sheetSpec.mcmetas);
+    } catch (e) {
+      console.warn('Failed to slice Bedrock GUI spritesheet:', e);
+      report.errorCount++;
+      report.details.push({ filename: sheet.sourcePath, status: 'error', reason: 'GUI image processing failed' });
+    }
+  }
+
+  const composeLegacyJavaSheet = async (
     sheet: 'icons' | 'widgets' | 'bars',
     outPath: string,
     allowWithoutBase: boolean
@@ -1359,15 +1416,18 @@ export async function convertBuffer(
     const entries = pendingGuiSheetEntries[sheet];
     if (!base && entries.length === 0) return;
     if (!base && !allowWithoutBase) {
-      report.skippedCount++;
-      report.details.push({
-        filename: 'textures/ui/hotbar_*.png',
-        status: 'skipped',
-        reason: 'Skipped widgets.png synthesis (menu button textures missing)',
-      });
+      for (const e of entries) {
+        report.skippedCount++;
+        report.details.push({
+          filename: e.sourcePath,
+          status: 'skipped',
+          reason: 'Skipped widgets.png synthesis (menu button textures missing)',
+        });
+      }
       return;
     }
-    const composed = composeGuiSpriteSheet(entries, 256, 256, base);
+    // shortcut: cannot bundle copyrighted vanilla Java GUI sheets, so base-less synthesis leaves unprovided sprites transparent; require bundled/user base if full vanilla fallback is ever needed.
+    const composed = await composeGuiSpriteSheet(entries, 256, 256, base);
     if (composed) {
       targetFiles[outPath] = [composed, { level: getFileCompressionLevel(outPath) }];
       allTargetTextures.add(outPath);
@@ -1376,18 +1436,25 @@ export async function convertBuffer(
         filename: base ? outPath : `gui_${sheet}_sprites`,
         status: 'converted',
         outputPath: outPath,
-        ...(!base ? { reason: 'Synthesized legacy GUI sheet from split sprites' } : {}),
+        ...(!base ? { reason: 'Synthesized partial legacy GUI sheet without base (unprovided sprites are transparent)' } : {}),
+      });
+    } else {
+      report.errorCount++;
+      report.details.push({
+        filename: base ? outPath : `gui_${sheet}_sprites`,
+        status: 'error',
+        reason: 'Failed to decode GUI sheet or sprites',
       });
     }
   };
 
-  composeLegacyJavaSheet('icons', 'assets/minecraft/textures/gui/icons.png', true);
-  composeLegacyJavaSheet('widgets', 'assets/minecraft/textures/gui/widgets.png', hasWidgetButtonSprite);
-  composeLegacyJavaSheet('bars', 'assets/minecraft/textures/gui/bars.png', true);
+  await composeLegacyJavaSheet('icons', 'assets/minecraft/textures/gui/icons.png', true);
+  await composeLegacyJavaSheet('widgets', 'assets/minecraft/textures/gui/widgets.png', hasWidgetButtonSprite);
+  await composeLegacyJavaSheet('bars', 'assets/minecraft/textures/gui/bars.png', true);
 
   // Container GUI Composition Phase
   if (direction === 'java-to-bedrock' && pendingJavaContainers.size > 0) {
-    const extracted = extractBedrockContainerAssetsFromJava(pendingJavaContainers, targetBedrockVersion.minEngineVersion);
+    const extracted = await extractBedrockContainerAssetsFromJava(pendingJavaContainers, targetBedrockVersion.minEngineVersion, sourcePackFormat);
     const sourcesWithOutputs = new Set<string>();
     for (const item of extracted) {
       sourcesWithOutputs.add(item.sourcePath);
@@ -1417,7 +1484,7 @@ export async function convertBuffer(
       const pngBytes = entry.isTga ? await ensureValidPngBytes(entry.bytes) : entry.bytes;
       if (pngBytes) partBytes.set(normPath, pngBytes);
     }
-    const synthesized = synthesizeJavaContainersFromBedrock(partBytes, targetJavaVersion.packFormat);
+    const synthesized = await synthesizeJavaContainersFromBedrock(partBytes, targetJavaVersion.packFormat);
     for (const [outPath, outBytes] of Object.entries(synthesized)) {
       if (isSafePath(outPath) && isValidJavaAssetPath(outPath) && !targetFiles[outPath]) {
         targetFiles[outPath] = [outBytes, { level: getFileCompressionLevel(outPath) }];
@@ -1426,10 +1493,10 @@ export async function convertBuffer(
         report.details.push({ filename: 'textures/ui/dialog_background_opaque.png', status: 'converted', outputPath: outPath });
       }
     }
-  } else if (direction === 'java-to-java' && pendingJavaContainerBases.size > 0) {
+  } else if (direction === 'java-to-java' && (pendingJavaContainerBases.size > 0 || pendingJavaContainerSprites.size > 0)) {
     for (const [sheetPath, base] of pendingJavaContainerBases.entries()) {
       const entries = pendingJavaContainerSprites.get(sheetPath) ?? [];
-      const composed = composeGuiSpriteSheet(entries, base.sheetW, base.sheetH, base.bytes);
+      const composed = await composeGuiSpriteSheet(entries, base.sheetW, base.sheetH, base.bytes);
       const outBytes = composed ?? base.bytes;
       if (isSafePath(sheetPath) && isValidJavaAssetPath(sheetPath) && !targetFiles[sheetPath]) {
         targetFiles[sheetPath] = [outBytes, { level: getFileCompressionLevel(sheetPath) }];
@@ -1440,10 +1507,10 @@ export async function convertBuffer(
     }
     for (const [sheetPath, entries] of pendingJavaContainerSprites.entries()) {
       if (pendingJavaContainerBases.has(sheetPath)) continue;
-      for (let i = 0; i < entries.length; i++) {
+      for (const entry of entries) {
         report.skippedCount++;
         report.details.push({
-          filename: sheetPath,
+          filename: entry.sourcePath,
           status: 'skipped',
           reason: 'Skipped container sheet synthesis (base container PNG missing)',
         });
