@@ -32,7 +32,7 @@ import {
   type BedrockSemver,
   type CropBox
 } from './processors/gui';
-import { convertTgaToPng, ensureValidPngBytes, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
+import { convertTgaToPng, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
 import { reencodeOgg } from './processors/audio';
 import { javaToBedrockGeometry, bedrockToJavaModel, isBedrockModelPath, isJavaModelPath } from './processors/models';
 import {
@@ -301,6 +301,7 @@ export async function convertBuffer(
   let pendingJavaGrassSide: { sourcePath: string; bytes: Uint8Array } | null = null;
   let pendingJavaGrassSideOverlay: { sourcePath: string; bytes: Uint8Array } | null = null;
   const lowPriorityFallbackTargets = new Set<string>();
+  const tgaWrittenTargets = new Set<string>();
 
   const writeSlicedOutputs = (sourcePath: string, files: Record<string, Uint8Array>, mcmetas?: Record<string, string>) => {
     for (const [outPath, outData] of Object.entries(files)) {
@@ -425,7 +426,13 @@ export async function convertBuffer(
           }
           if (pbrInfo.type === 'texture_set') {
             const parsedTs = parseTextureSetJson(strFromU8(content));
-            const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
+            if (relativePath.toLowerCase().endsWith('.tga') && !options.enableTgaConversion) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
+            continue;
+          }
+
+          const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
             report.skippedCount++;
             report.details.push({
               filename: path,
@@ -434,6 +441,12 @@ export async function convertBuffer(
                 ? 'PBR texture_set metadata applied to _s/_n maps'
                 : 'Unmapped PBR texture_set reference'
             });
+            continue;
+          }
+
+          if (relativePath.toLowerCase().endsWith('.tga') && !options.enableTgaConversion) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
             continue;
           }
 
@@ -463,7 +476,7 @@ export async function convertBuffer(
             continue;
           } else if (pbrInfo.type === 'normal' || pbrInfo.type === 'heightmap') {
             const normPath = formattedBase.replace(/\.png$/i, '_n.png');
-            const rawNormBytes = await ensureValidPngBytes(content);
+            const rawNormBytes = convertTgaToPng(content);
             const normBytes = rawNormBytes ? normalizeJavaBlockAtlasPng(normPath, rawNormBytes, decodePngToRgbaSync) : null;
             if (normBytes && isSafePath(normPath) && isValidJavaAssetPath(normPath)) {
               targetFiles[normPath] = [normBytes, { level: getFileCompressionLevel(normPath) }];
@@ -625,14 +638,17 @@ export async function convertBuffer(
         if (options.enableModernGuiSprites && targetJavaVersion.packFormat >= 18) {
           const jPaths = getBedrockContainerToModernJavaPaths(relativePath, targetJavaVersion.packFormat);
           if (jPaths.length > 0) {
-            const pngBytes = await ensureValidPngBytes(content);
+            const pngBytes = convertTgaToPng(content);
             if (pngBytes) {
               for (const jp of jPaths) {
                 const formattedJp = formatTargetJavaPath(jp);
-                if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && !targetFiles[formattedJp]) {
+                const replacingTga = !isTga && tgaWrittenTargets.has(formattedJp);
+                if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && (!targetFiles[formattedJp] || replacingTga)) {
                   targetFiles[formattedJp] = [pngBytes, { level: getFileCompressionLevel(formattedJp) }];
                   allTargetTextures.add(formattedJp);
-                  report.convertedCount++;
+                  if (isTga) tgaWrittenTargets.add(formattedJp);
+                  else tgaWrittenTargets.delete(formattedJp);
+                  if (!replacingTga) report.convertedCount++;
                   report.details.push({ filename: path, status: 'converted', outputPath: formattedJp });
                 }
               }
@@ -858,16 +874,25 @@ export async function convertBuffer(
                 report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
                 continue;
               }
-              const pngBytes = await ensureValidPngBytes(content);
+              const pngBytes = convertTgaToPng(content);
               if (pngBytes) {
+                let wroteAny = false;
                 for (const jp of jContainerPaths) {
                   const formattedJp = formatTargetJavaPath(jp);
-                  if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && !targetFiles[formattedJp]) {
+                  const replacingTga = !isTga && tgaWrittenTargets.has(formattedJp);
+                  if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && (!targetFiles[formattedJp] || replacingTga)) {
                     targetFiles[formattedJp] = [pngBytes, { level: getFileCompressionLevel(formattedJp) }];
                     allTargetTextures.add(formattedJp);
-                    report.convertedCount++;
+                    if (isTga) tgaWrittenTargets.add(formattedJp);
+                    else tgaWrittenTargets.delete(formattedJp);
+                    if (!replacingTga) report.convertedCount++;
                     report.details.push({ filename: path, status: 'converted', outputPath: formattedJp });
+                    wroteAny = true;
                   }
+                }
+                if (isTga && !wroteAny) {
+                  report.skippedCount++;
+                  report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
                 }
               } else {
                 report.skippedCount++;
@@ -1174,26 +1199,26 @@ export async function convertBuffer(
           }
         }
 
-        if (relativePath.toLowerCase().endsWith('.tga')) {
+        if (direction === 'bedrock-to-java' && relativePath.toLowerCase().endsWith('.tga')) {
           if (!options.enableTgaConversion) {
-            if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+            if (targetPath.endsWith('.png')) {
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
               continue;
             }
           } else {
             const pngTarget = targetPath.replace(/\.tga$/i, '.png');
-            if (direction === 'bedrock-to-java' && allTargetTextures.has(pngTarget) && !lowPriorityFallbackTargets.has(pngTarget)) {
+            if (allTargetTextures.has(pngTarget) && !lowPriorityFallbackTargets.has(pngTarget)) {
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
               continue;
             }
             try {
-              const pngBytes = await convertTgaToPng(finalBytes);
+              const pngBytes = convertTgaToPng(finalBytes);
               if (pngBytes) {
                 finalBytes = pngBytes;
                 targetPath = pngTarget;
-              } else if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+              } else if (targetPath.endsWith('.png')) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed' });
                 continue;
@@ -1202,7 +1227,7 @@ export async function convertBuffer(
               }
             } catch (e) {
               console.warn("TGA to PNG conversion failed:", e);
-              if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
+              if (targetPath.endsWith('.png')) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion failed' });
                 continue;
@@ -1244,7 +1269,7 @@ export async function convertBuffer(
         }
 
         if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
-          const rawValidPng = await ensureValidPngBytes(finalBytes);
+          const rawValidPng = convertTgaToPng(finalBytes);
           const validPng = rawValidPng ? normalizeJavaBlockAtlasPng(targetPath, rawValidPng, decodePngToRgbaSync) : null;
           if (!validPng) {
             report.skippedCount++;
@@ -1303,15 +1328,22 @@ export async function convertBuffer(
           allTargetTextures.add(targetPath);
         }
 
+        const isTgaSource = relativePath.toLowerCase().endsWith('.tga');
+        const alreadyWritten = Boolean(targetFiles[targetPath]);
         const replacedFallback = !isLowPriorityFallback && lowPriorityFallbackTargets.has(targetPath);
         if (isLowPriorityFallback) {
           lowPriorityFallbackTargets.add(targetPath);
         } else if (replacedFallback) {
           lowPriorityFallbackTargets.delete(targetPath);
         }
+        if (direction === 'bedrock-to-java' && isTgaSource) {
+          tgaWrittenTargets.add(targetPath);
+        } else {
+          tgaWrittenTargets.delete(targetPath);
+        }
 
         targetFiles[targetPath] = [finalBytes, { level: getFileCompressionLevel(targetPath) }];
-        if (!replacedFallback) {
+        if (!alreadyWritten) {
           report.convertedCount++;
         }
         report.details.push({
@@ -1334,7 +1366,7 @@ export async function convertBuffer(
           report.details.push({ filename: path, status: 'converted', outputPath: 'pack.mcmeta' });
         } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png' || relativePath.endsWith('/pack_icon.png') || relativePath.endsWith('/pack.png')) {
           const iconName = direction === 'java-to-bedrock' ? 'pack_icon.png' : 'pack.png';
-          const iconBytes = await ensureValidPngBytes(content);
+          const iconBytes = convertTgaToPng(content);
           if (iconBytes) {
             targetFiles[iconName] = [iconBytes, { level: getFileCompressionLevel(iconName) }];
             report.convertedCount++;
@@ -1481,8 +1513,7 @@ export async function convertBuffer(
   } else if (direction === 'bedrock-to-java' && options.enableGuiConversion && pendingBedrockContainerUi.size > 0) {
     const partBytes = new Map<string, Uint8Array>();
     for (const [normPath, entry] of pendingBedrockContainerUi.entries()) {
-      const pngBytes = entry.isTga ? await ensureValidPngBytes(entry.bytes) : entry.bytes;
-      if (pngBytes) partBytes.set(normPath, pngBytes);
+      partBytes.set(normPath, entry.bytes);
     }
     const synthesized = await synthesizeJavaContainersFromBedrock(partBytes, targetJavaVersion.packFormat);
     for (const [outPath, outBytes] of Object.entries(synthesized)) {

@@ -1,6 +1,6 @@
 /**
- * Converts Truevision TGA (TARGA) images (uncompressed & RLE, 24/32-bit true-color, 8-bit grayscale)
- * into PNG binary data using OffscreenCanvas or standard zlib/PNG encoding fallback.
+ * Converts Truevision TGA (TARGA) images (uncompressed & RLE, 15/16/24/32-bit true-color,
+ * 8/16-bit grayscale, color-mapped) into PNG binary data using fflate zlib encoding.
  */
 
 import { zlibSync } from 'fflate';
@@ -25,6 +25,9 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   if (![1, 2, 3, 9, 10, 11].includes(imageType)) {
     return null;
   }
+  if (colorMapType !== 0 && colorMapType !== 1) {
+    return null;
+  }
 
   const colorMapOrigin = data[3] | (data[4] << 8);
   const colorMapLength = data[5] | (data[6] << 8);
@@ -39,24 +42,36 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
     return null;
   }
 
-  const bytesPerPixel = pixelDepth >> 3;
-  if (![1, 2, 3, 4].includes(bytesPerPixel)) {
+  const isColorMapped = imageType === 1 || imageType === 9;
+  const isTrueColor = imageType === 2 || imageType === 10;
+  const isGrayscale = imageType === 3 || imageType === 11;
+
+  const validDepth =
+    (isColorMapped && (pixelDepth === 8 || pixelDepth === 16)) ||
+    (isTrueColor && [15, 16, 24, 32].includes(pixelDepth)) ||
+    (isGrayscale && (pixelDepth === 8 || pixelDepth === 16));
+  if (!validDepth) {
     return null;
   }
 
+  const bytesPerPixel = Math.ceil(pixelDepth / 8);
+  const alphaBits = descriptor & 0x0f;
   const isTopOrigin = (descriptor & 0x20) !== 0;
   const isRightOrigin = (descriptor & 0x10) !== 0;
 
   let offset = 18 + idLength;
   if (offset >= data.length) return null;
 
-  const isColorMapped = imageType === 1 || imageType === 9;
   let palette: Uint8Array | null = null;
   if (colorMapType === 1) {
+    if (colorMapLength > 0 && ![15, 16, 24, 32].includes(colorMapDepth)) {
+      return null;
+    }
     const cmapBytesPerEntry = Math.ceil(colorMapDepth / 8);
     const cmapTotalBytes = colorMapLength * cmapBytesPerEntry;
     if (offset + cmapTotalBytes > data.length) return null;
     if (isColorMapped) {
+      if (colorMapLength === 0) return null;
       palette = new Uint8Array((colorMapOrigin + colorMapLength) * 4);
       for (let i = 0; i < colorMapLength; i++) {
         const entryOffset = offset + i * cmapBytesPerEntry;
@@ -73,10 +88,13 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
           palette[dst + 3] = 255;
         } else if (cmapBytesPerEntry === 2) {
           const v = data[entryOffset] | (data[entryOffset + 1] << 8);
-          palette[dst] = ((v >> 10) & 0x1f) * 255 / 31;
-          palette[dst + 1] = ((v >> 5) & 0x1f) * 255 / 31;
-          palette[dst + 2] = (v & 0x1f) * 255 / 31;
-          palette[dst + 3] = 255;
+          const r5 = (v >> 10) & 0x1f;
+          const g5 = (v >> 5) & 0x1f;
+          const b5 = v & 0x1f;
+          palette[dst] = (r5 << 3) | (r5 >> 2);
+          palette[dst + 1] = (g5 << 3) | (g5 >> 2);
+          palette[dst + 2] = (b5 << 3) | (b5 >> 2);
+          palette[dst + 3] = colorMapDepth === 16 && alphaBits === 1 ? ((v & 0x8000) ? 255 : 0) : 255;
         }
       }
     }
@@ -86,46 +104,60 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   }
 
   const totalPixels = width * height;
-  const rawPixels = new Uint8Array(totalPixels * 4);
+  const rgba = new Uint8Array(totalPixels * 4);
   const isRle = imageType === 9 || imageType === 10 || imageType === 11;
+  const directOrder = isTopOrigin && !isRightOrigin;
 
   let pixelIndex = 0;
 
   const readPixelInto = (srcOffset: number, dstPixelIdx: number) => {
-    const dst = dstPixelIdx * 4;
+    let dst: number;
+    if (directOrder) {
+      dst = dstPixelIdx * 4;
+    } else {
+      const rawY = (dstPixelIdx / width) | 0;
+      const rawX = dstPixelIdx - rawY * width;
+      const dstY = isTopOrigin ? rawY : height - 1 - rawY;
+      const dstX = isRightOrigin ? width - 1 - rawX : rawX;
+      dst = (dstY * width + dstX) * 4;
+    }
+
     if (isColorMapped && palette) {
       const idx = bytesPerPixel === 2
         ? (data[srcOffset] | (data[srcOffset + 1] << 8))
         : data[srcOffset];
       const pIdx = idx * 4;
       if (pIdx + 3 < palette.length) {
-        rawPixels[dst] = palette[pIdx];
-        rawPixels[dst + 1] = palette[pIdx + 1];
-        rawPixels[dst + 2] = palette[pIdx + 2];
-        rawPixels[dst + 3] = palette[pIdx + 3];
+        rgba[dst] = palette[pIdx];
+        rgba[dst + 1] = palette[pIdx + 1];
+        rgba[dst + 2] = palette[pIdx + 2];
+        rgba[dst + 3] = palette[pIdx + 3];
       }
-    } else if (bytesPerPixel === 4) {
-      rawPixels[dst] = data[srcOffset + 2];     // R
-      rawPixels[dst + 1] = data[srcOffset + 1]; // G
-      rawPixels[dst + 2] = data[srcOffset];     // B
-      rawPixels[dst + 3] = data[srcOffset + 3]; // A
-    } else if (bytesPerPixel === 3) {
-      rawPixels[dst] = data[srcOffset + 2];     // R
-      rawPixels[dst + 1] = data[srcOffset + 1]; // G
-      rawPixels[dst + 2] = data[srcOffset];     // B
-      rawPixels[dst + 3] = 255;
-    } else if (bytesPerPixel === 2) {
-      const v = data[srcOffset] | (data[srcOffset + 1] << 8);
-      rawPixels[dst] = ((v >> 10) & 0x1f) * 255 / 31;
-      rawPixels[dst + 1] = ((v >> 5) & 0x1f) * 255 / 31;
-      rawPixels[dst + 2] = (v & 0x1f) * 255 / 31;
-      rawPixels[dst + 3] = 255;
-    } else {
+    } else if (isGrayscale) {
       const v = data[srcOffset];
-      rawPixels[dst] = v;
-      rawPixels[dst + 1] = v;
-      rawPixels[dst + 2] = v;
-      rawPixels[dst + 3] = 255;
+      rgba[dst] = v;
+      rgba[dst + 1] = v;
+      rgba[dst + 2] = v;
+      rgba[dst + 3] = bytesPerPixel === 2 ? data[srcOffset + 1] : 255;
+    } else if (bytesPerPixel === 4) {
+      rgba[dst] = data[srcOffset + 2];     // R
+      rgba[dst + 1] = data[srcOffset + 1]; // G
+      rgba[dst + 2] = data[srcOffset];     // B
+      rgba[dst + 3] = data[srcOffset + 3]; // A
+    } else if (bytesPerPixel === 3) {
+      rgba[dst] = data[srcOffset + 2];     // R
+      rgba[dst + 1] = data[srcOffset + 1]; // G
+      rgba[dst + 2] = data[srcOffset];     // B
+      rgba[dst + 3] = 255;
+    } else {
+      const v = data[srcOffset] | (data[srcOffset + 1] << 8);
+      const r5 = (v >> 10) & 0x1f;
+      const g5 = (v >> 5) & 0x1f;
+      const b5 = v & 0x1f;
+      rgba[dst] = (r5 << 3) | (r5 >> 2);
+      rgba[dst + 1] = (g5 << 3) | (g5 >> 2);
+      rgba[dst + 2] = (b5 << 3) | (b5 >> 2);
+      rgba[dst + 3] = pixelDepth === 16 && alphaBits === 1 ? ((v & 0x8000) ? 255 : 0) : 255;
     }
   };
 
@@ -159,26 +191,7 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
     if (pixelIndex < totalPixels) return null;
   }
 
-  // Flip vertically/horizontally if needed (TGA default is bottom-left origin)
-  if (isTopOrigin && !isRightOrigin) {
-    return { width, height, rgba: rawPixels };
-  }
-
-  const finalRgba = new Uint8Array(totalPixels * 4);
-  for (let y = 0; y < height; y++) {
-    const srcY = isTopOrigin ? y : height - 1 - y;
-    for (let x = 0; x < width; x++) {
-      const srcX = isRightOrigin ? width - 1 - x : x;
-      const srcIdx = (srcY * width + srcX) * 4;
-      const dstIdx = (y * width + x) * 4;
-      finalRgba[dstIdx] = rawPixels[srcIdx];
-      finalRgba[dstIdx + 1] = rawPixels[srcIdx + 1];
-      finalRgba[dstIdx + 2] = rawPixels[srcIdx + 2];
-      finalRgba[dstIdx + 3] = rawPixels[srcIdx + 3];
-    }
-  }
-
-  return { width, height, rgba: finalRgba };
+  return { width, height, rgba };
 }
 
 // CRC32 table for pure-JS PNG encoder fallback
@@ -303,7 +316,7 @@ export function getPngDimensions(bytes: Uint8Array): { width: number; height: nu
   return { width, height };
 }
 
-export async function convertTgaToPng(tgaBytes: Uint8Array): Promise<Uint8Array | null> {
+export function convertTgaToPng(tgaBytes: Uint8Array): Uint8Array | null {
   // Check if file is already a valid PNG (some packs name PNG files with .tga extension)
   if (isValidPngHeader(tgaBytes)) {
     return tgaBytes;
@@ -313,11 +326,6 @@ export async function convertTgaToPng(tgaBytes: Uint8Array): Promise<Uint8Array 
   if (!decoded) return null;
 
   return encodeRgbaToPngSync(decoded.width, decoded.height, decoded.rgba);
-}
-
-export async function ensureValidPngBytes(bytes: Uint8Array): Promise<Uint8Array | null> {
-  if (isValidPngHeader(bytes)) return bytes;
-  return convertTgaToPng(bytes);
 }
 
 /**

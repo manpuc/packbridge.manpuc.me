@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { convertBuffer } from './convert-core';
 import { convertPackWithWorker } from './worker-client';
-import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, getPngDimensions } from './processors/tga';
-import { decodePngToRgbaSync } from './processors/pbr';
+import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, convertTgaToPng, getPngDimensions } from './processors/tga';
+import { decodePngToRgbaSync, convertBedrockMerToLabPbrSpec } from './processors/pbr';
 import { processGuiSpriteSheet } from './processors/gui';
 import { zlibSync } from 'fflate';
 import { extractPackFormat, extractMinPackFormat, detectEditionAutoSwitch } from './versions';
@@ -1150,8 +1150,8 @@ describe('convertBuffer', () => {
         v.setUint32(8 + data.length, (c ^ 0xffffffff) >>> 0, false);
         return out;
       };
-      const ihdr = new Uint8Array([0,0,0,2, 0,0,0,1, 8, 2, 0, 0, 0]);
-      const trns = new Uint8Array([0,255, 0,0, 0,255]);
+      const ihdr = new Uint8Array([0, 0, 0, 2, 0, 0, 0, 1, 8, 2, 0, 0, 0]);
+      const trns = new Uint8Array([0, 255, 0, 0, 0, 255]);
       const idat = zlibSync(new Uint8Array([0, 255, 0, 255, 10, 20, 30]));
       const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
       const c1 = chunk('IHDR', ihdr), c2 = chunk('tRNS', trns), c3 = chunk('IDAT', idat), c4 = chunk('IEND', new Uint8Array(0));
@@ -1393,5 +1393,219 @@ describe('convertBuffer', () => {
       totalW += d.width;
     }
     expect(totalW).toBe(256);
+  });
+
+  it('decodes RLE, 15/16-bit, grayscale+alpha, color-mapped, and right-origin TGAs and rejects invalid headers', () => {
+    const makeTgaHeader = (
+      opts: {
+        idLength?: number;
+        colorMapType?: number;
+        imageType: number;
+        colorMapOrigin?: number;
+        colorMapLength?: number;
+        colorMapDepth?: number;
+        width: number;
+        height: number;
+        pixelDepth: number;
+        descriptor?: number;
+      },
+      payload: number[]
+    ) => {
+      const idLen = opts.idLength ?? 0;
+      const out = new Uint8Array(18 + idLen + payload.length);
+      out[0] = idLen;
+      out[1] = opts.colorMapType ?? 0;
+      out[2] = opts.imageType;
+      const cmOrigin = opts.colorMapOrigin ?? 0;
+      const cmLen = opts.colorMapLength ?? 0;
+      out[3] = cmOrigin & 0xff; out[4] = (cmOrigin >> 8) & 0xff;
+      out[5] = cmLen & 0xff; out[6] = (cmLen >> 8) & 0xff;
+      out[7] = opts.colorMapDepth ?? 0;
+      out[12] = opts.width & 0xff; out[13] = (opts.width >> 8) & 0xff;
+      out[14] = opts.height & 0xff; out[15] = (opts.height >> 8) & 0xff;
+      out[16] = opts.pixelDepth;
+      out[17] = opts.descriptor ?? 0;
+      out.set(payload, 18 + idLen);
+      return out;
+    };
+
+    // 1. RLE 32-bit bottom-left origin + idLength=4 (RLE packet + raw packet)
+    const rle32 = makeTgaHeader(
+      { idLength: 4, imageType: 10, width: 2, height: 2, pixelDepth: 32, descriptor: 0x08 },
+      [
+        0x81, 10, 20, 30, 255, // bottom row: 2x RGBA(30,20,10,255)
+        0x01, 40, 50, 60, 128, 70, 80, 90, 255, // top row: RGBA(60,50,40,128), RGBA(90,80,70,255)
+      ]
+    );
+    const pngFromRle = convertTgaToPng(rle32);
+    expect(pngFromRle).not.toBeNull();
+    const decodedRle = decodePngToRgbaSync(pngFromRle!)!;
+    expect(Array.from(decodedRle.rgba)).toEqual([
+      60, 50, 40, 128, 90, 80, 70, 255,
+      30, 20, 10, 255, 30, 20, 10, 255,
+    ]);
+
+    // 2. 24-bit top-right origin (descriptor=0x30)
+    const tga24Right = makeTgaHeader(
+      { imageType: 2, width: 2, height: 1, pixelDepth: 24, descriptor: 0x30 },
+      [1, 2, 3, 4, 5, 6]
+    );
+    expect(Array.from(decodeTgaToRgba(tga24Right)!.rgba)).toEqual([6, 5, 4, 255, 3, 2, 1, 255]);
+
+    // 3. 15-bit true-color (pixelDepth=15) & 16-bit ARGB1555 (alphaBits=1) vs XRGB1555 (alphaBits=0)
+    const pxRedTransparent = 0x7c00; // A=0, R=31, G=0, B=0
+    const pxGreenOpaque = 0x83e0; // A=1, R=0, G=31, B=0
+    const tga15 = makeTgaHeader(
+      { imageType: 2, width: 2, height: 1, pixelDepth: 15, descriptor: 0x20 },
+      [pxRedTransparent & 0xff, pxRedTransparent >> 8, pxGreenOpaque & 0xff, pxGreenOpaque >> 8]
+    );
+    expect(Array.from(decodeTgaToRgba(tga15)!.rgba)).toEqual([255, 0, 0, 255, 0, 255, 0, 255]);
+
+    const tga16Argb = makeTgaHeader(
+      { imageType: 2, width: 2, height: 1, pixelDepth: 16, descriptor: 0x21 },
+      [pxRedTransparent & 0xff, pxRedTransparent >> 8, pxGreenOpaque & 0xff, pxGreenOpaque >> 8]
+    );
+    expect(Array.from(decodeTgaToRgba(tga16Argb)!.rgba)).toEqual([255, 0, 0, 0, 0, 255, 0, 255]);
+
+    const tga16Xrgb = makeTgaHeader(
+      { imageType: 2, width: 1, height: 1, pixelDepth: 16, descriptor: 0x20 },
+      [pxRedTransparent & 0xff, pxRedTransparent >> 8]
+    );
+    expect(Array.from(decodeTgaToRgba(tga16Xrgb)!.rgba)).toEqual([255, 0, 0, 255]);
+
+    // 4. 8-bit grayscale & 16-bit grayscale+alpha (uncompressed Type 3 & RLE Type 11)
+    const gray8 = makeTgaHeader(
+      { imageType: 3, width: 2, height: 1, pixelDepth: 8, descriptor: 0x20 },
+      [10, 200]
+    );
+    expect(Array.from(decodeTgaToRgba(gray8)!.rgba)).toEqual([10, 10, 10, 255, 200, 200, 200, 255]);
+
+    const gray16Rle = makeTgaHeader(
+      { imageType: 11, width: 2, height: 1, pixelDepth: 16, descriptor: 0x20 },
+      [0x01, 255, 0, 128, 255]
+    );
+    expect(Array.from(decodeTgaToRgba(gray16Rle)!.rgba)).toEqual([255, 255, 255, 0, 128, 128, 128, 255]);
+
+    // 5. Color-mapped Type 1 & RLE Type 9 with colorMapOrigin > 0 and 16-bit ARGB1555 palette
+    const cmapRle = makeTgaHeader(
+      {
+        colorMapType: 1,
+        imageType: 9,
+        colorMapOrigin: 1,
+        colorMapLength: 2,
+        colorMapDepth: 16,
+        width: 2,
+        height: 1,
+        pixelDepth: 8,
+        descriptor: 0x21,
+      },
+      [
+        pxRedTransparent & 0xff, pxRedTransparent >> 8,
+        pxGreenOpaque & 0xff, pxGreenOpaque >> 8,
+        0x01, 1, 2,
+      ]
+    );
+    expect(Array.from(decodeTgaToRgba(cmapRle)!.rgba)).toEqual([255, 0, 0, 0, 0, 255, 0, 255]);
+
+    // 6. Invalid / truncated TGAs return null
+    expect(decodeTgaToRgba(rle32.subarray(0, rle32.length - 1))).toBeNull();
+    expect(decodeTgaToRgba(makeTgaHeader({ colorMapType: 2, imageType: 2, width: 1, height: 1, pixelDepth: 32 }, [0, 0, 0, 255]))).toBeNull();
+    expect(decodeTgaToRgba(makeTgaHeader({ imageType: 2, width: 1, height: 1, pixelDepth: 12 }, [0, 0]))).toBeNull();
+    expect(decodeTgaToRgba(makeTgaHeader({ imageType: 3, width: 1, height: 1, pixelDepth: 24 }, [0, 0, 0]))).toBeNull();
+    expect(decodeTgaToRgba(makeTgaHeader({ colorMapType: 1, imageType: 1, colorMapLength: 1, colorMapDepth: 8, width: 1, height: 1, pixelDepth: 8 }, [0, 0]))).toBeNull();
+  });
+
+  it('keeps TGAs in bedrock-to-bedrock, respects enableTgaConversion for PBR, supports .TGA, and deduplicates PNG/TGA pairs', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'TgaTest', description: 'T', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+    const tga16 = encodeRgbaToTgaSync(16, 16, new Uint8Array(16 * 16 * 4).fill(90));
+    const png16 = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(210));
+
+    // 1. bedrock-to-bedrock preserves .tga without converting to .png
+    const b2b = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/grass_side.tga': tga16,
+        'textures/blocks/leaves_oak.tga': tga16,
+      })),
+      'b2b-tga.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-bedrock', enableTgaConversion: true }
+    );
+    const b2bOut = unzipSync(b2b.buffer);
+    expect(b2bOut['textures/blocks/grass_side.tga']).toBeDefined();
+    expect(b2bOut['textures/blocks/grass_side.png']).toBeUndefined();
+    expect(b2bOut['textures/blocks/leaves_oak.tga']).toBeDefined();
+    expect(b2bOut['textures/blocks/leaves_oak.png']).toBeUndefined();
+
+    // 2. bedrock-to-java with enableTgaConversion: false skips PBR .tga, and interlaced MER PNG returns null
+    const b2jNoTga = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/stone.png': png16,
+        'textures/blocks/stone_mer.tga': tga16,
+        'textures/blocks/stone_normal.tga': tga16,
+      })),
+      'b2j-notga.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', enableTgaConversion: false, enablePbrConversion: true }
+    );
+    const noTgaOut = unzipSync(b2jNoTga.buffer);
+    expect(noTgaOut['assets/minecraft/textures/block/stone_s.png']).toBeUndefined();
+    expect(noTgaOut['assets/minecraft/textures/block/stone_n.png']).toBeUndefined();
+
+    const interlacedPng = new Uint8Array(png16);
+    interlacedPng[28] = 1; // IHDR interlace = Adam7
+    expect(await convertBedrockMerToLabPbrSpec(interlacedPng)).toBeNull();
+
+    // 3. Uppercase .TGA in block, pack_icon, and panorama
+    const b2jUpper = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/custom_ore.TGA': tga16,
+        'pack_icon.TGA': tga16,
+        'textures/ui/panorama_0.TGA': tga16,
+      })),
+      'b2j-upper.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', enableTgaConversion: true }
+    );
+    const upperOut = unzipSync(b2jUpper.buffer);
+    expect(getPngDimensions(upperOut['assets/minecraft/textures/block/custom_ore.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(upperOut['pack.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(upperOut['assets/minecraft/textures/gui/title/background/panorama_0.png'])).toEqual({ width: 16, height: 16 });
+
+    // 4. PNG wins over TGA regardless of ZIP order, without double-counting convertedCount
+    const flameTga = encodeRgbaToTgaSync(14, 14, new Uint8Array(14 * 14 * 4).fill(50));
+    const flamePng = encodeRgbaToPngSync(14, 14, new Uint8Array(14 * 14 * 4).fill(220));
+    for (const pair of [
+      {
+        'manifest.json': manifest,
+        'textures/blocks/custom_pair.tga': tga16,
+        'textures/blocks/custom_pair.png': png16,
+        'textures/ui/flame_full_image.tga': flameTga,
+        'textures/ui/flame_full_image.png': flamePng,
+      },
+      {
+        'manifest.json': manifest,
+        'textures/blocks/custom_pair.png': png16,
+        'textures/blocks/custom_pair.tga': tga16,
+        'textures/ui/flame_full_image.png': flamePng,
+        'textures/ui/flame_full_image.tga': flameTga,
+      },
+    ]) {
+      const res = await convertBuffer(toArrayBuffer(zipSync(pair)), 'pair.mcpack', {
+        ...baseOptions,
+        direction: 'bedrock-to-java',
+        javaVersionId: '1.21.4',
+        enableTgaConversion: true,
+        enableModernGuiSprites: true,
+      });
+      const out = unzipSync(res.buffer);
+      expect(decodePngToRgbaSync(out['assets/minecraft/textures/block/custom_pair.png'])!.rgba[0]).toBe(210);
+      expect(decodePngToRgbaSync(out['assets/minecraft/textures/gui/sprites/container/furnace/lit_progress.png'])!.rgba[0]).toBe(220);
+      // manifest -> pack.mcmeta (1) + custom_pair (1) + furnace/blast_furnace/smoker lit_progress (3) = 5
+      expect(res.report.convertedCount).toBe(5);
+    }
   });
 });

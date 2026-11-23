@@ -5,7 +5,7 @@
  */
 
 import { inflateSync, unzlibSync } from 'fflate';
-import { decodeTgaToRgba, encodeRgbaToPngSync, convertTgaToPng } from './tga';
+import { decodeTgaToRgba, encodeRgbaToPngSync } from './tga';
 
 export interface DecodedRgbaImage {
   width: number;
@@ -351,9 +351,9 @@ export async function convertBedrockMerToLabPbrSpec(
   merBytes: Uint8Array,
   hasSubsurface = false
 ): Promise<Uint8Array | null> {
-  const decoded = decodeImageToRgbaSync(merBytes);
+  const decoded = await decodeImageToRgba(merBytes);
   if (!decoded) {
-    return await convertTgaToPng(merBytes);
+    return null;
   }
 
   const { width, height, rgba } = decoded;

@@ -23,7 +23,7 @@ const SKYBOX_TILE_SPEC: readonly SkyboxTileSpec[] = [
 export function isPanoramaPath(path: string): boolean {
   return (
     /^assets\/minecraft\/textures\/gui\/title\/background\/(panorama_[0-5]|panorama_overlay)\.png$/.test(path) ||
-    /^textures\/ui\/(panorama_[0-5]|panorama_overlay)\.(png|tga)$/.test(path)
+    /^textures\/ui\/(panorama_[0-5]|panorama_overlay)\.(png|tga)$/i.test(path)
   );
 }
 
