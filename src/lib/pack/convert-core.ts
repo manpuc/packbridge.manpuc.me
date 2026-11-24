@@ -10,7 +10,7 @@ import {
   serializeLangEntries,
   serializeJsonLangEntries,
 } from './processors/lang';
-import { javaToBedrockSounds, bedrockToJavaSounds } from './processors/sounds';
+import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds } from './processors/sounds';
 import {
   generateTerrainTexture,
   getBedrockLeafSpec,
@@ -1047,6 +1047,11 @@ export async function convertBuffer(
 
       if ((direction === 'bedrock-to-java' || direction === 'java-to-java') && targetPath) {
         targetPath = formatTargetJavaPath(targetPath);
+        if (direction === 'bedrock-to-java' && targetPath.toLowerCase().startsWith('assets/minecraft/sounds/')) {
+          targetPath = targetPath.toLowerCase();
+        }
+      } else if (direction === 'java-to-bedrock' && targetPath && /^sounds\/.+\.(ogg|fsb|wav|mp3)$/i.test(targetPath)) {
+        targetPath = targetPath.toLowerCase();
       }
 
       const isLowPriorityFallback = isLowPriorityBlockFallback || isLowPriorityGuiFallback;
@@ -1064,12 +1069,12 @@ export async function convertBuffer(
 
       let needsProcessing = false;
       if (targetPath) {
-        if (direction === 'bedrock-to-java' && relativePath.endsWith('.fsb')) {
+        if (direction === 'bedrock-to-java' && /\.fsb$/i.test(relativePath)) {
           needsProcessing = true;
         } else if (direction === 'java-to-bedrock') {
           if (
             (/\.(json|lang)$/i.test(relativePath) && targetPath.startsWith('texts/')) ||
-            relativePath.endsWith('sounds.json') ||
+            /^assets\/minecraft\/sounds\.json$/i.test(relativePath) ||
             relativePath === 'assets/minecraft/texts/splashes.txt' ||
             relativePath.endsWith('.png.mcmeta')
           ) {
@@ -1080,13 +1085,19 @@ export async function convertBuffer(
             needsProcessing = true;
           } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
             needsProcessing = true;
-          } else if (relativePath === 'sounds/sound_definitions.json') {
+          } else if (/^sounds\/sound_definitions\.json$/i.test(relativePath)) {
             needsProcessing = true;
           } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
             needsProcessing = true;
           }
         } else if (direction === 'java-to-java') {
           if (/^assets\/(minecraft|realms)\/lang\/(?!deprecated\.json$)([^/]+)\.(json|lang)$/i.test(relativePath)) {
+            needsProcessing = true;
+          } else if (
+            /^assets\/minecraft\/sounds\.json$/i.test(relativePath) &&
+            ((sourcePackFormat === 1) !== (targetJavaVersion.packFormat === 1) ||
+              (sourcePackFormat <= 3) !== (targetJavaVersion.packFormat <= 3))
+          ) {
             needsProcessing = true;
           }
         }
@@ -1137,13 +1148,22 @@ export async function convertBuffer(
               report.convertedCount++;
               report.details.push({ filename: path, status: 'converted', outputPath: normalizedTarget });
               continue;
-            } else if (relativePath.endsWith('sounds.json')) {
+            } else if (/^assets\/minecraft\/sounds\.json$/i.test(relativePath)) {
               if (!options.enableSoundConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
                 continue;
               }
-              finalBytes = strToU8(javaToBedrockSounds(strFromU8(content)));
+              const converted = javaToBedrockSounds(strFromU8(content), {
+                sourcePackFormat,
+                targetBedrockMinEngine: targetBedrockVersion.minEngineVersion,
+              });
+              if (converted === null) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid sounds.json format' });
+                continue;
+              }
+              finalBytes = strToU8(converted);
               targetPath = 'sounds/sound_definitions.json';
             } else if (relativePath === 'assets/minecraft/texts/splashes.txt') {
               const lines = strFromU8(content).split(/\r?\n/).filter(l => l.trim().length > 0);
@@ -1177,12 +1197,12 @@ export async function convertBuffer(
               continue;
             }
           } else if (direction === 'bedrock-to-java') {
-            if (relativePath.endsWith('.fsb')) {
+            if (/\.fsb$/i.test(relativePath)) {
               const extracted = await extractFsb5(content);
               if (extracted) {
                 finalBytes = extracted;
-                if (targetPath.endsWith('.fsb')) {
-                  targetPath = targetPath.replace(/\.fsb$/, '.ogg');
+                if (/\.fsb$/i.test(targetPath)) {
+                  targetPath = targetPath.replace(/\.fsb$/i, '.ogg');
                 }
               } else {
                 report.skippedCount++;
@@ -1243,13 +1263,21 @@ export async function convertBuffer(
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
               continue;
-            } else if (relativePath === 'sounds/sound_definitions.json') {
+            } else if (/^sounds\/sound_definitions\.json$/i.test(relativePath)) {
               if (!options.enableSoundConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
                 continue;
               }
-              finalBytes = strToU8(bedrockToJavaSounds(strFromU8(content)));
+              const converted = bedrockToJavaSounds(strFromU8(content), {
+                targetPackFormat: targetJavaVersion.packFormat,
+              });
+              if (converted === null) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid sound_definitions.json format' });
+                continue;
+              }
+              finalBytes = strToU8(converted);
               targetPath = 'assets/minecraft/sounds.json';
             } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
               try {
@@ -1296,6 +1324,20 @@ export async function convertBuffer(
                   finalBytes = strToU8(serializeJsonLangEntries(mapLangEntries(parsed, 'bedrock-to-java')));
                 }
               }
+            } else if (/^assets\/minecraft\/sounds\.json$/i.test(relativePath)) {
+              if (!options.enableSoundConversion) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
+                continue;
+              }
+              const migrated = migrateJavaSounds(strFromU8(content), sourcePackFormat, targetJavaVersion.packFormat);
+              if (migrated === null) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid sounds.json format' });
+                continue;
+              }
+              finalBytes = strToU8(migrated);
+              targetPath = 'assets/minecraft/sounds.json';
             }
           }
         }
@@ -1360,7 +1402,7 @@ export async function convertBuffer(
           }
         }
 
-        if (options.enableAudioReencode && targetPath.endsWith('.ogg')) {
+        if (options.enableAudioReencode && /\.ogg$/i.test(targetPath)) {
           try {
             const reencoded = await reencodeOgg(finalBytes);
             if (reencoded) {

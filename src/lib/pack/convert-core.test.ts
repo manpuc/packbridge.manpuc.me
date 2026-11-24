@@ -1989,4 +1989,369 @@ describe('convertBuffer', () => {
     )).buffer);
     expect(strFromU8(j21To18['assets/minecraft/lang/en_US.lang'])).toContain('item.apple.name=Java Apple');
   });
+
+  it('converts sound definitions accurately across Java, Bedrock, and legacy versions', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'SoundTest', description: 'S', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+    const ogg = new Uint8Array([0x4f, 0x67, 0x67, 0x53]);
+
+    // 1. Java -> Bedrock: routes sounds.json, strips minecraft:/./ext/Java-only fields, expands type:event, infers categories, handles collisions & Bedrock <1.14
+    const j2b = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'SoundsJ2B' } })),
+        'assets/minecraft/sounds/extra_sounds.json': strToU8('{"keep":true}'),
+        'assets/minecraft/sounds.json': strToU8('\uFEFF' + JSON.stringify({
+          'block.anvil.destroy': { sounds: ['dig/anvil_fake'] },
+          'block.stone.break': {
+            category: 'master',
+            sounds: [
+              'minecraft:./dig\\stone1.ogg',
+              'othermod:custom/ignore',
+              '../escape',
+              { name: 'minecraft:dig/stone2', volume: 0.8, pitch: 1.1, weight: 2, stream: false, preload: true, attenuation_distance: 48 },
+            ],
+          },
+          'ui.button.click': {
+            sounds: [{ name: 'minecraft:random/click', type: 'sound' }],
+          },
+          'music.game': {
+            sounds: [{ name: 'music/game/calm1', stream: true }],
+          },
+          'music_disc.cat': {
+            sounds: ['records/cat'],
+          },
+          'weather.rain': {
+            sounds: ['ambient/weather/rain1'],
+          },
+          'ambient.cave': {
+            sounds: ['ambient/cave/cave1'],
+          },
+          'entity.zombie.ambient': {
+            sounds: ['mob/zombie/say1'],
+          },
+          'entity.player.hurt': {
+            sounds: ['damage/hit1'],
+          },
+          'item.bucket.fill': {
+            sounds: ['liquid/fill1'],
+          },
+          'item.honey_bottle.drink': {
+            sounds: ['item/honey/drink1'],
+          },
+          'custom.event_ref': {
+            sounds: [{ name: 'minecraft:entity.player.hurt', type: 'event', volume: 0.5, pitch: 1.5 }],
+          },
+          'custom.cycle_a': {
+            sounds: [{ name: 'custom.cycle_b', type: 'event' }],
+          },
+          'custom.cycle_b': {
+            sounds: [{ name: 'custom.cycle_a', type: 'event' }],
+          },
+          'custom.external_ref': {
+            sounds: [{ name: 'missing.event', type: 'event' }],
+          },
+          'custom.empty': {
+            sounds: [],
+          },
+        })),
+      })),
+      'sounds-j2b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.21.50', enableSoundConversion: true }
+    );
+    const bOut = unzipSync(j2b.buffer);
+    expect(bOut['sounds/extra_sounds.json']).toBeDefined();
+    expect(strFromU8(bOut['sounds/extra_sounds.json'])).toBe('{"keep":true}');
+    const bDefs = JSON.parse(strFromU8(bOut['sounds/sound_definitions.json']));
+    expect(bDefs.format_version).toBe('1.14.0');
+    const sd = bDefs.sound_definitions;
+
+    // Primary block.stone.break wins dig.stone over block.anvil.destroy
+    expect(sd['dig.stone'].category).toBe('block');
+    expect(sd['dig.stone'].max_distance).toBe(48);
+    expect(sd['dig.stone'].sounds).toEqual([
+      'sounds/dig/stone1',
+      { name: 'sounds/dig/stone2', volume: 0.8, pitch: 1.1, weight: 2, stream: false },
+    ]);
+    expect(sd['random.click'].category).toBe('ui');
+    expect(sd['music.game'].category).toBe('music');
+    expect(sd['record.cat'].category).toBe('record');
+    expect(sd['ambient.weather.rain'].category).toBe('weather');
+    expect(sd['ambient.cave'].category).toBe('ambient');
+    expect(sd['mob.zombie.say'].category).toBe('hostile');
+    expect(sd['game.player.hurt'].category).toBe('player');
+    expect(sd['bucket.fill_water'].category).toBe('bucket');
+    expect(sd['random.drink_honey'].category).toBe('bottle');
+    expect(sd['custom.event_ref'].sounds).toEqual([{ name: 'sounds/damage/hit1', volume: 0.5, pitch: 1.5 }]);
+    expect(sd['custom.cycle_a']).toBeUndefined();
+    expect(sd['custom.external_ref']).toBeUndefined();
+    expect(sd['custom.empty']).toBeUndefined();
+
+    // Bedrock < 1.14.0 emits flat root format; Java 1.8 & 1.12 event names upgrade
+    const j18ToB112 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
+        'assets/minecraft/sounds.json': strToU8(JSON.stringify({
+          'records.cat': { category: 'record', sounds: ['records/cat'] },
+          'gui.button.press': { category: 'master', sounds: ['random/click'] },
+        })),
+      })),
+      'sounds-1.8-b112.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.12.0', enableSoundConversion: true }
+    )).buffer);
+    const flatSd = JSON.parse(strFromU8(j18ToB112['sounds/sound_definitions.json']));
+    expect(flatSd.format_version).toBeUndefined();
+    expect(flatSd['record.cat'].category).toBe('record');
+    expect(flatSd['random.click'].category).toBe('ui');
+
+    // Invalid sounds.json & disabled sound conversion
+    const badJ2B = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Bad' } })),
+        'assets/minecraft/sounds.json': strToU8('{invalid json'),
+      })),
+      'bad-sounds.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: true }
+    );
+    expect(unzipSync(badJ2B.buffer)['sounds/sound_definitions.json']).toBeUndefined();
+    expect(badJ2B.report.details.some(d => d.reason === 'Invalid sounds.json format')).toBe(true);
+
+    // 2. Bedrock -> Java: BOM, JSONC comments/trailing commas, replace:true, no load_on_low_memory->stream bug, canonical reverse mappings, Java 1.8/1.12
+    const bedrockSoundDefs = '\uFEFF{\n' +
+      '  "format_version": "1.14.0",\n' +
+      '  "sound_definitions": {\n' +
+      '    // Comment with // inside\n' +
+      '    "dig.stone": { "category": "block", "max_distance": 64, "sounds": ["sounds/dig/stone1.ogg", "../evil"] },\n' +
+      '    "dig.grass": { "category": "block", "sounds": ["sounds/dig/grass1"] },\n' +
+      '    "random.click": { "category": "ui", "sounds": ["sounds/random/click"] },\n' +
+      '    "random.orb": { "category": "player", "sounds": ["sounds/random/orb"] },\n' +
+      '    "random.explode": { "category": "block", "sounds": ["sounds/random/explode1"] },\n' +
+      '    "game.player.hurt": { "category": "player", "sounds": ["sounds/damage/hit1"] },\n' +
+      '    "mob.zombie.say": { "category": "hostile", "sounds": ["sounds/mob/zombie/say1"] },\n' +
+      '    "note.harp": { "category": "block", "sounds": ["sounds/note/harp"] },\n' +
+      '    "record.cat": { "category": "record", "sounds": [{ "name": "sounds/music/game/records/cat", "stream": true, "load_on_low_memory": false, "volume": [0.8, 1.2], "weight": 2 }] },\n' +
+      '    "custom.lowmem": { "category": "neutral", "sounds": [{ "name": "sounds/custom/a", "load_on_low_memory": true }], },\n' +
+      '  }\n' +
+      '}\n';
+
+    const b2jModern = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'sounds/Sound_Definitions.json': strToU8(bedrockSoundDefs),
+        'sounds/Mob/Custom.OGG': ogg,
+      })),
+      'sounds-b2j.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableSoundConversion: true }
+    )).buffer);
+    expect(b2jModern['assets/minecraft/sounds/mob/custom.ogg']).toBeDefined();
+    const jSounds = JSON.parse(strFromU8(b2jModern['assets/minecraft/sounds.json']));
+    expect(jSounds['block.stone.break']).toEqual({
+      replace: true,
+      sounds: [{ name: 'dig/stone1', attenuation_distance: 64 }],
+    });
+    expect(jSounds['block.grass.break'].replace).toBe(true);
+    expect(jSounds['ui.button.click'].replace).toBe(true);
+    expect(jSounds['entity.experience_orb.pickup'].replace).toBe(true);
+    expect(jSounds['entity.generic.explode'].replace).toBe(true);
+    expect(jSounds['entity.player.hurt'].replace).toBe(true);
+    expect(jSounds['entity.zombie.ambient'].replace).toBe(true);
+    expect(jSounds['entity.parrot.imitate.drowned']).toBeUndefined();
+    expect(jSounds['block.note_block.harp'].replace).toBe(true);
+    expect(jSounds['music_disc.cat'].sounds[0]).toEqual({
+      name: 'music/game/records/cat',
+      volume: 1,
+      weight: 2,
+      stream: true,
+    });
+    expect(jSounds['custom.lowmem'].sounds[0].stream).toBeUndefined();
+
+    // Bedrock -> Java 1.8 & Java 1.12
+    const b2j18 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'sounds/sound_definitions.json': strToU8(bedrockSoundDefs) })),
+      'sounds-b2j-1.8.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+    )).buffer);
+    const j18Sounds = JSON.parse(strFromU8(b2j18['assets/minecraft/sounds.json']));
+    expect(j18Sounds['dig.stone'].category).toBe('block');
+    expect(j18Sounds['records.cat'].category).toBe('record');
+    expect(j18Sounds['random.click'].category).toBe('master');
+
+    const b2j112 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'sounds/sound_definitions.json': strToU8(bedrockSoundDefs) })),
+      'sounds-b2j-1.12.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.12.2', enableSoundConversion: true }
+    )).buffer);
+    const j112Sounds = JSON.parse(strFromU8(b2j112['assets/minecraft/sounds.json']));
+    expect(j112Sounds['record.cat']).toBeDefined();
+    expect(j112Sounds['block.note.harp']).toBeDefined();
+
+    // 3. Java -> Java round-trip: 1.8 -> 1.12 -> 1.21 -> 1.8
+    const j18To112 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
+        'assets/minecraft/sounds.json': strToU8(JSON.stringify({
+          'records.cat': { category: 'record', sounds: ['records/cat'] },
+          'dig.stone': { category: 'block', sounds: ['dig/stone1'] },
+          'custom.ref': { category: 'neutral', sounds: [{ name: 'records.cat', type: 'event' }] },
+        })),
+      })),
+      'j-1.8.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2', enableSoundConversion: true }
+    )).buffer);
+    const s112 = JSON.parse(strFromU8(j18To112['assets/minecraft/sounds.json']));
+    expect(s112['record.cat']).toBeDefined();
+    expect(s112['record.cat'].category).toBeUndefined();
+    expect(s112['block.stone.break']).toBeDefined();
+    expect(s112['custom.ref'].sounds[0].name).toBe('record.cat');
+
+    const j112To121 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 3, description: '1.12' } })),
+        'assets/minecraft/sounds.json': j18To112['assets/minecraft/sounds.json'],
+      })),
+      'j-1.12.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableSoundConversion: true }
+    )).buffer);
+    const s121 = JSON.parse(strFromU8(j112To121['assets/minecraft/sounds.json']));
+    expect(s121['music_disc.cat']).toBeDefined();
+    expect(s121['custom.ref'].sounds[0].name).toBe('music_disc.cat');
+
+    const j121To18 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: '1.21' } })),
+        'assets/minecraft/sounds.json': j112To121['assets/minecraft/sounds.json'],
+      })),
+      'j-1.21.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+    )).buffer);
+    const sBack18 = JSON.parse(strFromU8(j121To18['assets/minecraft/sounds.json']));
+    expect(sBack18['records.cat'].category).toBe('record');
+    expect(sBack18['dig.stone'].category).toBe('block');
+    expect(sBack18['custom.ref'].sounds[0].name).toBe('records.cat');
+
+    // 4. Audit follow-up: uppercase keys/refs, hostile/bottle/block categories, audio lowercasing, unclosed /*, pre-1.14 flat B2J, Infinity weight, disabled flag, 1.21->1.8 collision/minecraft:/ui.button.click
+    const j2bExtra = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Extra' } })),
+        'assets/minecraft/sounds/Mob/Say1.OGG': ogg,
+        'assets/minecraft/sounds.json': strToU8(JSON.stringify({
+          'Block.Stone.Break': { sounds: ['dig/stone_win'] },
+          'block.anvil.destroy': { sounds: ['dig/anvil_lose'] },
+          'MINECRAFT:Custom.Base': { sounds: ['custom/base1'] },
+          'custom.ref_upper': { sounds: [{ name: 'custom.base', type: 'event' }] },
+          'entity.enderman.ambient': { sounds: ['mob/enderman/idle1'] },
+          'entity.spider.ambient': { sounds: ['mob/spider/say1'] },
+          'entity.piglin.ambient': { sounds: ['mob/piglin/idle1'] },
+          'entity.experience_bottle.throw': { sounds: ['random/bow'] },
+          'entity.generic.explode': { sounds: ['random/explode1'] },
+        })),
+      })),
+      'extra-j2b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: true }
+    );
+    const extraOut = unzipSync(j2bExtra.buffer);
+    expect(extraOut['sounds/mob/say1.ogg']).toBeDefined();
+    const extraSd = JSON.parse(strFromU8(extraOut['sounds/sound_definitions.json'])).sound_definitions;
+    expect(extraSd['dig.stone'].sounds).toEqual(['sounds/dig/stone_win']);
+    expect(extraSd['custom.ref_upper'].sounds).toEqual(['sounds/custom/base1']);
+    expect(extraSd['mob.endermen.idle'].category).toBe('hostile');
+    expect(extraSd['mob.spider.say'].category).toBe('hostile');
+    expect(extraSd['mob.piglin.ambient'].category).toBe('hostile');
+    expect(extraSd['random.bow'].category).toBe('player');
+    expect(extraSd['random.explode'].category).toBe('block');
+
+    const unclosedComment = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Unclosed' } })),
+        'assets/minecraft/sounds.json': strToU8('{"a":{"sounds":["a"]}} /* unclosed'),
+      })),
+      'unclosed.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: true }
+    );
+    expect(unclosedComment.report.details.some(d => d.reason === 'Invalid sounds.json format')).toBe(true);
+
+    const disabledJ2B = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Off' } })),
+        'assets/minecraft/sounds.json': strToU8('{"ui.button.click":{"sounds":["random/click"]}}'),
+      })),
+      'off-j2b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: false }
+    );
+    expect(disabledJ2B.report.details.some(d => d.reason === 'Sound conversion disabled')).toBe(true);
+
+    const flatB2J = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'sounds/Mob/Custom.OGG': ogg,
+        'sounds/sound_definitions.json': strToU8(JSON.stringify({
+          'mob.horse.donkey.idle': { category: 'neutral', sounds: ['sounds/mob/horse/donkey/idle1'] },
+          'mob.zombie.wood': { category: 'hostile', sounds: ['sounds/mob/zombie/wood1'] },
+          'mob.blaze.breathe': { category: 'hostile', sounds: [{ name: 'sounds/mob/blaze/breathe1', weight: Infinity }] },
+        })),
+      })),
+      'flat-b2j-1.8.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+    )).buffer);
+    expect(flatB2J['assets/minecraft/sounds/mob/custom.ogg']).toBeDefined();
+    const flatB2JModern = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'sounds/sound_definitions.json': strToU8(JSON.stringify({
+          'mob.horse.donkey.idle': { category: 'neutral', sounds: ['sounds/mob/horse/donkey/idle1'] },
+          'mob.zombie.wood': { category: 'hostile', sounds: ['sounds/mob/zombie/wood1'] },
+          'mob.blaze.breathe': { category: 'hostile', sounds: [{ name: 'sounds/mob/blaze/breathe1', weight: Infinity }] },
+        })),
+      })),
+      'flat-b2j-modern.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableSoundConversion: true }
+    )).buffer);
+    const flatModernJson = JSON.parse(strFromU8(flatB2JModern['assets/minecraft/sounds.json']));
+    expect(flatModernJson['entity.donkey.ambient']).toBeDefined();
+    expect(flatModernJson['entity.zombie.attack_wooden_door']).toBeDefined();
+    expect(flatModernJson['entity.blaze.ambient'].sounds[0]).toEqual({ name: 'mob/blaze/breathe1' });
+
+    const badB2J = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'sounds/sound_definitions.json': strToU8('{"format_version":"1.14.0","sound_definitions":[]}'),
+      })),
+      'bad-b2j.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', enableSoundConversion: true }
+    );
+    expect(badB2J.report.details.some(d => d.reason === 'Invalid sound_definitions.json format')).toBe(true);
+
+    const j2jDown18 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: '1.21' } })),
+        'assets/minecraft/sounds.json': strToU8(JSON.stringify({
+          'block.stone.break': { sounds: ['minecraft:dig/stone_win'] },
+          'block.metal.break': { sounds: ['minecraft:dig/metal_lose'] },
+          'ui.button.click': { sounds: ['minecraft:random/click'] },
+          'entity.zombified_piglin.ambient': { sounds: ['minecraft:mob/zpiglin/say1'] },
+        })),
+      })),
+      'down-1.8.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+    )).buffer);
+    const sDown18 = JSON.parse(strFromU8(j2jDown18['assets/minecraft/sounds.json']));
+    expect(sDown18['dig.stone'].sounds).toEqual(['dig/stone_win']);
+    expect(sDown18['gui.button.press'].category).toBe('master');
+    expect(sDown18['gui.button.press'].sounds).toEqual(['random/click']);
+
+    const j2jDown112 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: '1.21' } })),
+        'assets/minecraft/sounds.json': strToU8(JSON.stringify({
+          'entity.zombified_piglin.ambient': { sounds: ['minecraft:mob/zpiglin/say1'] },
+        })),
+      })),
+      'down-1.12.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2', enableSoundConversion: true }
+    )).buffer);
+    const sDown112 = JSON.parse(strFromU8(j2jDown112['assets/minecraft/sounds.json']));
+    expect(sDown112['entity.zombie_pig.ambient'].sounds).toEqual(['mob/zpiglin/say1']);
+  });
 });

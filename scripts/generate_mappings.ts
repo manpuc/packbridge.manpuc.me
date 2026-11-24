@@ -12,10 +12,136 @@ async function fetchJson(url: string) {
   return await res.json();
 }
 
+const AUTHORITATIVE_SOUND_J2B_OVERRIDES: Record<string, string> = {
+  'block.grass.break': 'dig.grass',
+};
+
+const AUTHORITATIVE_SOUND_B2J_OVERRIDES: Record<string, string> = {
+  'dig.grass': 'block.grass.break',
+  'hit.grass': 'block.grass.hit',
+  'random.click': 'ui.button.click',
+  'random.orb': 'entity.experience_orb.pickup',
+  'random.bow': 'entity.arrow.shoot',
+  'random.bowhit': 'entity.arrow.hit',
+  'random.explode': 'entity.generic.explode',
+  'random.pop': 'entity.item.pickup',
+  'random.swim': 'entity.player.swim',
+  'random.splash': 'entity.player.splash',
+  'random.fuse': 'entity.tnt.primed',
+  'random.door_open': 'block.wooden_door.open',
+  'random.door_close': 'block.wooden_door.close',
+  'damage.fallbig': 'entity.player.big_fall',
+  'damage.fallsmall': 'entity.player.small_fall',
+  'mob.zombie.wood': 'entity.zombie.attack_wooden_door',
+  'mob.blaze.breathe': 'entity.blaze.ambient',
+};
+
+function pickCanonicalJavaSoundEvent(bedrockEvent: string, candidates: string[]): string {
+  if (candidates.includes(bedrockEvent)) return bedrockEvent;
+
+  const bParts = bedrockEvent.split('.');
+  const bFirst = bParts[0] || '';
+  const bLast = bParts[bParts.length - 1] || '';
+
+  let bSubject = '';
+  if (bParts[0] === 'mob' && bParts[1] === 'horse' && bParts[2] === 'donkey') {
+    bSubject = 'donkey';
+  } else if (bParts[0] === 'mob' && bParts[1] === 'horse' && (bParts[2] === 'skeleton' || bParts[2] === 'zombie')) {
+    bSubject = `${bParts[2]}_horse`;
+  } else if (bParts[0] === 'step' && bParts[1] === 'web') {
+    bSubject = 'cobweb';
+  } else if (bParts.length >= 2) {
+    bSubject = bParts[1];
+  }
+
+  let best = candidates[0];
+  let bestScore = -Infinity;
+
+  for (const j of candidates) {
+    let score = 0;
+    const jParts = j.split('.');
+    const jFirst = jParts[0] || '';
+    const jLast = jParts[jParts.length - 1] || '';
+
+    if (j.startsWith('entity.parrot.imitate.')) score -= 100;
+    if (j.startsWith('entity.villager.work_')) score -= 80;
+    if (j.includes('illusioner') && !bedrockEvent.includes('illusioner')) score -= 25;
+    if (j.includes('.baby_') && !bedrockEvent.includes('baby_')) score -= 20;
+    if (j.includes('cat_royal') && !bedrockEvent.includes('royal')) score -= 15;
+    if (j.includes('screaming') && !bedrockEvent.includes('screaming')) score -= 15;
+
+    for (const mod of ['_far', '_land', '_water', '_small', '.underwater', '.complete', '.enchanted']) {
+      if (j.includes(mod) && !bedrockEvent.includes(mod.replace(/^\./, ''))) score -= 10;
+    }
+
+    if ((bFirst === 'step' || bLast === 'step') && jLast === 'step') score += 50;
+    else if ((bFirst === 'dig' || bFirst === 'break' || bLast === 'break') && jLast === 'break') score += 50;
+    else if (bFirst === 'hit' && jLast === 'hit') score += 50;
+    else if ((bFirst === 'place' || bLast === 'place') && jLast === 'place') score += 50;
+    else if ((bFirst === 'fall' || bLast === 'fall') && jLast === 'fall') score += 50;
+    else if ((bFirst.startsWith('open') || bLast === 'open') && jLast === 'open') score += 50;
+    else if ((bFirst.startsWith('close') || bLast === 'close') && jLast === 'close') score += 50;
+    else if ((bFirst === 'mob' || bFirst === 'game') && (bLast === 'hurt' || bLast === 'hit') && jLast === 'hurt') score += 50;
+    else if ((bLast === 'death' || bLast === 'die') && jLast === 'death') score += 50;
+    else if ((bLast === 'say' || bLast === 'idle' || bLast === 'ambient') && jLast === 'ambient') score += 50;
+    else if (bLast === 'scream' && jLast === 'scream') score += 50;
+    else if (bLast === 'yes' && jLast === 'yes') score += 50;
+    else if (bLast === 'shear' && jLast === 'shear') score += 50;
+
+    if (bSubject) {
+      if (jParts.includes(bSubject)) {
+        score += 40;
+      } else {
+        const bNorm = bSubject.replace(/_/g, '');
+        if (jParts.some(p => p.replace(/_/g, '') === bNorm || p === `${bSubject}_block`)) {
+          score += 20;
+        }
+      }
+    }
+
+    if (
+      ['block', 'dig', 'step', 'hit', 'place', 'fall', 'break', 'open', 'close', 'open_door', 'close_door', 'open_trapdoor'].includes(bFirst) &&
+      jFirst === 'block'
+    ) {
+      score += 10;
+    } else if (['mob', 'game', 'entity'].includes(bFirst) && jFirst === 'entity') {
+      score += 10;
+    } else if (['item', 'bucket', 'bottle', 'armor', 'brush', 'bundle', 'crossbow', 'sign', 'horn'].includes(bFirst) && jFirst === 'item') {
+      score += 10;
+    }
+
+    if (score > bestScore || (score === bestScore && (j.length < best.length || (j.length === best.length && j < best)))) {
+      bestScore = score;
+      best = j;
+    }
+  }
+
+  return best;
+}
+
+function buildSoundMappings(rawJ2b: Record<string, string>): { java_to_bedrock: Record<string, string>; bedrock_to_java: Record<string, string> } {
+  const j2b: Record<string, string> = { ...rawJ2b, ...AUTHORITATIVE_SOUND_J2B_OVERRIDES };
+  const groups = new Map<string, string[]>();
+  for (const [javaEvent, bedrockEvent] of Object.entries(j2b)) {
+    let arr = groups.get(bedrockEvent);
+    if (!arr) {
+      arr = [];
+      groups.set(bedrockEvent, arr);
+    }
+    arr.push(javaEvent);
+  }
+
+  const b2j: Record<string, string> = {};
+  for (const [bedrockEvent, javaEvents] of groups.entries()) {
+    b2j[bedrockEvent] = pickCanonicalJavaSoundEvent(bedrockEvent, javaEvents);
+  }
+  Object.assign(b2j, AUTHORITATIVE_SOUND_B2J_OVERRIDES);
+  return { java_to_bedrock: j2b, bedrock_to_java: b2j };
+}
+
 // Fetch authoritative sound mappings from GeyserMC/mappings
 async function fetchGeyserSounds(): Promise<{ java_to_bedrock: Record<string, string>; bedrock_to_java: Record<string, string> }> {
   const j2b: Record<string, string> = {};
-  const b2j: Record<string, string> = {};
 
   try {
     console.log("Fetching authoritative sound mappings from GeyserMC/mappings...");
@@ -25,9 +151,6 @@ async function fetchGeyserSounds(): Promise<{ java_to_bedrock: Record<string, st
       const bedrockEvent = mapping.playsound_mapping;
       if (bedrockEvent && typeof bedrockEvent === 'string') {
         j2b[javaEvent] = bedrockEvent;
-        if (!b2j[bedrockEvent]) {
-          b2j[bedrockEvent] = javaEvent;
-        }
       }
     }
     console.log(`  Loaded ${Object.keys(j2b).length} Geyser sound events!`);
@@ -35,7 +158,7 @@ async function fetchGeyserSounds(): Promise<{ java_to_bedrock: Record<string, st
     console.warn("  Failed to fetch Geyser sounds, will use fallback.", e);
   }
 
-  return { java_to_bedrock: j2b, bedrock_to_java: b2j };
+  return buildSoundMappings(j2b);
 }
 
 function parseVer(v: string): [number, number, number] {
@@ -764,8 +887,9 @@ function applyTextureOverrides(content: any, isFallback = false) {
 async function updateMappings() {
   const texturesOnly = process.argv.includes('--textures-only');
   const langOnly = process.argv.includes('--lang-only');
+  const soundsOnly = process.argv.includes('--sounds-only');
   // 1. Fetch Geyser sound mappings
-  const geyserSounds = (texturesOnly || langOnly)
+  const geyserSounds = (texturesOnly || langOnly || soundsOnly)
     ? { java_to_bedrock: {}, bedrock_to_java: {} }
     : await fetchGeyserSounds();
 
@@ -781,24 +905,30 @@ async function updateMappings() {
     try {
       const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
 
-      // Parse versions from filename, e.g., "1.21.4_to_1.21.50.json"
-      const parts = file.replace('.json', '').split('_to_');
-      const javaVer = parts[0] || '1.21.4';
-      const bedrockVer = parts[1] || '1.21.50';
+      if (soundsOnly) {
+        const rebuilt = buildSoundMappings(content.sounds_java_to_bedrock || {});
+        content.sounds_java_to_bedrock = rebuilt.java_to_bedrock;
+        content.sounds_bedrock_to_java = rebuilt.bedrock_to_java;
+      } else {
+        // Parse versions from filename, e.g., "1.21.4_to_1.21.50.json"
+        const parts = file.replace('.json', '').split('_to_');
+        const javaVer = parts[0] || '1.21.4';
+        const bedrockVer = parts[1] || '1.21.50';
 
-      // Apply authoritative Mojang texture overrides
-      if (!langOnly) {
-        applyTextureOverrides(content, false);
-      }
-
-      if (!texturesOnly) {
-        const langMap = getPrismarineLanguageMappings(javaVer, bedrockVer);
-        if (!langOnly && Object.keys(geyserSounds.java_to_bedrock).length > 0) {
-          content.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
-          content.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+        // Apply authoritative Mojang texture overrides
+        if (!langOnly) {
+          applyTextureOverrides(content, false);
         }
-        content.lang_java_to_bedrock = langMap.java_to_bedrock;
-        content.lang_bedrock_to_java = langMap.bedrock_to_java;
+
+        if (!texturesOnly) {
+          const langMap = getPrismarineLanguageMappings(javaVer, bedrockVer);
+          if (!langOnly && Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+            content.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
+            content.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+          }
+          content.lang_java_to_bedrock = langMap.java_to_bedrock;
+          content.lang_bedrock_to_java = langMap.bedrock_to_java;
+        }
       }
 
       await fs.writeFile(filePath, JSON.stringify(content, null, 2));
@@ -813,19 +943,25 @@ async function updateMappings() {
   try {
     const baseContent = JSON.parse(await fs.readFile(baseMappingPath, 'utf8'));
 
-    // Apply authoritative Mojang texture overrides
-    if (!langOnly) {
-      applyTextureOverrides(baseContent, true);
-    }
-
-    if (!texturesOnly) {
-      const defaultLang = getPrismarineLanguageMappings('26.3.0', '1.26.60');
-      if (!langOnly && Object.keys(geyserSounds.java_to_bedrock).length > 0) {
-        baseContent.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
-        baseContent.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+    if (soundsOnly) {
+      const rebuilt = buildSoundMappings(baseContent.sounds_java_to_bedrock || {});
+      baseContent.sounds_java_to_bedrock = rebuilt.java_to_bedrock;
+      baseContent.sounds_bedrock_to_java = rebuilt.bedrock_to_java;
+    } else {
+      // Apply authoritative Mojang texture overrides
+      if (!langOnly) {
+        applyTextureOverrides(baseContent, true);
       }
-      baseContent.lang_java_to_bedrock = defaultLang.java_to_bedrock;
-      baseContent.lang_bedrock_to_java = defaultLang.bedrock_to_java;
+
+      if (!texturesOnly) {
+        const defaultLang = getPrismarineLanguageMappings('26.3.0', '1.26.60');
+        if (!langOnly && Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+          baseContent.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
+          baseContent.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
+        }
+        baseContent.lang_java_to_bedrock = defaultLang.java_to_bedrock;
+        baseContent.lang_bedrock_to_java = defaultLang.bedrock_to_java;
+      }
     }
 
     await fs.writeFile(baseMappingPath, JSON.stringify(baseContent, null, 2));
