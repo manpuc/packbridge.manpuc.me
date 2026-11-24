@@ -20,10 +20,6 @@ const baseOptions: Omit<ConversionOptions, 'direction'> = {
   bedrockVersionId: '1.21.50',
   enableGuiConversion: true,
   enableModernGuiSprites: true,
-  enableTgaConversion: true,
-  enableAnimationConversion: true,
-  enableLanguageConversion: true,
-  enableSoundConversion: true,
   enableAudioReencode: false,
   enableModelConversion: true,
   enablePbrConversion: true,
@@ -437,7 +433,7 @@ describe('convertBuffer', () => {
         'textures/ui/experiencenub.png': png8,
       })),
       'b2j-gui.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', enableGuiConversion: false, enableModernGuiSprites: true, enableTgaConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', enableGuiConversion: false, enableModernGuiSprites: true }
     );
     const b2jOut = unzipSync(b2j.buffer);
     expect(getPngDimensions(b2jOut['assets/minecraft/textures/gui/sprites/hud/heart/full.png'])).toEqual({ width: 2, height: 2 });
@@ -1516,7 +1512,7 @@ describe('convertBuffer', () => {
     expect(decodeTgaToRgba(makeTgaHeader({ colorMapType: 1, imageType: 1, colorMapLength: 1, colorMapDepth: 8, width: 1, height: 1, pixelDepth: 8 }, [0, 0]))).toBeNull();
   });
 
-  it('keeps TGAs in bedrock-to-bedrock, respects enableTgaConversion for PBR, supports .TGA, and deduplicates PNG/TGA pairs', async () => {
+  it('keeps TGAs in bedrock-to-bedrock, converts PBR .tga automatically, supports .TGA, and deduplicates PNG/TGA pairs', async () => {
     const manifest = strToU8(JSON.stringify({
       format_version: 2,
       header: { name: 'TgaTest', description: 'T', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
@@ -1533,7 +1529,7 @@ describe('convertBuffer', () => {
         'textures/blocks/leaves_oak.tga': tga16,
       })),
       'b2b-tga.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-bedrock', enableTgaConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-bedrock' }
     );
     const b2bOut = unzipSync(b2b.buffer);
     expect(b2bOut['textures/blocks/grass_side.tga']).toBeDefined();
@@ -1541,20 +1537,20 @@ describe('convertBuffer', () => {
     expect(b2bOut['textures/blocks/leaves_oak.tga']).toBeDefined();
     expect(b2bOut['textures/blocks/leaves_oak.png']).toBeUndefined();
 
-    // 2. bedrock-to-java with enableTgaConversion: false skips PBR .tga, and interlaced MER PNG returns null
-    const b2jNoTga = await convertBuffer(
+    // 2. bedrock-to-java converts PBR .tga automatically when enablePbrConversion: true, and interlaced MER PNG returns null
+    const b2jPbrTga = await convertBuffer(
       toArrayBuffer(zipSync({
         'manifest.json': manifest,
         'textures/blocks/stone.png': png16,
         'textures/blocks/stone_mer.tga': tga16,
         'textures/blocks/stone_normal.tga': tga16,
       })),
-      'b2j-notga.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', enableTgaConversion: false, enablePbrConversion: true }
+      'b2j-pbr-tga.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', enablePbrConversion: true }
     );
-    const noTgaOut = unzipSync(b2jNoTga.buffer);
-    expect(noTgaOut['assets/minecraft/textures/block/stone_s.png']).toBeUndefined();
-    expect(noTgaOut['assets/minecraft/textures/block/stone_n.png']).toBeUndefined();
+    const pbrTgaOut = unzipSync(b2jPbrTga.buffer);
+    expect(pbrTgaOut['assets/minecraft/textures/block/stone_s.png']).toBeDefined();
+    expect(pbrTgaOut['assets/minecraft/textures/block/stone_n.png']).toBeDefined();
 
     const interlacedPng = new Uint8Array(png16);
     interlacedPng[28] = 1; // IHDR interlace = Adam7
@@ -1569,7 +1565,7 @@ describe('convertBuffer', () => {
         'textures/ui/panorama_0.TGA': tga16,
       })),
       'b2j-upper.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', enableTgaConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java' }
     );
     const upperOut = unzipSync(b2jUpper.buffer);
     expect(getPngDimensions(upperOut['assets/minecraft/textures/block/custom_ore.png'])).toEqual({ width: 16, height: 16 });
@@ -1599,7 +1595,6 @@ describe('convertBuffer', () => {
         ...baseOptions,
         direction: 'bedrock-to-java',
         javaVersionId: '1.21.4',
-        enableTgaConversion: true,
         enableModernGuiSprites: true,
       });
       const out = unzipSync(res.buffer);
@@ -1645,7 +1640,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/entity/conduit/wind.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 3, height: 32 } })),
       })),
       'anim-j2b.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableAnimationConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     const j2bOut = unzipSync(j2b.buffer);
     const flipbooks = JSON.parse(strFromU8(j2bOut['textures/flipbook_textures.json'])) as any[];
@@ -1676,7 +1671,7 @@ describe('convertBuffer', () => {
     expect(terrain.texture_data.respawn_anchor_top.textures).toHaveLength(5);
     expect(terrain.texture_data.flowing_water_grey.quad).toBe(1);
 
-    // 1.8 fire_layer_0 + enableAnimationConversion: false
+    // 1.8 fire_layer_0
     const j18Out = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({
         'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
@@ -1684,21 +1679,10 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/blocks/fire_layer_0.png.mcmeta': strToU8(JSON.stringify({ animation: { frames: [1, 0] } })),
       })),
       'fire-1.8.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableAnimationConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     )).buffer);
     expect(j18Out['textures/blocks/fire_0.png']).toBeDefined();
     expect(JSON.parse(strFromU8(j18Out['textures/flipbook_textures.json']))[0].atlas_tile).toBe('fire_0');
-
-    const disabledJ2B = unzipSync((await convertBuffer(
-      toArrayBuffer(zipSync({
-        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Off' } })),
-        'assets/minecraft/textures/block/stone.png': png16x32,
-        'assets/minecraft/textures/block/stone.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 2 } })),
-      })),
-      'anim-off.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableAnimationConversion: false }
-    )).buffer);
-    expect(disabledJ2B['textures/flipbook_textures.json']).toBeUndefined();
 
     // 2. Bedrock -> Java: BOM, .tga, blend_frames default, invalid ticks/frames, duplicate atlas_tile, conduit wind, 8x256 strip, PBR clamp
     const manifest = strToU8(JSON.stringify({
@@ -1725,7 +1709,7 @@ describe('convertBuffer', () => {
         ])),
       })),
       'anim-b2j.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableAnimationConversion: true, enablePbrConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enablePbrConversion: true }
     );
     const b2jOut = unzipSync(b2j.buffer);
     const prismMcmeta = JSON.parse(strFromU8(b2jOut['assets/minecraft/textures/block/prismarine.png.mcmeta']));
@@ -1752,7 +1736,7 @@ describe('convertBuffer', () => {
         'textures/flipbook_textures.json': strToU8('{not-valid-json'),
       })),
       'bad-fb.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', enableAnimationConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java' }
     );
     expect(badFlipbook.report.details.some(d => d.reason === 'Invalid flipbook_textures.json format')).toBe(true);
   });
@@ -1817,7 +1801,7 @@ describe('convertBuffer', () => {
         'textures/items/watch_atlas.png': bOut['textures/items/watch_atlas.png'],
       })),
       'dials-b2j.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableTgaConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
     );
     const jModOut = unzipSync(b2jModern.buffer);
     expect(getPngDimensions(jModOut['assets/minecraft/textures/item/compass_00.png'])).toEqual({ width: 16, height: 16 });
@@ -1885,7 +1869,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/lang/fr_fr.json': strToU8('{invalid json'),
       })),
       'lang-j2b.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     const bOut = unzipSync(j2b.buffer);
     expect(bOut['texts/en_US.lang']).toBeDefined();
@@ -1912,7 +1896,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/lang/en_US.lang': strToU8('tile.stone.stone.name=Legacy Stone\n'),
       })),
       'lang-1.8.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     )).buffer);
     expect(strFromU8(j18ToB['texts/en_US.lang'])).toContain('tile.stone.stone.name=Legacy Stone');
 
@@ -1934,7 +1918,7 @@ describe('convertBuffer', () => {
     const b2jModern = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bedrockLangBytes })),
       'lang-b2j-modern.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
     )).buffer);
     const j21Lang = JSON.parse(strFromU8(b2jModern['assets/minecraft/lang/en_us.json']));
     expect(j21Lang['item.minecraft.apple']).toBe('Crisp Apple');
@@ -1947,14 +1931,14 @@ describe('convertBuffer', () => {
     const b2j112 = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bedrockLangBytes })),
       'lang-b2j-112.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.12.2', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.12.2' }
     )).buffer);
     expect(b2j112['assets/minecraft/lang/en_us.lang']).toBeDefined();
 
     const b2j18 = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bedrockLangBytes })),
       'lang-b2j-18.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0' }
     )).buffer);
     expect(b2j18['assets/minecraft/lang/en_US.lang']).toBeDefined();
 
@@ -1965,7 +1949,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/lang/en_US.lang': strToU8('item.apple.name=Java Apple\n'),
       })),
       'j-1.8.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2' }
     )).buffer);
     expect(j18To12['assets/minecraft/lang/en_us.lang']).toBeDefined();
 
@@ -1975,7 +1959,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/lang/en_us.lang': j18To12['assets/minecraft/lang/en_us.lang'],
       })),
       'j-1.12.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
     )).buffer);
     expect(JSON.parse(strFromU8(j12To21['assets/minecraft/lang/en_us.json']))['item.minecraft.apple']).toBe('Java Apple');
 
@@ -1985,7 +1969,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/lang/en_us.json': j12To21['assets/minecraft/lang/en_us.json'],
       })),
       'j-1.21.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0', enableLanguageConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0' }
     )).buffer);
     expect(strFromU8(j21To18['assets/minecraft/lang/en_US.lang'])).toContain('item.apple.name=Java Apple');
   });
@@ -2059,7 +2043,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'sounds-j2b.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.21.50', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.21.50' }
     );
     const bOut = unzipSync(j2b.buffer);
     expect(bOut['sounds/extra_sounds.json']).toBeDefined();
@@ -2099,7 +2083,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'sounds-1.8-b112.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.12.0', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.12.0' }
     )).buffer);
     const flatSd = JSON.parse(strFromU8(j18ToB112['sounds/sound_definitions.json']));
     expect(flatSd.format_version).toBeUndefined();
@@ -2113,7 +2097,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/sounds.json': strToU8('{invalid json'),
       })),
       'bad-sounds.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     expect(unzipSync(badJ2B.buffer)['sounds/sound_definitions.json']).toBeUndefined();
     expect(badJ2B.report.details.some(d => d.reason === 'Invalid sounds.json format')).toBe(true);
@@ -2143,7 +2127,7 @@ describe('convertBuffer', () => {
         'sounds/Mob/Custom.OGG': ogg,
       })),
       'sounds-b2j.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableSoundConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
     )).buffer);
     expect(b2jModern['assets/minecraft/sounds/mob/custom.ogg']).toBeDefined();
     const jSounds = JSON.parse(strFromU8(b2jModern['assets/minecraft/sounds.json']));
@@ -2171,7 +2155,7 @@ describe('convertBuffer', () => {
     const b2j18 = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({ 'manifest.json': manifest, 'sounds/sound_definitions.json': strToU8(bedrockSoundDefs) })),
       'sounds-b2j-1.8.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0' }
     )).buffer);
     const j18Sounds = JSON.parse(strFromU8(b2j18['assets/minecraft/sounds.json']));
     expect(j18Sounds['dig.stone'].category).toBe('block');
@@ -2181,7 +2165,7 @@ describe('convertBuffer', () => {
     const b2j112 = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({ 'manifest.json': manifest, 'sounds/sound_definitions.json': strToU8(bedrockSoundDefs) })),
       'sounds-b2j-1.12.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.12.2', enableSoundConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.12.2' }
     )).buffer);
     const j112Sounds = JSON.parse(strFromU8(b2j112['assets/minecraft/sounds.json']));
     expect(j112Sounds['record.cat']).toBeDefined();
@@ -2198,7 +2182,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'j-1.8.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2' }
     )).buffer);
     const s112 = JSON.parse(strFromU8(j18To112['assets/minecraft/sounds.json']));
     expect(s112['record.cat']).toBeDefined();
@@ -2212,7 +2196,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/sounds.json': j18To112['assets/minecraft/sounds.json'],
       })),
       'j-1.12.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
     )).buffer);
     const s121 = JSON.parse(strFromU8(j112To121['assets/minecraft/sounds.json']));
     expect(s121['music_disc.cat']).toBeDefined();
@@ -2224,7 +2208,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/sounds.json': j112To121['assets/minecraft/sounds.json'],
       })),
       'j-1.21.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0' }
     )).buffer);
     const sBack18 = JSON.parse(strFromU8(j121To18['assets/minecraft/sounds.json']));
     expect(sBack18['records.cat'].category).toBe('record');
@@ -2249,7 +2233,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'extra-j2b.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     const extraOut = unzipSync(j2bExtra.buffer);
     expect(extraOut['sounds/mob/say1.ogg']).toBeDefined();
@@ -2268,19 +2252,9 @@ describe('convertBuffer', () => {
         'assets/minecraft/sounds.json': strToU8('{"a":{"sounds":["a"]}} /* unclosed'),
       })),
       'unclosed.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     expect(unclosedComment.report.details.some(d => d.reason === 'Invalid sounds.json format')).toBe(true);
-
-    const disabledJ2B = await convertBuffer(
-      toArrayBuffer(zipSync({
-        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Off' } })),
-        'assets/minecraft/sounds.json': strToU8('{"ui.button.click":{"sounds":["random/click"]}}'),
-      })),
-      'off-j2b.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableSoundConversion: false }
-    );
-    expect(disabledJ2B.report.details.some(d => d.reason === 'Sound conversion disabled')).toBe(true);
 
     const flatB2J = unzipSync((await convertBuffer(
       toArrayBuffer(zipSync({
@@ -2293,7 +2267,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'flat-b2j-1.8.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0' }
     )).buffer);
     expect(flatB2J['assets/minecraft/sounds/mob/custom.ogg']).toBeDefined();
     const flatB2JModern = unzipSync((await convertBuffer(
@@ -2306,7 +2280,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'flat-b2j-modern.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableSoundConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
     )).buffer);
     const flatModernJson = JSON.parse(strFromU8(flatB2JModern['assets/minecraft/sounds.json']));
     expect(flatModernJson['entity.donkey.ambient']).toBeDefined();
@@ -2319,7 +2293,7 @@ describe('convertBuffer', () => {
         'sounds/sound_definitions.json': strToU8('{"format_version":"1.14.0","sound_definitions":[]}'),
       })),
       'bad-b2j.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', enableSoundConversion: true }
+      { ...baseOptions, direction: 'bedrock-to-java' }
     );
     expect(badB2J.report.details.some(d => d.reason === 'Invalid sound_definitions.json format')).toBe(true);
 
@@ -2334,7 +2308,7 @@ describe('convertBuffer', () => {
         })),
       })),
       'down-1.8.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0' }
     )).buffer);
     const sDown18 = JSON.parse(strFromU8(j2jDown18['assets/minecraft/sounds.json']));
     expect(sDown18['dig.stone'].sounds).toEqual(['dig/stone_win']);
@@ -2349,9 +2323,120 @@ describe('convertBuffer', () => {
         })),
       })),
       'down-1.12.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2', enableSoundConversion: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2' }
     )).buffer);
     const sDown112 = JSON.parse(strFromU8(j2jDown112['assets/minecraft/sounds.json']));
     expect(sDown112['entity.zombie_pig.ambient'].sounds).toEqual(['mob/zpiglin/say1']);
+  });
+
+  it('covers audit regression fixes (#1-#7, #10, #12): 8x8 upscale, TGA OOM guard, lang priority, JSONC flipbook, conduit wind, .LANG, DAG cap, analytics', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'Audit', description: 'A', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+
+    // #1: 8x8 static block upscales nearest-neighbor to 16x16; 16x17 crops to 16x16
+    const rgba8 = new Uint8Array(8 * 8 * 4);
+    rgba8[(0 * 8 + 1) * 4] = 123; rgba8[(0 * 8 + 1) * 4 + 3] = 255;
+    rgba8[(7 * 8 + 7) * 4] = 200; rgba8[(7 * 8 + 7) * 4 + 3] = 255;
+    const b8Res = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/stone.png': encodeRgbaToPngSync(8, 8, rgba8),
+        'textures/blocks/dirt.png': encodeRgbaToPngSync(16, 17, new Uint8Array(16 * 17 * 4).fill(50)),
+      })),
+      '8x8.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java' }
+    )).buffer);
+    const stone16 = decodePngToRgbaSync(b8Res['assets/minecraft/textures/block/stone.png'])!;
+    expect(stone16.width).toBe(16);
+    expect(stone16.height).toBe(16);
+    expect(stone16.rgba[(0 * 16 + 2) * 4]).toBe(123);
+    expect(stone16.rgba[(15 * 16 + 15) * 4]).toBe(200);
+    expect(getPngDimensions(b8Res['assets/minecraft/textures/block/dirt.png'])).toEqual({ width: 16, height: 16 });
+
+    // #2: Corrupt/oversized TGA returns null immediately without allocating 256MB+
+    const badUncompTga = new Uint8Array(20);
+    badUncompTga[2] = 2;
+    badUncompTga[12] = 0; badUncompTga[13] = 32; // 8192
+    badUncompTga[14] = 0; badUncompTga[15] = 32; // 8192
+    badUncompTga[16] = 32;
+    expect(decodeTgaToRgba(badUncompTga)).toBeNull();
+    const badRleTga = new Uint8Array(badUncompTga);
+    badRleTga[2] = 10;
+    expect(decodeTgaToRgba(badRleTga)).toBeNull();
+
+    // #3: java-to-java multi-version pack keeps native en_us.json over converted en_us.lang in both ZIP orders
+    const nativeJson = strToU8(JSON.stringify({ 'block.minecraft.stone': 'Native Stone' }));
+    const legacyLang = strToU8('tile.stone.stone.name=Legacy Stone\n');
+    for (const files of [
+      { 'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })), 'assets/minecraft/lang/en_us.json': nativeJson, 'assets/minecraft/lang/en_us.lang': legacyLang },
+      { 'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })), 'assets/minecraft/lang/en_us.lang': legacyLang, 'assets/minecraft/lang/en_us.json': nativeJson },
+    ]) {
+      const res = unzipSync((await convertBuffer(toArrayBuffer(zipSync(files)), 'multi-lang.zip', { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' })).buffer);
+      expect(JSON.parse(strFromU8(res['assets/minecraft/lang/en_us.json']))['block.minecraft.stone']).toBe('Native Stone');
+    }
+
+    // #4, #5, #10c, #12: Case-insensitive Flipbook_Textures.json with // in string, conduit_wind height:32, and skippedCount === 0
+    const fbRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/stone.png': encodeRgbaToPngSync(16, 32, new Uint8Array(16 * 32 * 4).fill(100)),
+        'textures/blocks/conduit_wind_horizontal.png': encodeRgbaToPngSync(64, 704, new Uint8Array(64 * 704 * 4)),
+        'textures/Flipbook_Textures.json': strToU8(JSON.stringify([
+          { flipbook_texture: 'textures/blocks/stone', atlas_tile: 'stone', ticks_per_frame: 3, note: 'https://example.com//keep' },
+          { flipbook_texture: 'textures/blocks/conduit_wind_horizontal', atlas_tile: 'conduit_wind', ticks_per_frame: 2, frames: [0, 21, 99] },
+        ])),
+      })),
+      'fb-audit.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
+    );
+    expect(fbRes.report.skippedCount).toBe(0);
+    const fbOut = unzipSync(fbRes.buffer);
+    expect(JSON.parse(strFromU8(fbOut['assets/minecraft/textures/block/stone.png.mcmeta'])).animation.frametime).toBe(3);
+    const windMeta = JSON.parse(strFromU8(fbOut['assets/minecraft/textures/entity/conduit/wind.png.mcmeta'])).animation;
+    expect(windMeta.height).toBe(32);
+    expect(windMeta.frames).toEqual([0, 21]);
+
+    // #6: texts/en_US.LANG converts; texts/sub/foo.lang is skipped (not written as raw .lang inside .json)
+    const langCase = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'texts/en_US.LANG': strToU8('item.apple.name=Upper Lang\n'),
+        'texts/sub/foo.lang': strToU8('item.apple.name=Nested\n'),
+      })),
+      'lang-case.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(langCase['assets/minecraft/lang/en_us.json']))['item.minecraft.apple']).toBe('Upper Lang');
+    expect(langCase['assets/minecraft/lang/sub/foo.json']).toBeUndefined();
+
+    // #7: Diamond DAG in sounds.json does not hang and caps resolved sounds
+    const dag: Record<string, any> = {};
+    for (let i = 0; i < 30; i++) {
+      dag[`e${i}`] = { sounds: [{ name: `e${i + 1}`, type: 'event' }, { name: `e${i + 1}`, type: 'event' }] };
+    }
+    dag['e30'] = { sounds: ['dig/stone1'] };
+    const dagRes = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/sounds.json': strToU8(JSON.stringify(dag)),
+      })),
+      'dag.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    )).buffer);
+    const dagSd = JSON.parse(strFromU8(dagRes['sounds/sound_definitions.json'])).sound_definitions;
+    expect(dagSd['e0'].sounds.length).toBeLessThanOrEqual(256);
+
+    // #10: analyzeReportSafety detects .mcmeta and flipbook_textures.json
+    expect(analyzeReportSafety({
+      totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0,
+      details: [{ filename: 'assets/minecraft/textures/block/lava_still.png.mcmeta', status: 'converted' }],
+    }).hasAnimations).toBe(true);
+    expect(analyzeReportSafety({
+      totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0,
+      details: [{ filename: 'textures/flipbook_textures.json', status: 'converted' }],
+    }).hasAnimations).toBe(true);
   });
 });

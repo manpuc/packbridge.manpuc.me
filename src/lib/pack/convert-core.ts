@@ -10,7 +10,7 @@ import {
   serializeLangEntries,
   serializeJsonLangEntries,
 } from './processors/lang';
-import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds } from './processors/sounds';
+import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds, parseJsonc } from './processors/sounds';
 import {
   generateTerrainTexture,
   getBedrockLeafSpec,
@@ -451,13 +451,7 @@ export async function convertBuffer(
           }
           if (pbrInfo.type === 'texture_set') {
             const parsedTs = parseTextureSetJson(strFromU8(content));
-            if (relativePath.toLowerCase().endsWith('.tga') && !options.enableTgaConversion) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-            continue;
-          }
-
-          const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
+            const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
             report.skippedCount++;
             report.details.push({
               filename: path,
@@ -466,12 +460,6 @@ export async function convertBuffer(
                 ? 'PBR texture_set metadata applied to _s/_n maps'
                 : 'Unmapped PBR texture_set reference'
             });
-            continue;
-          }
-
-          if (relativePath.toLowerCase().endsWith('.tga') && !options.enableTgaConversion) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
             continue;
           }
 
@@ -611,11 +599,6 @@ export async function convertBuffer(
         const cubemapIdx = getBedrockCubemapIndex(relativePath);
         if (cubemapIdx !== null) {
           const isTga = relativePath.toLowerCase().endsWith('.tga');
-          if (isTga && !options.enableTgaConversion) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-            continue;
-          }
           if (!pendingBedrockCubemap.has(cubemapIdx) || !isTga) {
             pendingBedrockCubemap.set(cubemapIdx, { sourcePath: path, bytes: content, isTga });
           }
@@ -647,11 +630,6 @@ export async function convertBuffer(
 
       if (direction === 'bedrock-to-java' && isBedrockContainerThemeOrPartPath(relativePath)) {
         const isTga = relativePath.toLowerCase().endsWith('.tga');
-        if (isTga && !options.enableTgaConversion) {
-          report.skippedCount++;
-          report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-          continue;
-        }
         const normUi = relativePath.replace(/\.tga$/i, '.png');
         let handled = false;
         if (options.enableGuiConversion) {
@@ -750,11 +728,6 @@ export async function convertBuffer(
       if (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18 && options.enableModernGuiSprites) {
         const normalizedUiPath = relativePath.replace(/\.tga$/i, '.png');
         if (Object.hasOwn(HOTBAR_SLICE_MAPPINGS, normalizedUiPath)) {
-          if (relativePath.toLowerCase().endsWith('.tga') && !options.enableTgaConversion) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-            continue;
-          }
           if (!pendingBedrockHotbarParts.has(normalizedUiPath) || !relativePath.toLowerCase().endsWith('.tga')) {
             pendingBedrockHotbarParts.set(normalizedUiPath, content);
           }
@@ -774,11 +747,6 @@ export async function convertBuffer(
         }
         const sheetHit = getBedrockGuiSheetTarget(relativePath, targetJavaVersion.packFormat);
         if (sheetHit) {
-          if (relativePath.toLowerCase().endsWith('.tga') && !options.enableTgaConversion) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-            continue;
-          }
           pendingGuiSheetEntries[sheetHit.sheet].push({ sourcePath: path, bytes: content, box: sheetHit.box, isPrimary: sheetHit.isPrimary });
           continue;
         }
@@ -881,11 +849,6 @@ export async function convertBuffer(
         const bDial = classifyBedrockDialPath(relativePath);
         if (bDial) {
           const isTga = relativePath.toLowerCase().endsWith('.tga');
-          if (isTga && !options.enableTgaConversion) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-            continue;
-          }
           if (bDial.role === 'atlas') {
             const existing = pendingBedrockDialAtlases.get(bDial.kind);
             const shouldReplace =
@@ -964,11 +927,6 @@ export async function convertBuffer(
             const jContainerPaths = getBedrockContainerToModernJavaPaths(relativePath, targetJavaVersion.packFormat);
             if (jContainerPaths.length > 0) {
               const isTga = relativePath.toLowerCase().endsWith('.tga');
-              if (isTga && !options.enableTgaConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-                continue;
-              }
               const pngBytes = convertTgaToPng(content);
               if (pngBytes) {
                 let wroteAny = false;
@@ -1054,7 +1012,7 @@ export async function convertBuffer(
         targetPath = targetPath.toLowerCase();
       }
 
-      const isLowPriorityFallback = isLowPriorityBlockFallback || isLowPriorityGuiFallback;
+      let isLowPriorityFallback = isLowPriorityBlockFallback || isLowPriorityGuiFallback;
       if (isLowPriorityFallback && targetPath && targetFiles[targetPath]) {
         report.skippedCount++;
         report.details.push({ filename: path, status: 'skipped', reason: 'Primary texture already present' });
@@ -1083,7 +1041,7 @@ export async function convertBuffer(
         } else if (direction === 'bedrock-to-java') {
           if (/^texts\/[^/]+\.lang$/i.test(relativePath)) {
             needsProcessing = true;
-          } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
+          } else if (/^(?:textures\/)?flipbook_textures\.json$/i.test(relativePath)) {
             needsProcessing = true;
           } else if (/^sounds\/sound_definitions\.json$/i.test(relativePath)) {
             needsProcessing = true;
@@ -1118,11 +1076,6 @@ export async function convertBuffer(
         if (needsProcessing) {
           if (direction === 'java-to-bedrock') {
             if (/\.(json|lang)$/i.test(relativePath) && targetPath.startsWith('texts/')) {
-              if (!options.enableLanguageConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
-                continue;
-              }
               const rawCode = targetPath.split('/').pop()?.replace(/\.lang$/i, '') || '';
               const bedrockCode = formatLocaleCode(rawCode, 'll_CC');
               const normalizedTarget = `texts/${bedrockCode}.lang`;
@@ -1149,11 +1102,6 @@ export async function convertBuffer(
               report.details.push({ filename: path, status: 'converted', outputPath: normalizedTarget });
               continue;
             } else if (/^assets\/minecraft\/sounds\.json$/i.test(relativePath)) {
-              if (!options.enableSoundConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
-                continue;
-              }
               const converted = javaToBedrockSounds(strFromU8(content), {
                 sourcePackFormat,
                 targetBedrockMinEngine: targetBedrockVersion.minEngineVersion,
@@ -1172,11 +1120,6 @@ export async function convertBuffer(
             }
 
             if (relativePath.endsWith('.png.mcmeta')) {
-              if (!options.enableAnimationConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Animation conversion disabled' });
-                continue;
-              }
               const bedrockPngPath = targetPath.replace(/\.mcmeta$/, '');
               if (
                 !bedrockPngPath.startsWith('textures/blocks/') ||
@@ -1210,11 +1153,6 @@ export async function convertBuffer(
                 continue;
               }
             } else if (/^texts\/[^/]+\.lang$/i.test(relativePath)) {
-              if (!options.enableLanguageConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
-                continue;
-              }
               const rawCode = relativePath.replace(/^texts\//i, '').replace(/\.lang$/i, '');
               if (targetJavaVersion.packFormat >= 4) {
                 const entries = mapLangEntries(parseLangEntries(strFromU8(content), true), 'bedrock-to-java');
@@ -1226,19 +1164,10 @@ export async function convertBuffer(
                 const style = targetJavaVersion.packFormat <= 2 ? 'll_CC' : 'll_cc';
                 targetPath = `assets/minecraft/lang/${formatLocaleCode(rawCode, style)}.lang`;
               }
-            } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
-              if (!options.enableAnimationConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Animation conversion disabled' });
-                continue;
-              }
+            } else if (/^(?:textures\/)?flipbook_textures\.json$/i.test(relativePath)) {
+              let mappedCount = 0;
               try {
-                const cleanedFlipbook = strFromU8(content)
-                  .replace(/^\uFEFF/, '')
-                  .replace(/\/\/.*$/gm, '')
-                  .replace(/\/\*[\s\S]*?\*\//g, '')
-                  .replace(/,\s*([}\]])/g, '$1');
-                const flipbooks = JSON.parse(cleanedFlipbook);
+                const flipbooks = parseJsonc(strFromU8(content));
                 if (!Array.isArray(flipbooks)) {
                   report.skippedCount++;
                   report.details.push({ filename: path, status: 'skipped', reason: 'Invalid flipbook_textures.json format' });
@@ -1253,6 +1182,7 @@ export async function convertBuffer(
                   if (jPath) {
                     const formattedJPath = formatTargetJavaPath(jPath);
                     pendingJavaFlipbooks.push({ sourcePath: path, javaPngPath: formattedJPath, entry });
+                    mappedCount++;
                   }
                 }
               } catch {
@@ -1260,15 +1190,12 @@ export async function convertBuffer(
                 report.details.push({ filename: path, status: 'skipped', reason: 'Invalid flipbook_textures.json format' });
                 continue;
               }
-              report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
+              if (mappedCount === 0) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'No matching animated block textures in flipbook_textures.json' });
+              }
               continue;
             } else if (/^sounds\/sound_definitions\.json$/i.test(relativePath)) {
-              if (!options.enableSoundConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
-                continue;
-              }
               const converted = bedrockToJavaSounds(strFromU8(content), {
                 targetPackFormat: targetJavaVersion.packFormat,
               });
@@ -1281,11 +1208,7 @@ export async function convertBuffer(
               targetPath = 'assets/minecraft/sounds.json';
             } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
               try {
-                const cleanedSplashes = strFromU8(content)
-                  .replace(/\/\/.*$/gm, '')
-                  .replace(/\/\*[\s\S]*?\*\//g, '')
-                  .replace(/,\s*([}\]])/g, '$1');
-                const parsed = JSON.parse(cleanedSplashes);
+                const parsed = parseJsonc(strFromU8(content)) as any;
                 const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.splashes) ? parsed.splashes : [];
                 finalBytes = strToU8(list.map((s: any) => String(s)).join('\n'));
                 targetPath = 'assets/minecraft/texts/splashes.txt';
@@ -1306,11 +1229,12 @@ export async function convertBuffer(
               const outExt = dstWantsJson ? 'json' : 'lang';
               targetPath = `assets/${ns.toLowerCase()}/lang/${outCode}.${outExt}`;
               if (srcIsJson !== dstWantsJson) {
-                if (!options.enableLanguageConversion) {
+                if (targetFiles[targetPath]) {
                   report.skippedCount++;
-                  report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
+                  report.details.push({ filename: path, status: 'skipped', reason: 'Primary language file already present' });
                   continue;
                 }
+                isLowPriorityFallback = true;
                 if (srcIsJson && !dstWantsJson) {
                   const parsed = parseJsonLangEntries(strFromU8(content));
                   if (!parsed) {
@@ -1325,11 +1249,6 @@ export async function convertBuffer(
                 }
               }
             } else if (/^assets\/minecraft\/sounds\.json$/i.test(relativePath)) {
-              if (!options.enableSoundConversion) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Sound conversion disabled' });
-                continue;
-              }
               const migrated = migrateJavaSounds(strFromU8(content), sourcePackFormat, targetJavaVersion.packFormat);
               if (migrated === null) {
                 report.skippedCount++;
@@ -1416,19 +1335,15 @@ export async function convertBuffer(
         }
 
         if (direction === 'bedrock-to-java' && relativePath.toLowerCase().endsWith('.tga')) {
-          if (!options.enableTgaConversion) {
-            if (targetPath.endsWith('.png')) {
-              report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
-              continue;
-            }
+          const pngTarget = targetPath.replace(/\.tga$/i, '.png');
+          if (allTargetTextures.has(pngTarget) && !lowPriorityFallbackTargets.has(pngTarget)) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
+            continue;
+          }
+          if (/^textures\/blocks?\/grass_side\.tga$/i.test(relativePath)) {
+            targetPath = pngTarget;
           } else {
-            const pngTarget = targetPath.replace(/\.tga$/i, '.png');
-            if (allTargetTextures.has(pngTarget) && !lowPriorityFallbackTargets.has(pngTarget)) {
-              report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
-              continue;
-            }
             try {
               const pngBytes = convertTgaToPng(finalBytes);
               if (pngBytes) {
@@ -2118,20 +2033,23 @@ export async function convertBuffer(
         report.details.push({ filename: 'pack.mcmeta', status: 'converted', outputPath: 'manifest.json', reason: 'Generated fallback manifest' });
       }
     } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
-      if (direction === 'bedrock-to-java' && options.enableAnimationConversion) {
+      if (direction === 'bedrock-to-java') {
         for (const { sourcePath, javaPngPath, entry } of pendingJavaFlipbooks) {
           const dims = javaOutputPngDims.get(javaPngPath);
-          if (!dims || dims.height <= dims.width || dims.height % dims.width !== 0) continue;
+          if (!dims) continue;
+          const isConduitWind = /^assets\/minecraft\/textures\/entity\/conduit\/wind(?:_vertical)?\.png$/.test(javaPngPath);
+          const frameH = isConduitWind ? Math.floor(dims.width / 2) : dims.width;
+          if (frameH <= 0 || dims.height <= frameH || dims.height % frameH !== 0) continue;
           const mcmetaPath = `${javaPngPath}.mcmeta`;
           if (writtenJavaMcmetas.has(mcmetaPath) || !isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
-          const frameCount = dims.height / dims.width;
+          const frameCount = dims.height / frameH;
           const sanitizedEntry: FlipbookEntry = {
             ...entry,
             frames: Array.isArray(entry.frames)
               ? entry.frames.filter(f => typeof f === 'number' && Number.isInteger(f) && f >= 0 && f < frameCount)
               : undefined
           };
-          const mcmetaContent = generateJavaAnimation(sanitizedEntry);
+          const mcmetaContent = generateJavaAnimation(sanitizedEntry, isConduitWind ? frameH : undefined);
           targetFiles[mcmetaPath] = [strToU8(mcmetaContent), { level: getFileCompressionLevel(mcmetaPath) }];
           writtenJavaMcmetas.set(mcmetaPath, mcmetaContent);
           report.convertedCount++;

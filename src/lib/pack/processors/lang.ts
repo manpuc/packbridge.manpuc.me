@@ -95,20 +95,3 @@ export function serializeJsonLangEntries(entries: Map<string, string>): string {
   }
   return JSON.stringify(output, null, 2);
 }
-
-/**
- * Converts Java Edition language JSON to Bedrock Edition .lang format
- */
-export function javaToBedrockLang(jsonContent: string): string {
-  const parsed = parseJsonLangEntries(jsonContent);
-  if (!parsed) return '';
-  return serializeLangEntries(mapLangEntries(parsed, 'java-to-bedrock'));
-}
-
-/**
- * Converts Bedrock Edition .lang format to Java Edition language JSON
- */
-export function bedrockToJavaLang(langContent: string): string {
-  const parsed = parseLangEntries(langContent, true);
-  return serializeJsonLangEntries(mapLangEntries(parsed, 'bedrock-to-java'));
-}

@@ -6,6 +6,7 @@
 import { zlibSync } from 'fflate';
 
 const MAX_TGA_DIMENSION = 8192;
+const MAX_TGA_PIXELS = 4096 * 4096;
 
 export interface DecodedTga {
   width: number;
@@ -104,8 +105,10 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   }
 
   const totalPixels = width * height;
-  const rgba = new Uint8Array(totalPixels * 4);
+  if (totalPixels > MAX_TGA_PIXELS) return null;
   const isRle = imageType === 9 || imageType === 10 || imageType === 11;
+  if (!isRle && offset + totalPixels * bytesPerPixel > data.length) return null;
+  const rgba = new Uint8Array(totalPixels * 4);
   const directOrder = isTopOrigin && !isRightOrigin;
 
   let pixelIndex = 0;
@@ -162,8 +165,6 @@ export function decodeTgaToRgba(data: Uint8Array): DecodedTga | null {
   };
 
   if (!isRle) {
-    const required = totalPixels * bytesPerPixel;
-    if (offset + required > data.length) return null;
     for (let i = 0; i < totalPixels; i++) {
       readPixelInto(offset, i);
       offset += bytesPerPixel;
@@ -425,11 +426,17 @@ export function normalizeJavaBlockAtlasPng(
   const targetW = Math.max(16, Math.round(decoded.width / 16) * 16);
   const targetH = Math.max(16, Math.round(decoded.height / 16) * 16);
   const outRgba = new Uint8Array(targetW * targetH * 4);
+  const scaleX = targetW > decoded.width;
+  const scaleY = targetH > decoded.height;
 
   for (let y = 0; y < targetH; y++) {
-    const srcY = Math.min(y, decoded.height - 1);
+    const srcY = scaleY
+      ? Math.min(decoded.height - 1, Math.floor((y * decoded.height) / targetH))
+      : Math.min(y, decoded.height - 1);
     for (let x = 0; x < targetW; x++) {
-      const srcX = Math.min(x, decoded.width - 1);
+      const srcX = scaleX
+        ? Math.min(decoded.width - 1, Math.floor((x * decoded.width) / targetW))
+        : Math.min(x, decoded.width - 1);
       const srcIdx = (srcY * decoded.width + srcX) * 4;
       const dstIdx = (y * targetW + x) * 4;
       outRgba[dstIdx] = decoded.rgba[srcIdx];

@@ -81,14 +81,6 @@ interface DirectionSettingsProps {
   setEnableGuiConversion: (v: boolean) => void;
   enableModernGuiSprites: boolean;
   setEnableModernGuiSprites: (v: boolean) => void;
-  enableTgaConversion: boolean;
-  setEnableTgaConversion: (v: boolean) => void;
-  enableAnimationConversion: boolean;
-  setEnableAnimationConversion: (v: boolean) => void;
-  enableLanguageConversion: boolean;
-  setEnableLanguageConversion: (v: boolean) => void;
-  enableSoundConversion: boolean;
-  setEnableSoundConversion: (v: boolean) => void;
   enableAudioReencode: boolean;
   setEnableAudioReencode: (v: boolean) => void;
   enablePbrConversion: boolean;
@@ -155,14 +147,6 @@ export function DirectionSettings({
   setEnableGuiConversion,
   enableModernGuiSprites,
   setEnableModernGuiSprites,
-  enableTgaConversion,
-  setEnableTgaConversion,
-  enableAnimationConversion,
-  setEnableAnimationConversion,
-  enableLanguageConversion,
-  setEnableLanguageConversion,
-  enableSoundConversion,
-  setEnableSoundConversion,
   enableAudioReencode,
   setEnableAudioReencode,
   enablePbrConversion,
@@ -175,7 +159,7 @@ export function DirectionSettings({
 
   const uiDirection: 'java-to-bedrock' | 'bedrock-to-java' | 'version-update' =
     direction === 'java-to-bedrock' ? 'java-to-bedrock' :
-    direction === 'bedrock-to-java' ? 'bedrock-to-java' : 'version-update';
+      direction === 'bedrock-to-java' ? 'bedrock-to-java' : 'version-update';
 
   // We determine the internal source edition based on the direction passed from Converter
   const sourceEdition = direction.startsWith('java') ? 'java' : 'bedrock';
@@ -327,102 +311,77 @@ export function DirectionSettings({
         </AnimatePresence>
       </div>
 
-        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-          <button
-            type="button"
-            className="beta-toggle-btn"
-            onClick={() => setIsBetaExpanded(!isBetaExpanded)}
-            aria-expanded={isBetaExpanded}
+      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+        <button
+          type="button"
+          className="beta-toggle-btn"
+          onClick={() => setIsBetaExpanded(!isBetaExpanded)}
+          aria-expanded={isBetaExpanded}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              display: 'inline-block',
+              fontSize: '11px',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '4px',
+              backgroundColor: 'var(--color-border)',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.02em'
+            }}>BETA</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{t.betaFeatures || 'Beta Features'}</span>
+          </span>
+          <div
+            className="t-acc-chevron"
+            data-open={isBetaExpanded ? "true" : "false"}
+            aria-hidden="true"
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                display: 'inline-block',
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '4px',
-                backgroundColor: 'var(--color-border)',
-                color: 'var(--color-text-muted)',
-                letterSpacing: '0.02em'
-              }}>BETA</span>
-              <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{t.betaFeatures || 'Beta Features'}</span>
-            </span>
-            <div
-              className="t-acc-chevron"
-              data-open={isBetaExpanded ? "true" : "false"}
-              aria-hidden="true"
-            >
-              <ChevronDown size={17} />
-            </div>
-          </button>
+            <ChevronDown size={17} />
+          </div>
+        </button>
 
-          <div className="t-acc-panel" data-open={isBetaExpanded ? "true" : "false"}>
-            <div className="t-acc-panel-inner">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '8px' }}>
-                <BetaOptionItem
-                  id="gui"
-                  label={t.enableGuiConversion || 'Enable GUI Conversion'}
-                  checked={enableGuiConversion}
-                  onChange={setEnableGuiConversion}
-                  warningText={t.betaWarningGuiConversion}
-                />
-                <BetaOptionItem
-                  id="modern-gui"
-                  label={t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}
-                  checked={enableModernGuiSprites}
-                  onChange={setEnableModernGuiSprites}
-                  warningText={t.betaWarningModernGuiSprites}
-                />
-                <BetaOptionItem
-                  id="tga"
-                  label={t.enableTgaConversion || 'Convert TGA Textures to PNG'}
-                  checked={enableTgaConversion}
-                  onChange={setEnableTgaConversion}
-                  warningText={t.betaWarningTgaConversion}
-                />
-                <BetaOptionItem
-                  id="anim"
-                  label={t.enableAnimationConversion || 'Enable Animation Conversion'}
-                  checked={enableAnimationConversion}
-                  onChange={setEnableAnimationConversion}
-                />
-                <BetaOptionItem
-                  id="lang"
-                  label={t.enableLanguageConversion || 'Enable Language Conversion'}
-                  checked={enableLanguageConversion}
-                  onChange={setEnableLanguageConversion}
-                />
-                <BetaOptionItem
-                  id="sound"
-                  label={t.enableSoundConversion || 'Enable Sound Conversion'}
-                  checked={enableSoundConversion}
-                  onChange={setEnableSoundConversion}
-                />
-                <BetaOptionItem
-                  id="audio-reencode"
-                  label={t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}
-                  checked={enableAudioReencode}
-                  onChange={setEnableAudioReencode}
-                  warningText={t.betaWarningAudioReencode}
-                />
-                <BetaOptionItem
-                  id="pbr"
-                  label={t.enablePbrConversion || 'PBR / Shader Map Conversion (RTX ⇄ LabPBR)'}
-                  checked={enablePbrConversion}
-                  onChange={setEnablePbrConversion}
-                  warningText={t.betaWarningPbrConversion}
-                />
-                <BetaOptionItem
-                  id="model"
-                  label={t.enableModelConversion || '3D Custom Model Conversion (Geo ⇄ JSON/CEM)'}
-                  checked={enableModelConversion}
-                  onChange={setEnableModelConversion}
-                  warningText={t.betaWarningModelConversion}
-                />
-              </div>
+        <div className="t-acc-panel" data-open={isBetaExpanded ? "true" : "false"}>
+          <div className="t-acc-panel-inner">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '8px' }}>
+              <BetaOptionItem
+                id="gui"
+                label={t.enableGuiConversion || 'Enable GUI Conversion'}
+                checked={enableGuiConversion}
+                onChange={setEnableGuiConversion}
+                warningText={t.betaWarningGuiConversion}
+              />
+              <BetaOptionItem
+                id="modern-gui"
+                label={t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}
+                checked={enableModernGuiSprites}
+                onChange={setEnableModernGuiSprites}
+                warningText={t.betaWarningModernGuiSprites}
+              />
+              <BetaOptionItem
+                id="audio-reencode"
+                label={t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}
+                checked={enableAudioReencode}
+                onChange={setEnableAudioReencode}
+                warningText={t.betaWarningAudioReencode}
+              />
+              <BetaOptionItem
+                id="pbr"
+                label={t.enablePbrConversion || 'PBR / Shader Map Conversion (RTX ⇄ LabPBR)'}
+                checked={enablePbrConversion}
+                onChange={setEnablePbrConversion}
+                warningText={t.betaWarningPbrConversion}
+              />
+              <BetaOptionItem
+                id="model"
+                label={t.enableModelConversion || '3D Custom Model Conversion (Geo ⇄ JSON/CEM)'}
+                checked={enableModelConversion}
+                onChange={setEnableModelConversion}
+                warningText={t.betaWarningModelConversion}
+              />
             </div>
           </div>
         </div>
+      </div>
     </motion.div>
   );
 }

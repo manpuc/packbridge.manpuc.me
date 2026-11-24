@@ -54,7 +54,7 @@ function isPlainObject(v: unknown): v is Record<string, any> {
   return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 }
 
-function parseJsonc(raw: string): unknown {
+export function parseJsonc(raw: string): unknown {
   const noComments = raw
     .replace(/^\uFEFF/, '')
     .replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, (m) => (m[0] === '"' ? m : ''));
@@ -269,12 +269,19 @@ interface ResolvedJavaSounds {
   maxDistance?: number;
 }
 
+const MAX_RESOLVED_SOUNDS = 256;
+const MAX_EVENT_RESOLVE_STEPS = 512;
+
 function resolveJavaSoundEntries(
   eventIndex: Map<string, Record<string, any>>,
   normKey: string,
-  visited: Set<string>
+  visited: Set<string>,
+  state: { steps: number } = { steps: 0 },
+  budget = MAX_RESOLVED_SOUNDS
 ): ResolvedJavaSounds {
   if (!normKey || isUnsafeObjectKey(normKey) || visited.has(normKey)) return { sounds: [] };
+  if (budget <= 0 || state.steps >= MAX_EVENT_RESOLVE_STEPS) return { sounds: [] };
+  state.steps++;
   const data = eventIndex.get(normKey);
   if (!data || !Array.isArray(data.sounds)) return { sounds: [] };
 
@@ -283,6 +290,7 @@ function resolveJavaSoundEntries(
   let maxDist: number | undefined;
 
   for (const s of data.sounds) {
+    if (out.length >= budget) break;
     if (typeof s === 'string') {
       const clean = normalizeSoundPath(s);
       if (clean) out.push(`sounds/${clean}`);
@@ -294,7 +302,7 @@ function resolveJavaSoundEntries(
       if (typeof s.name !== 'string') continue;
       const targetNorm = normalizeEventKey(s.name);
       if (!targetNorm) continue;
-      const sub = resolveJavaSoundEntries(eventIndex, targetNorm, visited);
+      const sub = resolveJavaSoundEntries(eventIndex, targetNorm, visited, state, budget - out.length);
       if (sub.maxDistance !== undefined) {
         maxDist = maxDist === undefined ? sub.maxDistance : Math.max(maxDist, sub.maxDistance);
       }
@@ -304,6 +312,7 @@ function resolveJavaSoundEntries(
       const extStream = typeof s.stream === 'boolean' ? s.stream : undefined;
 
       for (const item of sub.sounds) {
+        if (out.length >= budget) break;
         if (typeof item === 'string') {
           if (mulVol !== null || mulPitch !== null || extWeight !== undefined || extStream !== undefined) {
             const obj: Record<string, any> = { name: item };

@@ -33,7 +33,6 @@ export type AnalyticsEventMap = {
     bedrock_version: string;
     detection: 'auto_detected' | 'manual_changed';
     opt_gui: boolean;
-    opt_animation: boolean;
     opt_audio_reencode: boolean;
     user_type: 'first_time' | 'repeat';
     usage_tier: '1st' | '2-5th' | '6-10th' | '11th+';
@@ -274,7 +273,7 @@ export function analyzeReportSafety(report: PackReport) {
     if (fn.endsWith('.ogg') || fn.endsWith('.fsb') || fn.includes('sound')) {
       hasAudio = true;
     }
-    if (fn.includes('animation') || fn.includes('anim_')) {
+    if (fn.endsWith('.mcmeta') || fn.includes('flipbook_textures.json') || fn.includes('animation') || fn.includes('anim_')) {
       hasAnimations = true;
     }
 

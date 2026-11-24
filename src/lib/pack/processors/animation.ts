@@ -200,10 +200,14 @@ export function expandBedrockFlipbookEntry(entry: FlipbookEntry): FlipbookEntry[
 /**
  * Generates a Java .mcmeta content string from a Bedrock Flipbook Entry.
  */
-export function generateJavaAnimation(entry: FlipbookEntry): string {
+export function generateJavaAnimation(entry: FlipbookEntry, frameHeight?: number): string {
   const mcmeta: any = {
     animation: {}
   };
+
+  if (frameHeight !== undefined && Number.isInteger(frameHeight) && frameHeight > 0) {
+    mcmeta.animation.height = frameHeight;
+  }
 
   const rawTicks = typeof entry.ticks_per_frame === 'number' ? entry.ticks_per_frame : NaN;
   const frametime = Number.isFinite(rawTicks) && rawTicks >= 1

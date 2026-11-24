@@ -25,10 +25,6 @@ export interface ConversionOptions {
   sourceBedrockVersionId?: string;
   enableGuiConversion: boolean;
   enableModernGuiSprites?: boolean;
-  enableTgaConversion?: boolean;
-  enableAnimationConversion: boolean;
-  enableLanguageConversion: boolean;
-  enableSoundConversion: boolean;
   enableAudioReencode: boolean;
   enableModelConversion?: boolean;
   enablePbrConversion?: boolean;

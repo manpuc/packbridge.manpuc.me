@@ -88,23 +88,14 @@ export interface Translation {
 
 	// Beta Features
 	betaFeatures: string;
-	betaGroupUiTextures?: string;
-	betaGroupAudioLang?: string;
 	enableGuiConversion: string;
 	enableModernGuiSprites?: string;
-	enableTgaConversion?: string;
-	enableAnimationConversion: string;
-	enableLanguageConversion: string;
-	enableSoundConversion: string;
 	enableAudioReencode?: string;
 	enablePbrConversion?: string;
 	enableModelConversion?: string;
-	betaCalloutActive?: string;
-	betaCalloutPreview?: string;
 	betaWarningAudioReencode?: string;
 	betaWarningModernGuiSprites?: string;
 	betaWarningGuiConversion?: string;
-	betaWarningTgaConversion?: string;
 	betaWarningPbrConversion?: string;
 	betaWarningModelConversion?: string;
 }

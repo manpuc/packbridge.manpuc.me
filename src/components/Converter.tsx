@@ -64,10 +64,6 @@ export default function Converter({
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
   const [enableModernGuiSprites, setEnableModernGuiSprites] = useState(true);
-  const [enableTgaConversion, setEnableTgaConversion] = useState(true);
-  const [enableAnimationConversion, setEnableAnimationConversion] = useState(true);
-  const [enableLanguageConversion, setEnableLanguageConversion] = useState(true);
-  const [enableSoundConversion, setEnableSoundConversion] = useState(true);
   const [enableAudioReencode, setEnableAudioReencode] = useState(false);
   const [enablePbrConversion, setEnablePbrConversion] = useState(false);
   const [enableModelConversion, setEnableModelConversion] = useState(false);
@@ -86,56 +82,36 @@ export default function Converter({
     });
   }, [initialLang]);
 
+  const BETA_KEY_PREFIX = 'pb_beta_v2_';
+
   // Load saved beta preferences on mount
   useEffect(() => {
     try {
-      const savedGui = localStorage.getItem('pb_beta_gui');
-      if (savedGui) setEnableGuiConversion(savedGui === 'true');
+      const savedGui = localStorage.getItem(`${BETA_KEY_PREFIX}gui`);
+      if (savedGui !== null) setEnableGuiConversion(savedGui === 'true');
 
-      const savedModernGui = localStorage.getItem('pb_beta_modern_gui');
-      if (savedModernGui) setEnableModernGuiSprites(savedModernGui === 'true');
+      const savedModernGui = localStorage.getItem(`${BETA_KEY_PREFIX}modern_gui`);
+      if (savedModernGui !== null) setEnableModernGuiSprites(savedModernGui === 'true');
 
-      const savedTga = localStorage.getItem('pb_beta_tga');
-      if (savedTga) setEnableTgaConversion(savedTga === 'true');
+      const savedAudioReencode = localStorage.getItem(`${BETA_KEY_PREFIX}audio_reencode`);
+      if (savedAudioReencode !== null) setEnableAudioReencode(savedAudioReencode === 'true');
 
-      const savedAnim = localStorage.getItem('pb_beta_anim');
-      if (savedAnim) setEnableAnimationConversion(savedAnim === 'true');
+      const savedPbr = localStorage.getItem(`${BETA_KEY_PREFIX}pbr`);
+      if (savedPbr !== null) setEnablePbrConversion(savedPbr === 'true');
 
-      const savedLang = localStorage.getItem('pb_beta_lang');
-      if (savedLang) setEnableLanguageConversion(savedLang === 'true');
-
-      const savedSound = localStorage.getItem('pb_beta_sound');
-      if (savedSound) setEnableSoundConversion(savedSound === 'true');
-
-      const savedAudioReencode = localStorage.getItem('pb_beta_audio_reencode');
-      if (savedAudioReencode) setEnableAudioReencode(savedAudioReencode === 'true');
-
-      const savedPbr = localStorage.getItem('pb_beta_pbr');
-      if (savedPbr) setEnablePbrConversion(savedPbr === 'true');
-
-      const savedModel = localStorage.getItem('pb_beta_model');
-      if (savedModel) setEnableModelConversion(savedModel === 'true');
+      const savedModel = localStorage.getItem(`${BETA_KEY_PREFIX}model`);
+      if (savedModel !== null) setEnableModelConversion(savedModel === 'true');
     } catch (e) {
       // Ignore localStorage errors (e.g., in incognito mode)
     }
   }, []);
 
-  // Save beta preferences when they change
-  useEffect(() => {
+  const persistBeta = (key: string, setter: (v: boolean) => void) => (v: boolean) => {
+    setter(v);
     try {
-      localStorage.setItem('pb_beta_gui', String(enableGuiConversion));
-      localStorage.setItem('pb_beta_modern_gui', String(enableModernGuiSprites));
-      localStorage.setItem('pb_beta_tga', String(enableTgaConversion));
-      localStorage.setItem('pb_beta_anim', String(enableAnimationConversion));
-      localStorage.setItem('pb_beta_lang', String(enableLanguageConversion));
-      localStorage.setItem('pb_beta_sound', String(enableSoundConversion));
-      localStorage.setItem('pb_beta_audio_reencode', String(enableAudioReencode));
-      localStorage.setItem('pb_beta_pbr', String(enablePbrConversion));
-      localStorage.setItem('pb_beta_model', String(enableModelConversion));
-    } catch (e) {
-      // Ignore
-    }
-  }, [enableGuiConversion, enableModernGuiSprites, enableTgaConversion, enableAnimationConversion, enableLanguageConversion, enableSoundConversion, enableAudioReencode, enablePbrConversion, enableModelConversion]);
+      localStorage.setItem(`${BETA_KEY_PREFIX}${key}`, String(v));
+    } catch { /* ignore */ }
+  };
 
   const handleFile = useCallback((selectedFile: File, inputMethod: 'drop' | 'file_picker' = 'drop') => {
     lastInputMethodRef.current = inputMethod;
@@ -511,7 +487,6 @@ export default function Converter({
       bedrock_version: selectedBedrockVersion,
       detection: isAutoDetected ? 'auto_detected' : 'manual_changed',
       opt_gui: enableGuiConversion,
-      opt_animation: enableAnimationConversion,
       opt_audio_reencode: enableAudioReencode,
       user_type: prevCount === 0 ? 'first_time' : 'repeat',
       usage_tier: getUsageTier(nextCount),
@@ -527,10 +502,6 @@ export default function Converter({
         sourceBedrockVersionId: isAutoDetected && direction.startsWith('bedrock') ? sourceBedrockVersion : undefined,
         enableGuiConversion,
         enableModernGuiSprites,
-        enableTgaConversion,
-        enableAnimationConversion,
-        enableLanguageConversion,
-        enableSoundConversion,
         enableAudioReencode,
         enablePbrConversion,
         enableModelConversion
@@ -700,23 +671,15 @@ export default function Converter({
         isAutoDetected={isAutoDetected}
         hasFile={!!file}
         enableGuiConversion={enableGuiConversion}
-        setEnableGuiConversion={setEnableGuiConversion}
+        setEnableGuiConversion={persistBeta('gui', setEnableGuiConversion)}
         enableModernGuiSprites={enableModernGuiSprites}
-        setEnableModernGuiSprites={setEnableModernGuiSprites}
-        enableTgaConversion={enableTgaConversion}
-        setEnableTgaConversion={setEnableTgaConversion}
-        enableAnimationConversion={enableAnimationConversion}
-        setEnableAnimationConversion={setEnableAnimationConversion}
-        enableLanguageConversion={enableLanguageConversion}
-        setEnableLanguageConversion={setEnableLanguageConversion}
-        enableSoundConversion={enableSoundConversion}
-        setEnableSoundConversion={setEnableSoundConversion}
+        setEnableModernGuiSprites={persistBeta('modern_gui', setEnableModernGuiSprites)}
         enableAudioReencode={enableAudioReencode}
-        setEnableAudioReencode={setEnableAudioReencode}
+        setEnableAudioReencode={persistBeta('audio_reencode', setEnableAudioReencode)}
         enablePbrConversion={enablePbrConversion}
-        setEnablePbrConversion={setEnablePbrConversion}
+        setEnablePbrConversion={persistBeta('pbr', setEnablePbrConversion)}
         enableModelConversion={enableModelConversion}
-        setEnableModelConversion={setEnableModelConversion}
+        setEnableModelConversion={persistBeta('model', setEnableModelConversion)}
         t={t}
       />
 

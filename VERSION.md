@@ -1,5 +1,22 @@
 # Version History
 
+## v1.6.9
+* **4機能のベータ卒業とベータ設定の刷新**:
+  * **標準機能への昇格**: 完成度と安全性を監査のうえ、「TGA画像のPNG変換」「言語・翻訳ファイル変換」「アニメーション変換」「サウンド定義変換」をベータ欄から卒業させて常時有効化。不要になったオプションフラグ・UIトグル・無効化分岐・未使用 i18n キーおよびデッドコードを一括整理。
+  * **ベータ初期値と永続化の修正**: 残るベータ5機能の初期値を「1.20.2+ 分割GUIスプライト変換のみ初期ON、GUI変換 / 音声再エンコード / PBR / 3Dカスタムモデルは初期OFF」に整理。マウント時の `localStorage` 一括書き込みを廃止してトグル操作時のみ保存する方式へ変更し、キー接頭辞を `pb_beta_v2_` へ更新して既存ブラウザでの旧初期値固定を解消。
+  * **アナリティクスの整合性改善**: `conversion_start` から廃止済みの `opt_animation` を削除し、`analyzeReportSafety` の `has_animations` が `.mcmeta` / `flipbook_textures.json` を正しく検出するよう修正（`ANALYTICS.md` も同期更新）。
+* **アニメーション・ダイヤルアイテム変換の強化**:
+  * **フリップブック / `.mcmeta` の高精度変換**: `blend_frames`、可変フレーム時間の GCD 展開、配列型 `atlas_tile`（`respawn_anchor` / `sculk` / `firefly_bush` 等）、流水・溶岩の `replicate: 2`、コンジット風の `height` 指定、8×256 ストリップ補正、非ブロック `.mcmeta` 除外、Java 1.8 `fire_layer_0` に対応。
+  * **コンパス・時計の双方向変換**: コンパス・ロードストーンコンパス・リカバリーコンパス・時計の個別フレーム ⇄ アトラス（`compass_atlas` / `watch_atlas` 等）の双方向変換および Java 1.8 ⇄ 1.9+ 移行を追加。
+  * **JSONC パース統一とレポート集計修正**: `flipbook_textures.json` / `splashes.json` を文字列内 `//` を壊さない `parseJsonc` へ統一し、`Flipbook_Textures.json` 等の大文字ファイル名に対応。正常変換時に `skippedCount` が誤加算される不具合を解消。
+* **言語・翻訳ファイル変換の精度向上とマッピング刷新**:
+  * **全方向変換とマッピング改善**: PrismarineJS 由来マッピングをカテゴリ別マッチングへ刷新し、Java ⇄ Bedrock および Java 1.8 ⇄ 1.12 ⇄ 1.13+（`.lang` ⇄ `.json`・ロケール大文字小文字 `ll_CC`/`ll_cc`）に対応。BOM・Bedrock インラインコメント（`##`）・改行エスケープ・`realms` マージ・`deprecated.json` 除外をサポート。
+  * **エッジケース修正**: Java バージョン変換でマルチバージョンパック（`.json` と `.lang` 同居）のネイティブ形式が変換結果に上書きされないよう優先度保護を追加。大文字 `.LANG` への対応とサブディレクトリ配下 `.lang` の不正 JSON 出力防止を実装。
+* **サウンド定義変換の全面強化**:
+  * **高精度イベントマッピングと形式移行**: GeyserMC サウンド逆引きの代表イベント選定を改善し、`sounds.json` ⇄ `sound_definitions.json` および Java 1.8 ⇄ 1.12 ⇄ 1.13+ 移行に対応。`type: "event"` 再帰展開（循環参照およびダイヤモンド DAG 上限ガード付き）、カテゴリ推論、`max_distance` ⇄ `attenuation_distance`、Bedrock 1.14 未満のフラット形式をサポート。
+* **TGA・ブロックアトラス補正の安全性改善**:
+  * **OOM 防御と 8×8 拡大補正**: `decodeTgaToRgba` でピクセル配列確保前の非RLEバッファ長検証と総ピクセル上限（`4096×4096`）を追加。`normalizeJavaBlockAtlasPng` で 8×8 等の非16倍数静止画ブロックを端引き伸ばしではなく最近傍補間で拡大するよう修正し、`grass_side.tga` の冗長な PNG 再エンコードを省略（単体テストを 33 件へ拡充）。
+
 ## v1.6.8
 * **アナリティクス・入力安定性・UX の改善**:
   * **エディション自動切替と通知**: `Java → Bedrock` ⇄ `Bedrock → Java` で明らかに反対エディションのパックを選択した場合、自動で方向を切り替えて通知を表示するよう改善（`ZERO_CONVERTED` 削減）。

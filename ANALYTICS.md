@@ -61,7 +61,6 @@ Triggered when the user clicks the "Convert" button.
 | `bedrock_version` | String (e.g., `"1.21.50"`) | Source or target Bedrock Edition version ID. |
 | `detection` | `"auto_detected"` \| `"manual_changed"` | `"auto_detected"` = user accepted automatic version detection; `"manual_changed"` = user manually adjusted version/edition. |
 | `opt_gui` | `boolean` | Whether beta GUI conversion is enabled. |
-| `opt_animation` | `boolean` | Whether texture animation conversion is enabled. |
 | `opt_audio_reencode` | `boolean` | Whether high-load ffmpeg.wasm audio re-encoding is enabled. |
 | `user_type` | `"first_time"` \| `"repeat"` | Anonymous client-side determination via localStorage count (no UUID used). |
 | `usage_tier` | `"1st"` \| `"2-5th"` \| `"6-10th"` \| `"11th+"` | Cumulative conversions performed by this browser. Indicates retention. |
@@ -78,7 +77,7 @@ Triggered when the Web Worker completes conversion without critical failure.
 | `duration_tier` | `"<5s"` \| `"5-15s"` \| `"15-30s"` \| `"30-60s"` \| `">60s"` | Total conversion latency. |
 | `file_count_tier` | `"<100"` \| `"100-500"` \| `"500-2000"` \| `">2000"` | Scale of internal assets converted. |
 | `has_audio` | `boolean` | `true` if the pack contains audio assets (`.ogg`, `.fsb`, sound definitions). |
-| `has_animations` | `boolean` | `true` if the pack contains model/texture animation controllers. |
+| `has_animations` | `boolean` | `true` if the pack contains `.mcmeta`, `flipbook_textures.json`, or model/texture animation files. |
 | `opt_audio_reencode` | `boolean` | Cross-reference with `duration_tier` to measure ffmpeg processing overhead. |
 | `skip_reason_top` | `"NONE"` \| `"NO_MAPPING"` \| `"UNSUPPORTED_FORMAT"` | Primary reason for unmapped files: `"NO_MAPPING"` signals missing asset translation rules in the mapping database. |
 
