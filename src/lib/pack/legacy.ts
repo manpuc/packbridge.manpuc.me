@@ -17,6 +17,8 @@ export const blockRenames: Record<string, string> = {
   "farmland_dry": "farmland",
   "farmland_wet": "farmland_moist",
   "fence_iron": "iron_bars",
+  "fire_layer_0": "fire_0",
+  "fire_layer_1": "fire_1",
   "flower_dandelion": "dandelion",
   "flower_rose": "poppy",
   "flower_blue_orchid": "blue_orchid",

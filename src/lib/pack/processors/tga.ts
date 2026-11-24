@@ -395,6 +395,33 @@ export function normalizeJavaBlockAtlasPng(
   const decoded = decodePngSync(pngBytes);
   if (!decoded) return null;
 
+  if (decoded.height > decoded.width && decoded.height % decoded.width === 0) {
+    const frameCount = decoded.height / decoded.width;
+    const targetFrame = Math.max(16, Math.round(decoded.width / 16) * 16);
+    const targetH = targetFrame * frameCount;
+    if (targetFrame > MAX_TGA_DIMENSION || targetH > MAX_TGA_DIMENSION) {
+      return pngBytes;
+    }
+    const outRgba = new Uint8Array(targetFrame * targetH * 4);
+    for (let f = 0; f < frameCount; f++) {
+      const srcYBase = f * decoded.width;
+      const dstYBase = f * targetFrame;
+      for (let y = 0; y < targetFrame; y++) {
+        const srcY = srcYBase + Math.min(decoded.width - 1, Math.floor((y * decoded.width) / targetFrame));
+        for (let x = 0; x < targetFrame; x++) {
+          const srcX = Math.min(decoded.width - 1, Math.floor((x * decoded.width) / targetFrame));
+          const srcIdx = (srcY * decoded.width + srcX) * 4;
+          const dstIdx = ((dstYBase + y) * targetFrame + x) * 4;
+          outRgba[dstIdx] = decoded.rgba[srcIdx];
+          outRgba[dstIdx + 1] = decoded.rgba[srcIdx + 1];
+          outRgba[dstIdx + 2] = decoded.rgba[srcIdx + 2];
+          outRgba[dstIdx + 3] = decoded.rgba[srcIdx + 3];
+        }
+      }
+    }
+    return encodeRgbaToPngSync(targetFrame, targetH, outRgba);
+  }
+
   const targetW = Math.max(16, Math.round(decoded.width / 16) * 16);
   const targetH = Math.max(16, Math.round(decoded.height / 16) * 16);
   const outRgba = new Uint8Array(targetW * targetH * 4);

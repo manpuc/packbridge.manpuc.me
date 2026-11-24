@@ -1608,4 +1608,252 @@ describe('convertBuffer', () => {
       expect(res.report.convertedCount).toBe(5);
     }
   });
+
+  it('handles Java <-> Bedrock animation edge cases (blend_frames, GCD, arrays, replicate, conduit, 8x256, non-block exclusion, 1.8 fire)', async () => {
+    const png16 = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(100));
+    const png16x32 = encodeRgbaToPngSync(16, 32, new Uint8Array(16 * 32 * 4).fill(100));
+    const png16x64 = encodeRgbaToPngSync(16, 64, new Uint8Array(16 * 64 * 4).fill(100));
+
+    // 1. Java -> Bedrock: blend_frames, empty frames, GCD, array tiles, replicate/quad, non-block exclusion, 1.8 fire_layer_0
+    const j2b = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'AnimJ2B' } })),
+        'assets/minecraft/textures/block/stone.png': png16x32,
+        'assets/minecraft/textures/block/stone.png.mcmeta': strToU8('\uFEFF' + JSON.stringify({ animation: { frametime: 2, frames: [] } })),
+        'assets/minecraft/textures/block/prismarine.png': png16x64,
+        'assets/minecraft/textures/block/prismarine.png.mcmeta': strToU8(JSON.stringify({
+          animation: {
+            frametime: 200,
+            interpolate: true,
+            frames: [{ index: 0, time: 400 }, ...Array.from({ length: 21 }, (_, i) => i % 4)],
+          },
+        })),
+        'assets/minecraft/textures/block/water_flow.png': png16x64,
+        'assets/minecraft/textures/block/water_flow.png.mcmeta': strToU8(JSON.stringify({ animation: {} })),
+        'assets/minecraft/textures/block/respawn_anchor_top.png': png16x64,
+        'assets/minecraft/textures/block/respawn_anchor_top.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 4 } })),
+        'assets/minecraft/textures/block/sculk_shrieker_can_summon_inner_top.png': png16x32,
+        'assets/minecraft/textures/block/sculk_shrieker_can_summon_inner_top.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 3, interpolate: true } })),
+        'assets/minecraft/textures/block/lava_still.png': png16x32,
+        'assets/minecraft/textures/block/lava_still_s.png': png16x32,
+        'assets/minecraft/textures/block/lava_still_s.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 2 } })),
+        'assets/minecraft/textures/block/lantern.png': png16x32,
+        'assets/minecraft/textures/item/lantern.png': png16x32,
+        'assets/minecraft/textures/item/lantern.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 9 } })),
+        'assets/minecraft/textures/entity/conduit/wind.png': encodeRgbaToPngSync(64, 704, new Uint8Array(64 * 704 * 4)),
+        'assets/minecraft/textures/entity/conduit/wind.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 3, height: 32 } })),
+      })),
+      'anim-j2b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableAnimationConversion: true }
+    );
+    const j2bOut = unzipSync(j2b.buffer);
+    const flipbooks = JSON.parse(strFromU8(j2bOut['textures/flipbook_textures.json'])) as any[];
+    const stoneFb = flipbooks.find(f => f.atlas_tile === 'stone');
+    expect(stoneFb.blend_frames).toBe(false);
+    expect(stoneFb.frames).toBeUndefined();
+
+    const prismFb = flipbooks.find(f => f.atlas_tile === 'prismarine');
+    expect(prismFb.blend_frames).toBe(true);
+    expect(prismFb.ticks_per_frame).toBe(200);
+    expect(prismFb.frames).toHaveLength(23);
+
+    const waterFlowFb = flipbooks.find(f => f.atlas_tile === 'flowing_water_grey');
+    expect(waterFlowFb.replicate).toBe(2);
+
+    const anchorFbs = flipbooks.filter(f => f.atlas_tile === 'respawn_anchor_top');
+    expect(anchorFbs.map(f => f.atlas_index)).toEqual([1, 2, 3, 4]);
+
+    const shriekerFb = flipbooks.find(f => f.atlas_tile === 'sculk_shrieker_inner_top');
+    expect(shriekerFb.atlas_index).toBe(1);
+
+    expect(flipbooks.some(f => f.flipbook_texture.includes('items/lantern'))).toBe(false);
+    expect(flipbooks.some(f => f.flipbook_texture.includes('lava_still_mer'))).toBe(false);
+    expect(flipbooks.some(f => f.flipbook_texture.includes('conduit'))).toBe(false);
+
+    const terrain = JSON.parse(strFromU8(j2bOut['textures/terrain_texture.json']));
+    expect(Array.isArray(terrain.texture_data.prismarine.textures)).toBe(true);
+    expect(terrain.texture_data.respawn_anchor_top.textures).toHaveLength(5);
+    expect(terrain.texture_data.flowing_water_grey.quad).toBe(1);
+
+    // 1.8 fire_layer_0 + enableAnimationConversion: false
+    const j18Out = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
+        'assets/minecraft/textures/blocks/fire_layer_0.png': png16x32,
+        'assets/minecraft/textures/blocks/fire_layer_0.png.mcmeta': strToU8(JSON.stringify({ animation: { frames: [1, 0] } })),
+      })),
+      'fire-1.8.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableAnimationConversion: true }
+    )).buffer);
+    expect(j18Out['textures/blocks/fire_0.png']).toBeDefined();
+    expect(JSON.parse(strFromU8(j18Out['textures/flipbook_textures.json']))[0].atlas_tile).toBe('fire_0');
+
+    const disabledJ2B = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Off' } })),
+        'assets/minecraft/textures/block/stone.png': png16x32,
+        'assets/minecraft/textures/block/stone.png.mcmeta': strToU8(JSON.stringify({ animation: { frametime: 2 } })),
+      })),
+      'anim-off.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableAnimationConversion: false }
+    )).buffer);
+    expect(disabledJ2B['textures/flipbook_textures.json']).toBeUndefined();
+
+    // 2. Bedrock -> Java: BOM, .tga, blend_frames default, invalid ticks/frames, duplicate atlas_tile, conduit wind, 8x256 strip, PBR clamp
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'AnimB2J', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+    const tga16x64 = encodeRgbaToTgaSync(16, 64, new Uint8Array(16 * 64 * 4).fill(150));
+    const png8x256 = encodeRgbaToPngSync(8, 256, new Uint8Array(8 * 256 * 4).fill(120));
+    const b2j = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/prismarine_rough.tga': tga16x64,
+        'textures/blocks/respawn_anchor_top.png': png16x64,
+        'textures/blocks/lava_still.png': png16x64,
+        'textures/blocks/lava_still_mer.png': png16x32,
+        'textures/blocks/stone.png': png8x256,
+        'textures/blocks/conduit_wind_horizontal.png': encodeRgbaToPngSync(64, 704, new Uint8Array(64 * 704 * 4)),
+        'textures/flipbook_textures.json': strToU8('\uFEFF' + JSON.stringify([
+          { flipbook_texture: 'textures/blocks/prismarine_rough.tga', atlas_tile: 'prismarine', ticks_per_frame: 5 },
+          { flipbook_texture: 'textures/blocks/respawn_anchor_top', atlas_tile: 'respawn_anchor_top', atlas_index: 1, ticks_per_frame: -3, frames: [0, 1.5, 2, 99], blend_frames: false },
+          { flipbook_texture: 'textures/blocks/respawn_anchor_top', atlas_tile: 'respawn_anchor_top', atlas_index: 2, ticks_per_frame: 4 },
+          { flipbook_texture: 'textures/blocks/lava_still', atlas_tile: 'still_lava', ticks_per_frame: 2, frames: [0, 1, 2, 3], blend_frames: false },
+        ])),
+      })),
+      'anim-b2j.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableAnimationConversion: true, enablePbrConversion: true }
+    );
+    const b2jOut = unzipSync(b2j.buffer);
+    const prismMcmeta = JSON.parse(strFromU8(b2jOut['assets/minecraft/textures/block/prismarine.png.mcmeta']));
+    expect(prismMcmeta.animation.frametime).toBe(5);
+    expect(prismMcmeta.animation.interpolate).toBe(true);
+
+    const anchorMcmeta = JSON.parse(strFromU8(b2jOut['assets/minecraft/textures/block/respawn_anchor_top.png.mcmeta']));
+    expect(anchorMcmeta.animation.frametime).toBeUndefined();
+    expect(anchorMcmeta.animation.interpolate).toBeUndefined();
+    expect(anchorMcmeta.animation.frames).toEqual([0, 2]);
+
+    const windMcmeta = JSON.parse(strFromU8(b2jOut['assets/minecraft/textures/entity/conduit/wind.png.mcmeta']));
+    expect(windMcmeta.animation).toEqual({ frametime: 3, height: 32 });
+
+    expect(getPngDimensions(b2jOut['assets/minecraft/textures/block/stone.png'])).toEqual({ width: 16, height: 512 });
+    const lavaSpecMcmeta = JSON.parse(strFromU8(b2jOut['assets/minecraft/textures/block/lava_still_s.png.mcmeta']));
+    expect(lavaSpecMcmeta.animation.frames).toEqual([0, 1]);
+
+    // Malformed flipbook_textures.json reports invalid format
+    const badFlipbook = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/stone.png': png16,
+        'textures/flipbook_textures.json': strToU8('{not-valid-json'),
+      })),
+      'bad-fb.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', enableAnimationConversion: true }
+    );
+    expect(badFlipbook.report.details.some(d => d.reason === 'Invalid flipbook_textures.json format')).toBe(true);
+  });
+
+  it('converts compass, lodestone compass, recovery compass, and clock textures across Java and Bedrock', async () => {
+    const makeFrame = (r: number, g: number, b: number) => {
+      const rgba = new Uint8Array(16 * 16 * 4);
+      for (let i = 0; i < 16 * 16; i++) {
+        rgba[i * 4] = r; rgba[i * 4 + 1] = g; rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = 255;
+      }
+      return encodeRgbaToPngSync(16, 16, rgba);
+    };
+
+    const javaFiles: Record<string, Uint8Array> = {
+      'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Dials' } })),
+    };
+    for (let i = 0; i < 32; i++) {
+      javaFiles[`assets/minecraft/textures/item/compass_${String(i).padStart(2, '0')}.png`] = makeFrame(i * 7, 10, 20);
+      if (i !== 5) {
+        javaFiles[`assets/minecraft/textures/item/recovery_compass_${String(i).padStart(2, '0')}.png`] = makeFrame(20, i * 7, 200);
+      }
+    }
+    for (let i = 0; i < 64; i++) {
+      javaFiles[`assets/minecraft/textures/item/clock_${String(i).padStart(2, '0')}.png`] = makeFrame(10, 20, i * 3);
+    }
+
+    // 1. Java 1.21 -> Bedrock
+    const j2b = await convertBuffer(toArrayBuffer(zipSync(javaFiles)), 'dials-j2b.zip', {
+      ...baseOptions,
+      direction: 'java-to-bedrock',
+      bedrockVersionId: '1.21.50',
+    });
+    expect(j2b.report.errorCount).toBe(0);
+    const bOut = unzipSync(j2b.buffer);
+    expect(getPngDimensions(bOut['textures/items/compass_atlas.png'])).toEqual({ width: 16, height: 512 });
+    expect(getPngDimensions(bOut['textures/items/compass_item.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(bOut['textures/items/lodestonecompass_atlas.png'])).toEqual({ width: 16, height: 512 });
+    expect(getPngDimensions(bOut['textures/items/lodestonecompass_item.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(bOut['textures/items/recovery_compass_atlas.png'])).toEqual({ width: 16, height: 512 });
+    expect(getPngDimensions(bOut['textures/items/recovery_compass_item.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(bOut['textures/items/watch_atlas.png'])).toEqual({ width: 16, height: 1024 });
+    expect(getPngDimensions(bOut['textures/items/clock_item.png'])).toEqual({ width: 16, height: 16 });
+
+    const itemTex = JSON.parse(strFromU8(bOut['textures/item_texture.json']));
+    expect(itemTex.texture_data.compass_item.textures).toBe('textures/items/compass_item');
+    expect(itemTex.texture_data.lodestonecompass_item.textures).toBe('textures/items/lodestonecompass_item');
+    expect(itemTex.texture_data.recovery_compass.textures).toBe('textures/items/recovery_compass_item');
+    expect(itemTex.texture_data.clock_item.textures).toBe('textures/items/clock_item');
+
+    const compassAtlas = decodePngToRgbaSync(bOut['textures/items/compass_atlas.png'])!;
+    expect(compassAtlas.rgba[(16 * 16 * 16) * 4]).toBe(16 * 7);
+
+    // 2. Bedrock -> Java 1.21 (including .tga compass_atlas) and Java 1.8
+    const compassAtlasDecoded = decodePngToRgbaSync(bOut['textures/items/compass_atlas.png'])!;
+    const compassAtlasTga = encodeRgbaToTgaSync(16, 512, compassAtlasDecoded.rgba);
+    const b2jModern = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': bOut['manifest.json'],
+        'textures/items/compass_atlas.tga': compassAtlasTga,
+        'textures/items/compass_item.png': bOut['textures/items/compass_item.png'],
+        'textures/items/recovery_compass_atlas.png': bOut['textures/items/recovery_compass_atlas.png'],
+        'textures/items/watch_atlas.png': bOut['textures/items/watch_atlas.png'],
+      })),
+      'dials-b2j.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableTgaConversion: true }
+    );
+    const jModOut = unzipSync(b2jModern.buffer);
+    expect(getPngDimensions(jModOut['assets/minecraft/textures/item/compass_00.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(jModOut['assets/minecraft/textures/item/compass_31.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(jModOut['assets/minecraft/textures/item/recovery_compass_16.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(jModOut['assets/minecraft/textures/item/clock_63.png'])).toEqual({ width: 16, height: 16 });
+    expect(jModOut['assets/minecraft/textures/item/compass_item.png']).toBeUndefined();
+    expect(jModOut['assets/minecraft/textures/item/compass_00.png.mcmeta']).toBeUndefined();
+
+    const b2jLegacy = await convertBuffer(toArrayBuffer(j2b.buffer), 'dials-b2j-1.8.mcpack', {
+      ...baseOptions,
+      direction: 'bedrock-to-java',
+      javaVersionId: '1.8.0',
+    });
+    const jLegOut = unzipSync(b2jLegacy.buffer);
+    expect(getPngDimensions(jLegOut['assets/minecraft/textures/items/compass.png'])).toEqual({ width: 16, height: 512 });
+    expect(getPngDimensions(jLegOut['assets/minecraft/textures/items/clock.png'])).toEqual({ width: 16, height: 1024 });
+    expect(jLegOut['assets/minecraft/textures/items/compass.png.mcmeta']).toBeUndefined();
+    expect(jLegOut['assets/minecraft/textures/items/recovery_compass_00.png']).toBeUndefined();
+
+    // 3. Java 1.8 -> Java 1.21 and back
+    const j2jUp = await convertBuffer(toArrayBuffer(b2jLegacy.buffer), 'dials-1.8-to-1.21.zip', {
+      ...baseOptions,
+      direction: 'java-to-java',
+      javaVersionId: '1.21.4',
+    });
+    const jUpOut = unzipSync(j2jUp.buffer);
+    expect(getPngDimensions(jUpOut['assets/minecraft/textures/item/compass_31.png'])).toEqual({ width: 16, height: 16 });
+    expect(getPngDimensions(jUpOut['assets/minecraft/textures/item/clock_63.png'])).toEqual({ width: 16, height: 16 });
+
+    const j2jDown = await convertBuffer(toArrayBuffer(j2jUp.buffer), 'dials-1.21-to-1.8.zip', {
+      ...baseOptions,
+      direction: 'java-to-java',
+      javaVersionId: '1.8.0',
+    });
+    const jDownOut = unzipSync(j2jDown.buffer);
+    expect(getPngDimensions(jDownOut['assets/minecraft/textures/items/compass.png'])).toEqual({ width: 16, height: 512 });
+    expect(getPngDimensions(jDownOut['assets/minecraft/textures/items/clock.png'])).toEqual({ width: 16, height: 1024 });
+  });
 });

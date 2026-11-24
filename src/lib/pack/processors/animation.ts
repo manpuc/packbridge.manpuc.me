@@ -1,7 +1,9 @@
 export interface FlipbookEntry {
   flipbook_texture: string;
   atlas_tile: string;
-  ticks_per_frame: number;
+  atlas_index?: number;
+  atlas_tile_variant?: number;
+  ticks_per_frame?: number;
   frames?: number[];
   replicate?: number;
   blend_frames?: boolean;
@@ -9,6 +11,46 @@ export interface FlipbookEntry {
 
 export const MAX_ANIMATION_FRAME_TIME = 1200; // Max 60 seconds per frame at 20 TPS
 export const MAX_TOTAL_EXPANDED_FRAMES = 4096;
+
+const BEDROCK_FLIPBOOK_REPLICATE: Record<string, number> = {
+  'textures/blocks/water_flow_grey': 2,
+  'textures/blocks/water_flow': 2,
+  'textures/blocks/lava_flow': 2,
+};
+
+const BEDROCK_FLIPBOOK_INDICES: Record<string, { indices: number[]; includeVariant?: boolean }> = {
+  'textures/blocks/respawn_anchor_top': { indices: [1, 2, 3, 4], includeVariant: true },
+  'textures/blocks/respawn_anchor_top_off': { indices: [0], includeVariant: true },
+  'textures/blocks/sculk_catalyst_side_bloom': { indices: [1], includeVariant: true },
+  'textures/blocks/sculk_catalyst_top_bloom': { indices: [1], includeVariant: true },
+  'textures/blocks/sculk_shrieker_inner_top': { indices: [0], includeVariant: true },
+  'textures/blocks/sculk_shrieker_can_summon_inner_top': { indices: [1], includeVariant: true },
+  'textures/blocks/firefly_bush_firefly': { indices: [1], includeVariant: false },
+};
+
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y !== 0) {
+    const t = x % y;
+    x = y;
+    y = t;
+  }
+  return x || 1;
+}
+
+function extractFrameIndex(f: unknown): number {
+  if (typeof f === 'number' && Number.isFinite(f) && f >= 0) {
+    return Math.floor(f);
+  }
+  if (f && typeof f === 'object') {
+    const idx = (f as { index?: unknown }).index;
+    if (typeof idx === 'number' && Number.isFinite(idx) && idx >= 0) {
+      return Math.floor(idx);
+    }
+  }
+  return NaN;
+}
 
 // Vanilla Bedrock atlas_tile names that differ from their texture filename
 export const BEDROCK_FLIPBOOK_ATLAS_TILES: Record<string, string> = {
@@ -58,8 +100,10 @@ export function getBedrockAtlasTile(texturePathNoExt: string): string {
  */
 export function parseJavaAnimation(mcmetaContent: string, bedrockPath: string): FlipbookEntry | null {
   try {
-    const data = JSON.parse(mcmetaContent);
-    if (!data.animation) return null;
+    const data = JSON.parse(mcmetaContent.replace(/^\uFEFF/, ''));
+    if (!data || typeof data.animation !== 'object' || data.animation === null || Array.isArray(data.animation)) {
+      return null;
+    }
 
     if (!bedrockPath) return null;
 
@@ -74,42 +118,83 @@ export function parseJavaAnimation(mcmetaContent: string, bedrockPath: string): 
     const entry: FlipbookEntry = {
       flipbook_texture: texturePath,
       atlas_tile: shortName,
-      ticks_per_frame: defaultTime
+      ticks_per_frame: defaultTime,
+      blend_frames: Boolean(data.animation.interpolate),
     };
 
-    if (data.animation.interpolate) {
-      entry.blend_frames = true;
+    if (Object.hasOwn(BEDROCK_FLIPBOOK_REPLICATE, texturePath)) {
+      entry.replicate = BEDROCK_FLIPBOOK_REPLICATE[texturePath];
     }
 
-    if (data.animation.frames && Array.isArray(data.animation.frames)) {
-      // Check for variable time frames
-      const hasVariableTime = data.animation.frames.some((f: any) => f && typeof f === 'object' && typeof f.time === 'number');
+    const indexMeta = Object.hasOwn(BEDROCK_FLIPBOOK_INDICES, texturePath)
+      ? BEDROCK_FLIPBOOK_INDICES[texturePath]
+      : null;
+    if (indexMeta && indexMeta.indices.length === 1) {
+      entry.atlas_index = indexMeta.indices[0];
+      if (indexMeta.includeVariant) {
+        entry.atlas_tile_variant = indexMeta.indices[0];
+      }
+    }
+
+    if (Array.isArray(data.animation.frames)) {
+      const hasVariableTime = data.animation.frames.some(
+        (f: any) => f && typeof f === 'object' && typeof f.time === 'number' && Number.isFinite(f.time)
+      );
       if (hasVariableTime) {
-        entry.ticks_per_frame = 1; // Force 1 tick per frame and duplicate frames
-        const newFrames: number[] = [];
+        const pairs: Array<{ idx: number; time: number }> = [];
         for (const f of data.animation.frames) {
-          const idx = typeof f === 'number' ? f : (f && typeof f === 'object' ? Number(f.index) : NaN);
-          if (!Number.isFinite(idx) || idx < 0) continue;
-          const rawTime = (f && typeof f === 'object' && typeof f.time === 'number') ? f.time : defaultTime;
+          const idx = extractFrameIndex(f);
+          if (!Number.isFinite(idx)) continue;
+          const rawTime = (f && typeof f === 'object' && typeof f.time === 'number' && Number.isFinite(f.time))
+            ? f.time
+            : defaultTime;
           const time = Math.min(Math.max(1, Math.floor(rawTime)), MAX_ANIMATION_FRAME_TIME);
-          for (let i = 0; i < time && newFrames.length < MAX_TOTAL_EXPANDED_FRAMES; i++) {
-            newFrames.push(idx);
-          }
-          if (newFrames.length >= MAX_TOTAL_EXPANDED_FRAMES) break;
+          pairs.push({ idx, time });
         }
-        entry.frames = newFrames;
+        if (pairs.length > 0) {
+          const step = pairs.reduce((acc, p) => gcd(acc, p.time), pairs[0].time);
+          entry.ticks_per_frame = step;
+          const newFrames: number[] = [];
+          for (const p of pairs) {
+            const count = Math.max(1, Math.floor(p.time / step));
+            for (let i = 0; i < count && newFrames.length < MAX_TOTAL_EXPANDED_FRAMES; i++) {
+              newFrames.push(p.idx);
+            }
+            if (newFrames.length >= MAX_TOTAL_EXPANDED_FRAMES) break;
+          }
+          if (newFrames.length > 0) {
+            entry.frames = newFrames;
+          }
+        }
       } else {
-        entry.frames = data.animation.frames
+        const resolved = data.animation.frames
           .slice(0, MAX_TOTAL_EXPANDED_FRAMES)
-          .map((f: any) => typeof f === 'number' ? f : (f && typeof f === 'object' ? Number(f.index) : NaN))
-          .filter((n: number) => Number.isFinite(n) && n >= 0);
+          .map((f: unknown) => extractFrameIndex(f))
+          .filter((n: number) => Number.isFinite(n));
+        if (resolved.length > 0) {
+          entry.frames = resolved;
+        }
       }
     }
 
     return entry;
-  } catch (e) {
+  } catch {
     return null;
   }
+}
+
+export function expandBedrockFlipbookEntry(entry: FlipbookEntry): FlipbookEntry[] {
+  const meta = Object.hasOwn(BEDROCK_FLIPBOOK_INDICES, entry.flipbook_texture)
+    ? BEDROCK_FLIPBOOK_INDICES[entry.flipbook_texture]
+    : null;
+  if (meta && meta.indices.length > 1) {
+    return meta.indices.map((idx) => ({
+      ...entry,
+      atlas_index: idx,
+      ...(meta.includeVariant ? { atlas_tile_variant: idx } : {}),
+    }));
+  }
+  return [entry];
 }
 
 /**
@@ -120,16 +205,26 @@ export function generateJavaAnimation(entry: FlipbookEntry): string {
     animation: {}
   };
 
-  if (entry.blend_frames) {
+  const rawTicks = typeof entry.ticks_per_frame === 'number' ? entry.ticks_per_frame : NaN;
+  const frametime = Number.isFinite(rawTicks) && rawTicks >= 1
+    ? Math.min(Math.floor(rawTicks), MAX_ANIMATION_FRAME_TIME)
+    : 1;
+
+  if (entry.blend_frames === true || (entry.blend_frames !== false && frametime > 1)) {
     mcmeta.animation.interpolate = true;
   }
 
-  if (entry.ticks_per_frame && entry.ticks_per_frame !== 1) {
-    mcmeta.animation.frametime = entry.ticks_per_frame;
+  if (frametime !== 1) {
+    mcmeta.animation.frametime = frametime;
   }
 
-  if (entry.frames && Array.isArray(entry.frames) && entry.frames.length > 0) {
-    mcmeta.animation.frames = entry.frames;
+  if (Array.isArray(entry.frames)) {
+    const validFrames = entry.frames
+      .filter((f): f is number => typeof f === 'number' && Number.isInteger(f) && f >= 0)
+      .slice(0, MAX_TOTAL_EXPANDED_FRAMES);
+    if (validFrames.length > 0) {
+      mcmeta.animation.frames = validFrames;
+    }
   }
 
   return JSON.stringify(mcmeta, null, 2);

@@ -11,8 +11,21 @@ import {
   isBedrockOpaqueLeafPath,
   isBedrockCarriedLeafPath,
 } from './processors/blocks';
-import { generateItemTexture } from './processors/items';
-import { parseJavaAnimation, generateJavaAnimation, type FlipbookEntry } from './processors/animation';
+import {
+  generateItemTexture,
+  DIAL_ITEM_SPECS,
+  classifyJavaDialPath,
+  classifyBedrockDialPath,
+  stitchDialAtlas,
+  sliceDialAtlas,
+  type DialItemKind,
+} from './processors/items';
+import {
+  parseJavaAnimation,
+  generateJavaAnimation,
+  expandBedrockFlipbookEntry,
+  type FlipbookEntry,
+} from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, extractPackFormat, extractMinPackFormat } from './versions';
 import { normalizeLegacyPath, downgradeLegacyPath, migrateJavaPath } from './legacy';
 import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
@@ -133,7 +146,8 @@ export async function convertBuffer(
   const allTargetTextures = new Set<string>();
   const supportedLanguages = new Set<string>();
   const mergedLangs = new Map<string, string>();
-  const flipbookEntries: FlipbookEntry[] = [];
+  const pendingBedrockFlipbooks: Array<{ sourcePath: string; entry: FlipbookEntry }> = [];
+  const extraItemTextureEntries: Record<string, string> = Object.create(null);
 
   // Pre-scan for metadata & pack root (prefer shallowest pack.mcmeta or manifest.json, or root folder containing assets/textures)
   let packRoot = "";
@@ -300,6 +314,10 @@ export async function convertBuffer(
   let hasWidgetButtonSprite = false;
   let pendingJavaGrassSide: { sourcePath: string; bytes: Uint8Array } | null = null;
   let pendingJavaGrassSideOverlay: { sourcePath: string; bytes: Uint8Array } | null = null;
+  const pendingJavaDialFrames = new Map<DialItemKind, Map<number, { sourcePath: string; bytes: Uint8Array }>>();
+  const pendingJavaDialStrips = new Map<DialItemKind, { sourcePath: string; bytes: Uint8Array }>();
+  const pendingBedrockDialAtlases = new Map<DialItemKind, { sourcePath: string; bytes: Uint8Array; isTga: boolean; priority: number }>();
+  const pendingBedrockDialIcons: Array<{ kind: DialItemKind; sourcePath: string }> = [];
   const lowPriorityFallbackTargets = new Set<string>();
   const tgaWrittenTargets = new Set<string>();
 
@@ -837,6 +855,76 @@ export async function convertBuffer(
         continue;
       }
 
+      if (direction === 'java-to-bedrock') {
+        const dial = classifyJavaDialPath(relativePath);
+        if (dial) {
+          if (dial.mode === 'frame') {
+            let map = pendingJavaDialFrames.get(dial.kind);
+            if (!map) {
+              map = new Map();
+              pendingJavaDialFrames.set(dial.kind, map);
+            }
+            map.set(dial.index, { sourcePath: path, bytes: content });
+          } else {
+            pendingJavaDialStrips.set(dial.kind, { sourcePath: path, bytes: content });
+          }
+          continue;
+        }
+      } else if (direction === 'bedrock-to-java') {
+        const bDial = classifyBedrockDialPath(relativePath);
+        if (bDial) {
+          const isTga = relativePath.toLowerCase().endsWith('.tga');
+          if (isTga && !options.enableTgaConversion) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion disabled' });
+            continue;
+          }
+          if (bDial.role === 'atlas') {
+            const existing = pendingBedrockDialAtlases.get(bDial.kind);
+            const shouldReplace =
+              !existing ||
+              bDial.priority > existing.priority ||
+              (bDial.priority === existing.priority && existing.isTga && !isTga);
+            if (shouldReplace) {
+              if (existing) {
+                report.skippedCount++;
+                report.details.push({ filename: existing.sourcePath, status: 'skipped', reason: 'Superseded by higher-priority dial atlas' });
+              }
+              pendingBedrockDialAtlases.set(bDial.kind, { sourcePath: path, bytes: content, isTga, priority: bDial.priority });
+            } else {
+              report.skippedCount++;
+              report.details.push({
+                filename: path,
+                status: 'skipped',
+                reason: isTga && !existing.isTga ? 'PNG equivalent already present' : 'Superseded by higher-priority dial atlas',
+              });
+            }
+          } else {
+            pendingBedrockDialIcons.push({ kind: bDial.kind, sourcePath: path });
+          }
+          continue;
+        }
+      } else if (
+        direction === 'java-to-java' &&
+        ((sourcePackFormat === 1 && targetJavaVersion.packFormat >= 2) ||
+          (sourcePackFormat >= 2 && targetJavaVersion.packFormat === 1))
+      ) {
+        const dial = classifyJavaDialPath(relativePath);
+        if (dial) {
+          if (dial.mode === 'frame') {
+            let map = pendingJavaDialFrames.get(dial.kind);
+            if (!map) {
+              map = new Map();
+              pendingJavaDialFrames.set(dial.kind, map);
+            }
+            map.set(dial.index, { sourcePath: path, bytes: content });
+          } else {
+            pendingJavaDialStrips.set(dial.kind, { sourcePath: path, bytes: content });
+          }
+          continue;
+        }
+      }
+
       const isLowPriorityBlockFallback =
         direction === 'bedrock-to-java' &&
         (isBedrockOpaqueLeafPath(relativePath) || /^textures\/blocks?\/grass_side_carried\.(png|tga)$/i.test(relativePath));
@@ -1039,11 +1127,18 @@ export async function convertBuffer(
                 continue;
               }
               const bedrockPngPath = targetPath.replace(/\.mcmeta$/, '');
+              if (
+                !bedrockPngPath.startsWith('textures/blocks/') ||
+                relativePath.startsWith('assets/minecraft/textures/entity/') ||
+                /_[sn]\.png\.mcmeta$/i.test(relativePath)
+              ) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Bedrock flipbook_textures.json only supports block textures' });
+                continue;
+              }
               const flipbook = parseJavaAnimation(strFromU8(content), bedrockPngPath);
               if (flipbook) {
-                flipbookEntries.push(flipbook);
-                report.convertedCount++;
-                report.details.push({ filename: path, status: 'converted', outputPath: 'textures/flipbook_textures.json' });
+                pendingBedrockFlipbooks.push({ sourcePath: path, entry: flipbook });
               } else {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or empty animation metadata' });
@@ -1078,24 +1173,32 @@ export async function convertBuffer(
               }
               try {
                 const cleanedFlipbook = strFromU8(content)
+                  .replace(/^\uFEFF/, '')
                   .replace(/\/\/.*$/gm, '')
                   .replace(/\/\*[\s\S]*?\*\//g, '')
                   .replace(/,\s*([}\]])/g, '$1');
                 const flipbooks = JSON.parse(cleanedFlipbook);
-                if (Array.isArray(flipbooks)) {
-                  for (const entry of flipbooks) {
-                    if (!entry || typeof entry.flipbook_texture !== 'string') continue;
-                    let rawTex = entry.flipbook_texture;
-                    if (!rawTex.endsWith('.png')) rawTex += '.png';
-                    const bPath = rawTex.startsWith('textures/') ? rawTex : 'textures/' + rawTex;
-                    const jPath = getTargetContext(bPath, 'bedrock-to-java');
-                    if (jPath) {
-                      const formattedJPath = formatTargetJavaPath(jPath);
-                      pendingJavaFlipbooks.push({ sourcePath: path, javaPngPath: formattedJPath, entry });
-                    }
+                if (!Array.isArray(flipbooks)) {
+                  report.skippedCount++;
+                  report.details.push({ filename: path, status: 'skipped', reason: 'Invalid flipbook_textures.json format' });
+                  continue;
+                }
+                for (const entry of flipbooks) {
+                  if (!entry || typeof entry.flipbook_texture !== 'string') continue;
+                  let rawTex = entry.flipbook_texture.trim().replace(/\\/g, '/').replace(/^\.?\//, '');
+                  rawTex = rawTex.replace(/\.(png|tga)$/i, '') + '.png';
+                  const bPath = rawTex.startsWith('textures/') ? rawTex : 'textures/' + rawTex;
+                  const jPath = getTargetContext(bPath, 'bedrock-to-java');
+                  if (jPath) {
+                    const formattedJPath = formatTargetJavaPath(jPath);
+                    pendingJavaFlipbooks.push({ sourcePath: path, javaPngPath: formattedJPath, entry });
                   }
                 }
-              } catch { }
+              } catch {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid flipbook_textures.json format' });
+                continue;
+              }
               report.skippedCount++;
               report.details.push({ filename: path, status: 'skipped', reason: 'Converted to individual .mcmeta files' });
               continue;
@@ -1660,6 +1763,158 @@ export async function convertBuffer(
     }
   }
 
+  // Dial Item Composition / Slicing Phase (compass, recovery_compass, clock)
+  if (direction === 'java-to-bedrock') {
+    for (const spec of Object.values(DIAL_ITEM_SPECS)) {
+      const framesMap = pendingJavaDialFrames.get(spec.kind);
+      const strip = pendingJavaDialStrips.get(spec.kind);
+      if ((!framesMap || framesMap.size === 0) && !strip) continue;
+
+      const sourceLabels: string[] = [];
+      if (framesMap) {
+        for (const f of framesMap.values()) sourceLabels.push(f.sourcePath);
+      }
+      if (strip) sourceLabels.push(strip.sourcePath);
+      const primarySource = sourceLabels[0];
+
+      if (spec.bedrockMinEngine && compareBedrockVersion(targetBedrockVersion.minEngineVersion, spec.bedrockMinEngine) < 0) {
+        for (const src of sourceLabels) {
+          report.skippedCount++;
+          report.details.push({ filename: src, status: 'skipped', reason: 'Unsupported in target Bedrock version' });
+        }
+        continue;
+      }
+
+      let result: { atlasPng: Uint8Array; iconPng: Uint8Array } | null = null;
+      if (framesMap && framesMap.size > 0) {
+        const rawFrames = new Map<number, Uint8Array>();
+        for (const [idx, f] of framesMap.entries()) rawFrames.set(idx, f.bytes);
+        result = stitchDialAtlas(rawFrames, spec);
+      } else if (strip) {
+        const sliced = sliceDialAtlas(strip.bytes, spec);
+        if (sliced) {
+          result = { atlasPng: sliced.stripPng, iconPng: sliced.iconPng };
+        }
+      }
+
+      if (result) {
+        for (const atlasPath of spec.bedrockAtlasPaths) {
+          if (isSafePath(atlasPath) && !targetFiles[atlasPath]) {
+            targetFiles[atlasPath] = [result.atlasPng, { level: getFileCompressionLevel(atlasPath) }];
+            allTargetTextures.add(atlasPath);
+            report.convertedCount++;
+            report.details.push({ filename: primarySource, status: 'converted', outputPath: atlasPath });
+          }
+        }
+        for (const icon of spec.bedrockIcons) {
+          if (isSafePath(icon.path) && !targetFiles[icon.path]) {
+            targetFiles[icon.path] = [result.iconPng, { level: getFileCompressionLevel(icon.path) }];
+            allTargetTextures.add(icon.path);
+            extraItemTextureEntries[icon.itemTextureKey] = icon.path.replace(/\.png$/i, '');
+            report.convertedCount++;
+            report.details.push({ filename: primarySource, status: 'converted', outputPath: icon.path });
+          }
+        }
+      } else {
+        for (const src of sourceLabels) {
+          report.skippedCount++;
+          report.details.push({ filename: src, status: 'skipped', reason: 'Failed to decode dial texture' });
+        }
+      }
+    }
+  } else if (direction === 'bedrock-to-java') {
+    for (const iconEntry of pendingBedrockDialIcons) {
+      report.skippedCount++;
+      report.details.push({ filename: iconEntry.sourcePath, status: 'skipped', reason: 'Bedrock static dial icon (Java uses *_atlas frames)' });
+    }
+    for (const [kind, entry] of pendingBedrockDialAtlases.entries()) {
+      const spec = DIAL_ITEM_SPECS[kind];
+      if (targetJavaVersion.packFormat < spec.javaMinPackFormat) {
+        report.skippedCount++;
+        report.details.push({ filename: entry.sourcePath, status: 'skipped', reason: 'Unsupported in target Java version' });
+        continue;
+      }
+      const sliced = sliceDialAtlas(entry.bytes, spec);
+      if (!sliced) {
+        report.skippedCount++;
+        report.details.push({ filename: entry.sourcePath, status: 'skipped', reason: 'Invalid or corrupt dial atlas texture' });
+        continue;
+      }
+      if (targetJavaVersion.packFormat === 1) {
+        const outPath = `assets/minecraft/textures/items/${spec.javaBase}.png`;
+        if (isSafePath(outPath) && !targetFiles[outPath]) {
+          targetFiles[outPath] = [sliced.stripPng, { level: getFileCompressionLevel(outPath) }];
+          allTargetTextures.add(outPath);
+          report.convertedCount++;
+          report.details.push({ filename: entry.sourcePath, status: 'converted', outputPath: outPath });
+        }
+      } else {
+        const dir = targetJavaVersion.packFormat <= 3 ? 'assets/minecraft/textures/items' : 'assets/minecraft/textures/item';
+        for (let i = 0; i < sliced.frames.length; i++) {
+          const outPath = `${dir}/${spec.javaBase}_${String(i).padStart(2, '0')}.png`;
+          if (isSafePath(outPath) && isValidJavaAssetPath(outPath) && !targetFiles[outPath]) {
+            targetFiles[outPath] = [sliced.frames[i], { level: getFileCompressionLevel(outPath) }];
+            allTargetTextures.add(outPath);
+            report.convertedCount++;
+            report.details.push({ filename: entry.sourcePath, status: 'converted', outputPath: outPath });
+          }
+        }
+      }
+    }
+  } else if (direction === 'java-to-java') {
+    if (sourcePackFormat === 1 && targetJavaVersion.packFormat >= 2) {
+      const dir = targetJavaVersion.packFormat <= 3 ? 'assets/minecraft/textures/items' : 'assets/minecraft/textures/item';
+      for (const [kind, strip] of pendingJavaDialStrips.entries()) {
+        const spec = DIAL_ITEM_SPECS[kind];
+        const sliced = sliceDialAtlas(strip.bytes, spec);
+        if (!sliced) {
+          report.skippedCount++;
+          report.details.push({ filename: strip.sourcePath, status: 'skipped', reason: 'Invalid or corrupt dial strip texture' });
+          continue;
+        }
+        for (let i = 0; i < sliced.frames.length; i++) {
+          const outPath = `${dir}/${spec.javaBase}_${String(i).padStart(2, '0')}.png`;
+          if (isSafePath(outPath) && isValidJavaAssetPath(outPath) && !targetFiles[outPath]) {
+            targetFiles[outPath] = [sliced.frames[i], { level: getFileCompressionLevel(outPath) }];
+            allTargetTextures.add(outPath);
+            report.convertedCount++;
+            report.details.push({ filename: strip.sourcePath, status: 'converted', outputPath: outPath });
+          }
+        }
+      }
+    } else if (sourcePackFormat >= 2 && targetJavaVersion.packFormat === 1) {
+      for (const [kind, framesMap] of pendingJavaDialFrames.entries()) {
+        const spec = DIAL_ITEM_SPECS[kind];
+        if (spec.javaMinPackFormat > 1) {
+          for (const f of framesMap.values()) {
+            report.skippedCount++;
+            report.details.push({ filename: f.sourcePath, status: 'skipped', reason: 'Unsupported in target Java version' });
+          }
+          continue;
+        }
+        const rawFrames = new Map<number, Uint8Array>();
+        let firstSource = '';
+        for (const [idx, f] of framesMap.entries()) {
+          if (!firstSource) firstSource = f.sourcePath;
+          rawFrames.set(idx, f.bytes);
+        }
+        const stitched = stitchDialAtlas(rawFrames, spec);
+        if (stitched) {
+          const outPath = `assets/minecraft/textures/items/${spec.javaBase}.png`;
+          targetFiles[outPath] = [stitched.atlasPng, { level: getFileCompressionLevel(outPath) }];
+          allTargetTextures.add(outPath);
+          report.convertedCount++;
+          report.details.push({ filename: firstSource, status: 'converted', outputPath: outPath });
+        } else {
+          for (const f of framesMap.values()) {
+            report.skippedCount++;
+            report.details.push({ filename: f.sourcePath, status: 'skipped', reason: 'Failed to decode dial texture' });
+          }
+        }
+      }
+    }
+  }
+
   // Finalization Phase
   // Only synthesize and append metadata if there was at least one legitimately converted pack file
   if (report.convertedCount > 0) {
@@ -1670,14 +1925,16 @@ export async function convertBuffer(
         report.convertedCount++;
       }
 
-      const itemTextureJson = convertedItemTextures.size > 0 ? generateItemTexture(convertedItemTextures) : null;
+      const itemTextureJson = (convertedItemTextures.size > 0 || Object.keys(extraItemTextureEntries).length > 0)
+        ? generateItemTexture(convertedItemTextures, extraItemTextureEntries)
+        : null;
       if (itemTextureJson) {
         targetFiles['textures/item_texture.json'] = [strToU8(itemTextureJson), { level: 1 }];
         report.convertedCount++;
       }
 
-      // Validating flipbook textures: Bedrock crashes if atlas_tile is not in terrain_texture or item_texture
-      if (flipbookEntries.length > 0) {
+      // Validating flipbook textures: Bedrock crashes if atlas_tile is not in terrain_texture
+      if (pendingBedrockFlipbooks.length > 0) {
         const validAtlasTiles = new Set<string>();
         if (terrainTextureJson) {
           try {
@@ -1685,17 +1942,29 @@ export async function convertBuffer(
             Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
           } catch { }
         }
-        if (itemTextureJson) {
-          try {
-            const parsed = JSON.parse(itemTextureJson);
-            Object.keys(parsed.texture_data || {}).forEach(k => validAtlasTiles.add(k));
-          } catch { }
-        }
 
-        const safeFlipbooks = flipbookEntries.filter(entry => {
-          // If atlas_tile exists in texture atlases or the texture path is present in output
-          return validAtlasTiles.has(entry.atlas_tile) || allTargetTextures.has(entry.flipbook_texture + '.png');
-        });
+        const safeFlipbooks: FlipbookEntry[] = [];
+        const seenFlipbookKeys = new Set<string>();
+        for (const { sourcePath, entry } of pendingBedrockFlipbooks) {
+          if (!validAtlasTiles.has(entry.atlas_tile)) {
+            report.skippedCount++;
+            report.details.push({ filename: sourcePath, status: 'skipped', reason: 'Matching block texture not found in terrain atlas' });
+            continue;
+          }
+          const expanded = expandBedrockFlipbookEntry(entry);
+          let addedAny = false;
+          for (const item of expanded) {
+            const dedupeKey = `${item.atlas_tile}:${item.atlas_index ?? 0}`;
+            if (seenFlipbookKeys.has(dedupeKey)) continue;
+            seenFlipbookKeys.add(dedupeKey);
+            safeFlipbooks.push(item);
+            addedAny = true;
+          }
+          if (addedAny) {
+            report.convertedCount++;
+            report.details.push({ filename: sourcePath, status: 'converted', outputPath: 'textures/flipbook_textures.json' });
+          }
+        }
 
         if (safeFlipbooks.length > 0) {
           targetFiles['textures/flipbook_textures.json'] = [strToU8(JSON.stringify(safeFlipbooks, null, 2)), { level: 1 }];
@@ -1738,15 +2007,15 @@ export async function convertBuffer(
         for (const { sourcePath, javaPngPath, entry } of pendingJavaFlipbooks) {
           const dims = javaOutputPngDims.get(javaPngPath);
           if (!dims || dims.height <= dims.width || dims.height % dims.width !== 0) continue;
+          const mcmetaPath = `${javaPngPath}.mcmeta`;
+          if (writtenJavaMcmetas.has(mcmetaPath) || !isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
           const frameCount = dims.height / dims.width;
           const sanitizedEntry: FlipbookEntry = {
             ...entry,
             frames: Array.isArray(entry.frames)
-              ? entry.frames.filter(f => typeof f === 'number' && Number.isFinite(f) && f >= 0 && f < frameCount)
+              ? entry.frames.filter(f => typeof f === 'number' && Number.isInteger(f) && f >= 0 && f < frameCount)
               : undefined
           };
-          const mcmetaPath = `${javaPngPath}.mcmeta`;
-          if (!isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
           const mcmetaContent = generateJavaAnimation(sanitizedEntry);
           targetFiles[mcmetaPath] = [strToU8(mcmetaContent), { level: getFileCompressionLevel(mcmetaPath) }];
           writtenJavaMcmetas.set(mcmetaPath, mcmetaContent);
@@ -1756,13 +2025,46 @@ export async function convertBuffer(
 
         for (const [pngPath, dims] of javaOutputPngDims.entries()) {
           if (!/^assets\/minecraft\/textures\/(blocks?|items?|entity\/conduit)\//.test(pngPath)) continue;
+          const isConduitWind = /^assets\/minecraft\/textures\/entity\/conduit\/wind(?:_vertical)?\.png$/.test(pngPath);
+          if (isConduitWind) {
+            const frameH = Math.floor(dims.width / 2);
+            if (frameH <= 0 || dims.height <= frameH || dims.height % frameH !== 0) continue;
+            const mcmetaPath = `${pngPath}.mcmeta`;
+            if (writtenJavaMcmetas.has(mcmetaPath) || !isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
+            const mcmetaContent = JSON.stringify({ animation: { frametime: 3, height: frameH } }, null, 2);
+            targetFiles[mcmetaPath] = [strToU8(mcmetaContent), { level: getFileCompressionLevel(mcmetaPath) }];
+            writtenJavaMcmetas.set(mcmetaPath, mcmetaContent);
+            report.convertedCount++;
+            report.details.push({ filename: pngPath, status: 'converted', outputPath: mcmetaPath });
+            continue;
+          }
           if (dims.height <= dims.width || dims.height % dims.width !== 0) continue;
           const mcmetaPath = `${pngPath}.mcmeta`;
           if (writtenJavaMcmetas.has(mcmetaPath) || !isSafePath(mcmetaPath) || !isValidJavaAssetPath(mcmetaPath)) continue;
           const baseMcmetaPath = pngPath.replace(/_[sn]\.png$/i, '.png.mcmeta');
-          const fallbackMcmeta = writtenJavaMcmetas.get(baseMcmetaPath) || JSON.stringify({ animation: {} }, null, 2);
-          targetFiles[mcmetaPath] = [strToU8(fallbackMcmeta), { level: getFileCompressionLevel(mcmetaPath) }];
-          writtenJavaMcmetas.set(mcmetaPath, fallbackMcmeta);
+          let fallbackMcmeta = writtenJavaMcmetas.get(baseMcmetaPath);
+          if (fallbackMcmeta) {
+            try {
+              const parsed = JSON.parse(fallbackMcmeta);
+              if (Array.isArray(parsed?.animation?.frames)) {
+                const frameCount = dims.height / dims.width;
+                const filtered = parsed.animation.frames.filter(
+                  (f: unknown) => typeof f === 'number' && Number.isInteger(f) && f >= 0 && f < frameCount
+                );
+                if (filtered.length > 0) {
+                  parsed.animation.frames = filtered;
+                } else {
+                  delete parsed.animation.frames;
+                }
+                fallbackMcmeta = JSON.stringify(parsed, null, 2);
+              }
+            } catch { }
+          }
+          const finalMcmeta = fallbackMcmeta || JSON.stringify({ animation: {} }, null, 2);
+          targetFiles[mcmetaPath] = [strToU8(finalMcmeta), { level: getFileCompressionLevel(mcmetaPath) }];
+          writtenJavaMcmetas.set(mcmetaPath, finalMcmeta);
+          report.convertedCount++;
+          report.details.push({ filename: pngPath, status: 'converted', outputPath: mcmetaPath });
         }
       }
 
@@ -1772,6 +2074,11 @@ export async function convertBuffer(
         report.convertedCount++;
         report.details.push({ filename: 'manifest.json', status: 'converted', outputPath: 'pack.mcmeta' });
       }
+    }
+  } else if (pendingBedrockFlipbooks.length > 0) {
+    for (const { sourcePath } of pendingBedrockFlipbooks) {
+      report.skippedCount++;
+      report.details.push({ filename: sourcePath, status: 'skipped', reason: 'Matching block texture not found in terrain atlas' });
     }
   }
 

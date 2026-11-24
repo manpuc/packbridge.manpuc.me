@@ -197,6 +197,23 @@ export function synthesizeBedrockLeafTextures(
   return out;
 }
 
+const BEDROCK_ARRAY_TERRAIN_TILES: Record<string, string[]> = {
+  prismarine: ['textures/blocks/prismarine_rough', 'textures/blocks/prismarine_dark', 'textures/blocks/prismarine_bricks'],
+  respawn_anchor_top: [
+    'textures/blocks/respawn_anchor_top_off',
+    'textures/blocks/respawn_anchor_top',
+    'textures/blocks/respawn_anchor_top',
+    'textures/blocks/respawn_anchor_top',
+    'textures/blocks/respawn_anchor_top',
+  ],
+  sculk_catalyst_side: ['textures/blocks/sculk_catalyst_side', 'textures/blocks/sculk_catalyst_side_bloom'],
+  sculk_catalyst_top: ['textures/blocks/sculk_catalyst_top', 'textures/blocks/sculk_catalyst_top_bloom'],
+  sculk_shrieker_inner_top: ['textures/blocks/sculk_shrieker_inner_top', 'textures/blocks/sculk_shrieker_can_summon_inner_top'],
+  firefly_bush: ['textures/blocks/firefly_bush', 'textures/blocks/firefly_bush_firefly'],
+};
+
+const BEDROCK_QUAD_TERRAIN_TILES = new Set(['flowing_water_grey', 'flowing_water', 'flowing_lava']);
+
 /**
  * Generates Bedrock Edition terrain_texture.json content
  * based on the blocks encountered during conversion.
@@ -243,9 +260,20 @@ export function generateTerrainTexture(convertedBlocks: Set<string>): string {
       const shortName = getBedrockAtlasTile(texturePath);
       if (!shortName || isUnsafeObjectKey(shortName)) continue;
 
-      terrainTexture.texture_data[shortName] = {
-        textures: texturePath
-      };
+      if (Object.hasOwn(BEDROCK_ARRAY_TERRAIN_TILES, shortName)) {
+        terrainTexture.texture_data[shortName] = {
+          textures: BEDROCK_ARRAY_TERRAIN_TILES[shortName]
+        };
+      } else if (BEDROCK_QUAD_TERRAIN_TILES.has(shortName)) {
+        terrainTexture.texture_data[shortName] = {
+          quad: 1,
+          textures: texturePath
+        };
+      } else {
+        terrainTexture.texture_data[shortName] = {
+          textures: texturePath
+        };
+      }
     }
   }
 
