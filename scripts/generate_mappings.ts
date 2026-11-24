@@ -69,6 +69,21 @@ function resolveClosestMcDataVersion(target: string, list: string[]): string {
 
 const langCache = new Map<string, { java_to_bedrock: Record<string, string>; bedrock_to_java: Record<string, string> }>();
 
+function getLangCategory(k: string): string {
+  if (k.startsWith('block.minecraft.') || k.startsWith('tile.')) return 'block';
+  if (k.startsWith('item.minecraft.') || k.startsWith('item.')) return 'item';
+  if (k.startsWith('entity.minecraft.') || k.startsWith('entity.')) return 'entity';
+  if (k.startsWith('effect.minecraft.') || k.startsWith('potion.') || k.startsWith('effect.')) return 'effect';
+  if (k.startsWith('enchantment.')) return 'enchantment';
+  if (k.startsWith('biome.')) return 'biome';
+  if (k.startsWith('death.')) return 'death';
+  if (k.startsWith('gui.')) return 'gui';
+  if (k.startsWith('menu.')) return 'menu';
+  if (k.startsWith('options.')) return 'options';
+  if (k.startsWith('commands.')) return 'commands';
+  return 'other';
+}
+
 // Generate language and item mapping from PrismarineJS minecraft-data
 function getPrismarineLanguageMappings(javaVerId: string, bedrockVerId: string) {
   const jClean = javaVerId.split('.').slice(0, 3).join('.');
@@ -94,19 +109,64 @@ function getPrismarineLanguageMappings(javaVerId: string, bedrockVerId: string) 
     const bedData = minecraftData(`bedrock_${resolvedBedrock}`) || minecraftData('bedrock_1.21.0');
 
     if (javaData?.language && bedData?.language) {
-      const valToBKey = new Map<string, string>();
-      for (const [bk, bv] of Object.entries(bedData.language)) {
-        if (bv && typeof bv === 'string') {
-          valToBKey.set(bv.toLowerCase().trim(), bk);
+      const bedLang = bedData.language as Record<string, unknown>;
+      const javaLang = javaData.language as Record<string, unknown>;
+
+      // Pass 1: Exact key match
+      for (const jk of Object.keys(javaLang)) {
+        if (Object.hasOwn(bedLang, jk)) {
+          j2b[jk] = jk;
+          b2j[jk] = jk;
         }
       }
 
-      for (const [jk, jv] of Object.entries(javaData.language)) {
-        if (!jv || typeof jv !== 'string') continue;
-        const bk = valToBKey.get(jv.toLowerCase().trim());
-        if (bk) {
-          j2b[jk] = bk;
-          if (!b2j[bk]) b2j[bk] = jk;
+      // Pass 2: Structural match for modern Java block/item/entity keys
+      for (const jk of Object.keys(javaLang)) {
+        if (j2b[jk]) continue;
+        let cand: string | null = null;
+        if (jk.startsWith('block.minecraft.')) {
+          cand = `tile.${jk.slice('block.minecraft.'.length)}.name`;
+        } else if (jk.startsWith('item.minecraft.')) {
+          cand = `item.${jk.slice('item.minecraft.'.length)}.name`;
+        } else if (jk.startsWith('entity.minecraft.')) {
+          cand = `entity.${jk.slice('entity.minecraft.'.length)}.name`;
+        }
+        if (cand && Object.hasOwn(bedLang, cand)) {
+          j2b[jk] = cand;
+          if (!b2j[cand]) b2j[cand] = jk;
+        }
+      }
+
+      // Pass 3: Category-aware English value match excluding noisy UI/EDU/store prefixes
+      const bByVal = new Map<string, string[]>();
+      for (const [bk, bv] of Object.entries(bedLang)) {
+        if (!bv || typeof bv !== 'string') continue;
+        const norm = bv.toLowerCase().trim();
+        let arr = bByVal.get(norm);
+        if (!arr) {
+          arr = [];
+          bByVal.set(norm, arr);
+        }
+        arr.push(bk);
+      }
+
+      const noisyRe = /^(joincode\.|store\.|howtoplay\.|itemGroup\.|contentlog\.|realmsSettingsScreen\.|xbox\.|feed\.|accessibility\.|narrator\.)/;
+      for (const [jk, jv] of Object.entries(javaLang)) {
+        if (j2b[jk] || !jv || typeof jv !== 'string') continue;
+        const cands = bByVal.get(jv.toLowerCase().trim());
+        if (!cands) continue;
+        const jCat = getLangCategory(jk);
+        let picked = cands.find((bk) => getLangCategory(bk) === jCat && !noisyRe.test(bk));
+        if (!picked && (jCat === 'block' || jCat === 'item')) {
+          const alt = jCat === 'block' ? 'item' : 'block';
+          picked = cands.find((bk) => getLangCategory(bk) === alt && !noisyRe.test(bk));
+        }
+        if (!picked && jCat === 'other' && cands.length === 1 && !noisyRe.test(cands[0])) {
+          picked = cands[0];
+        }
+        if (picked) {
+          j2b[jk] = picked;
+          if (!b2j[picked]) b2j[picked] = jk;
         }
       }
       console.log(`  PrismarineJS matched ${Object.keys(j2b).length} language keys for Java ${resolvedJava} <-> Bedrock ${resolvedBedrock}`);
@@ -703,8 +763,9 @@ function applyTextureOverrides(content: any, isFallback = false) {
 
 async function updateMappings() {
   const texturesOnly = process.argv.includes('--textures-only');
+  const langOnly = process.argv.includes('--lang-only');
   // 1. Fetch Geyser sound mappings
-  const geyserSounds = texturesOnly
+  const geyserSounds = (texturesOnly || langOnly)
     ? { java_to_bedrock: {}, bedrock_to_java: {} }
     : await fetchGeyserSounds();
 
@@ -726,11 +787,13 @@ async function updateMappings() {
       const bedrockVer = parts[1] || '1.21.50';
 
       // Apply authoritative Mojang texture overrides
-      applyTextureOverrides(content, false);
+      if (!langOnly) {
+        applyTextureOverrides(content, false);
+      }
 
       if (!texturesOnly) {
         const langMap = getPrismarineLanguageMappings(javaVer, bedrockVer);
-        if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+        if (!langOnly && Object.keys(geyserSounds.java_to_bedrock).length > 0) {
           content.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
           content.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
         }
@@ -751,11 +814,13 @@ async function updateMappings() {
     const baseContent = JSON.parse(await fs.readFile(baseMappingPath, 'utf8'));
 
     // Apply authoritative Mojang texture overrides
-    applyTextureOverrides(baseContent, true);
+    if (!langOnly) {
+      applyTextureOverrides(baseContent, true);
+    }
 
     if (!texturesOnly) {
       const defaultLang = getPrismarineLanguageMappings('26.3.0', '1.26.60');
-      if (Object.keys(geyserSounds.java_to_bedrock).length > 0) {
+      if (!langOnly && Object.keys(geyserSounds.java_to_bedrock).length > 0) {
         baseContent.sounds_java_to_bedrock = geyserSounds.java_to_bedrock;
         baseContent.sounds_bedrock_to_java = geyserSounds.bedrock_to_java;
       }

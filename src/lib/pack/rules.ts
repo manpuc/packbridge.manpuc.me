@@ -29,7 +29,7 @@ export const JAVA_TO_BEDROCK_RULES: PathRule[] = [
   { match: /^assets\/minecraft\/textures\/gui\/(.*)$/, replace: 'textures/ui/$1' },
   { match: /^assets\/minecraft\/textures\/(.*)$/, replace: 'textures/$1' },
   { match: /^assets\/minecraft\/sounds\/(.*)$/, replace: 'sounds/$1' },
-  { match: /^assets\/(minecraft|realms)\/lang\/(.*)\.json$/, replace: 'texts/$2.lang' },
+  { match: /^assets\/(minecraft|realms)\/lang\/(?!deprecated\.json$)([^/]+)\.(json|lang)$/i, replace: 'texts/$2.lang' },
   { match: /^assets\/realms\/textures\/(.*)$/, replace: 'textures/gui/realms/$1' },
   { match: /^assets\/minecraft\/models\/block\/(.*)\.json$/, replace: 'models/entity/block_$1.geo.json' },
   { match: /^assets\/minecraft\/models\/item\/(.*)\.json$/, replace: 'models/entity/item_$1.geo.json' },

@@ -48,8 +48,9 @@ describe('convertBuffer', () => {
     expect(out['manifest.json']).toBeDefined();
     expect(out['textures/terrain_texture.json']).toBeDefined();
     expect(out['textures/blocks/stone.png']).toBeDefined();
-    expect(out['texts/en_us.lang']).toBeDefined();
-    expect(strFromU8(out['texts/en_us.lang'])).toContain('Stone');
+    expect(out['texts/en_US.lang']).toBeDefined();
+    expect(strFromU8(out['texts/en_US.lang'])).toContain('Stone');
+    expect(JSON.parse(strFromU8(out['texts/languages.json']))).toContain('en_US');
   });
 
   it('converts a minimal Bedrock pack to Java with pack.mcmeta and block texture', async () => {
@@ -1855,5 +1856,137 @@ describe('convertBuffer', () => {
     const jDownOut = unzipSync(j2jDown.buffer);
     expect(getPngDimensions(jDownOut['assets/minecraft/textures/items/compass.png'])).toEqual({ width: 16, height: 512 });
     expect(getPngDimensions(jDownOut['assets/minecraft/textures/items/clock.png'])).toEqual({ width: 16, height: 1024 });
+  });
+
+  it('converts language files accurately across Java, Bedrock, and legacy versions', async () => {
+    // 1. Java 1.21 -> Bedrock: ll_CC casing, accurate key mapping, realms dedupe, BOM, invalid JSON, deprecated.json, newlines, spaces
+    const j2b = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'LangJ2B' } })),
+        'assets/minecraft/lang/en_us.json': strToU8('\uFEFF' + JSON.stringify({
+          'item.minecraft.apple': 'Red Apple',
+          'block.minecraft.sculk': 'Sculk Block',
+          'gui.done': 'Done!',
+          'gui.cancel': 'Cancel!',
+          'custom.multiline': 'Line 1\nLine 2',
+          'menu.modded': ' (Modded)',
+          'shared.key': 'From Minecraft',
+        })),
+        'assets/realms/lang/en_us.json': strToU8(JSON.stringify({
+          'shared.key': 'From Realms',
+        })),
+        'assets/minecraft/lang/ja_jp.json': strToU8(JSON.stringify({
+          'item.minecraft.apple': 'リンゴ',
+        })),
+        'assets/minecraft/lang/deprecated.json': strToU8(JSON.stringify({
+          removed: ['old.key'],
+          renamed: { a: 'b' },
+        })),
+        'assets/minecraft/lang/fr_fr.json': strToU8('{invalid json'),
+      })),
+      'lang-j2b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableLanguageConversion: true }
+    );
+    const bOut = unzipSync(j2b.buffer);
+    expect(bOut['texts/en_US.lang']).toBeDefined();
+    expect(bOut['texts/ja_JP.lang']).toBeDefined();
+    expect(bOut['texts/deprecated.lang']).toBeUndefined();
+    expect(bOut['texts/fr_FR.lang']).toBeUndefined();
+    expect(JSON.parse(strFromU8(bOut['texts/languages.json']))).toEqual(['en_US', 'ja_JP']);
+
+    const enLang = strFromU8(bOut['texts/en_US.lang']);
+    expect(enLang).toContain('item.apple.name=Red Apple\n');
+    expect(enLang).toContain('tile.sculk.name=Sculk Block\n');
+    expect(enLang).toContain('gui.done=Done!\n');
+    expect(enLang).toContain('gui.cancel=Cancel!\n');
+    expect(enLang).toContain('custom.multiline=Line 1\\nLine 2\n');
+    expect(enLang).toContain('menu.modded= (Modded)\n');
+    expect(enLang.match(/^shared\.key=/gm)).toHaveLength(1);
+    expect(j2b.report.details.some(d => d.reason === 'Java-only deprecated translation metadata')).toBe(true);
+    expect(j2b.report.details.some(d => d.reason === 'Invalid language JSON format')).toBe(true);
+
+    // 2. Java 1.8 (.lang) -> Bedrock
+    const j18ToB = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
+        'assets/minecraft/lang/en_US.lang': strToU8('tile.stone.stone.name=Legacy Stone\n'),
+      })),
+      'lang-1.8.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableLanguageConversion: true }
+    )).buffer);
+    expect(strFromU8(j18ToB['texts/en_US.lang'])).toContain('tile.stone.stone.name=Legacy Stone');
+
+    // 3. Bedrock -> Java 1.21 (.json), Java 1.12 (en_us.lang), Java 1.8 (en_US.lang)
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'LangB2J', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+    const bedrockLangBytes = strToU8(
+      '\uFEFF## Comment\n' +
+      'item.apple.name=Crisp Apple\t## translator note\n' +
+      'filled_map.id=Id #%s\n' +
+      'custom.lines=First\\nSecond~LINEBREAK~Third\n' +
+      'menu.modded= (Modded)\n' +
+      'item.minecraft.smithing_template.upgrade=Upgrade: \n' +
+      '=empty_key_ignored\n'
+    );
+    const b2jModern = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bedrockLangBytes })),
+      'lang-b2j-modern.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableLanguageConversion: true }
+    )).buffer);
+    const j21Lang = JSON.parse(strFromU8(b2jModern['assets/minecraft/lang/en_us.json']));
+    expect(j21Lang['item.minecraft.apple']).toBe('Crisp Apple');
+    expect(j21Lang['filled_map.id']).toBe('Id #%s');
+    expect(j21Lang['custom.lines']).toBe('First\nSecond\nThird');
+    expect(j21Lang['menu.modded']).toBe(' (Modded)');
+    expect(j21Lang['item.minecraft.smithing_template.upgrade']).toBe('Upgrade: ');
+    expect(j21Lang['']).toBeUndefined();
+
+    const b2j112 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bedrockLangBytes })),
+      'lang-b2j-112.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.12.2', enableLanguageConversion: true }
+    )).buffer);
+    expect(b2j112['assets/minecraft/lang/en_us.lang']).toBeDefined();
+
+    const b2j18 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bedrockLangBytes })),
+      'lang-b2j-18.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.8.0', enableLanguageConversion: true }
+    )).buffer);
+    expect(b2j18['assets/minecraft/lang/en_US.lang']).toBeDefined();
+
+    // 4. Java -> Java round-trip: 1.8 -> 1.12 -> 1.21 -> 1.8
+    const j18To12 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 1, description: '1.8' } })),
+        'assets/minecraft/lang/en_US.lang': strToU8('item.apple.name=Java Apple\n'),
+      })),
+      'j-1.8.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2', enableLanguageConversion: true }
+    )).buffer);
+    expect(j18To12['assets/minecraft/lang/en_us.lang']).toBeDefined();
+
+    const j12To21 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 3, description: '1.12' } })),
+        'assets/minecraft/lang/en_us.lang': j18To12['assets/minecraft/lang/en_us.lang'],
+      })),
+      'j-1.12.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableLanguageConversion: true }
+    )).buffer);
+    expect(JSON.parse(strFromU8(j12To21['assets/minecraft/lang/en_us.json']))['item.minecraft.apple']).toBe('Java Apple');
+
+    const j21To18 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: '1.21' } })),
+        'assets/minecraft/lang/en_us.json': j12To21['assets/minecraft/lang/en_us.json'],
+      })),
+      'j-1.21.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.8.0', enableLanguageConversion: true }
+    )).buffer);
+    expect(strFromU8(j21To18['assets/minecraft/lang/en_US.lang'])).toContain('item.apple.name=Java Apple');
   });
 });

@@ -2,7 +2,14 @@ import { unzipSync, zipSync, strToU8, strFromU8, type Zippable } from 'fflate';
 import type { PackReport, ConversionOptions } from './types';
 import { getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
-import { javaToBedrockLang, bedrockToJavaLang } from './processors/lang';
+import {
+  formatLocaleCode,
+  parseLangEntries,
+  parseJsonLangEntries,
+  mapLangEntries,
+  serializeLangEntries,
+  serializeJsonLangEntries,
+} from './processors/lang';
 import { javaToBedrockSounds, bedrockToJavaSounds } from './processors/sounds';
 import {
   generateTerrainTexture,
@@ -145,7 +152,7 @@ export async function convertBuffer(
   const convertedItemTextures = new Set<string>();
   const allTargetTextures = new Set<string>();
   const supportedLanguages = new Set<string>();
-  const mergedLangs = new Map<string, string>();
+  const mergedLangs = new Map<string, Map<string, string>>();
   const pendingBedrockFlipbooks: Array<{ sourcePath: string; entry: FlipbookEntry }> = [];
   const extraItemTextureEntries: Record<string, string> = Object.create(null);
 
@@ -1049,13 +1056,19 @@ export async function convertBuffer(
         continue;
       }
 
+      if (direction === 'java-to-bedrock' && /^assets\/(minecraft|realms)\/lang\/deprecated\.json$/i.test(relativePath)) {
+        report.skippedCount++;
+        report.details.push({ filename: path, status: 'skipped', reason: 'Java-only deprecated translation metadata' });
+        continue;
+      }
+
       let needsProcessing = false;
       if (targetPath) {
         if (direction === 'bedrock-to-java' && relativePath.endsWith('.fsb')) {
           needsProcessing = true;
         } else if (direction === 'java-to-bedrock') {
           if (
-            (relativePath.endsWith('.json') && targetPath.startsWith('texts/')) ||
+            (/\.(json|lang)$/i.test(relativePath) && targetPath.startsWith('texts/')) ||
             relativePath.endsWith('sounds.json') ||
             relativePath === 'assets/minecraft/texts/splashes.txt' ||
             relativePath.endsWith('.png.mcmeta')
@@ -1063,13 +1076,17 @@ export async function convertBuffer(
             needsProcessing = true;
           }
         } else if (direction === 'bedrock-to-java') {
-          if (relativePath.endsWith('.lang') && targetPath.endsWith('.json')) {
+          if (/^texts\/[^/]+\.lang$/i.test(relativePath)) {
             needsProcessing = true;
           } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
             needsProcessing = true;
           } else if (relativePath === 'sounds/sound_definitions.json') {
             needsProcessing = true;
           } else if (relativePath === 'splashes.json' || relativePath === 'texts/splashes.json') {
+            needsProcessing = true;
+          }
+        } else if (direction === 'java-to-java') {
+          if (/^assets\/(minecraft|realms)\/lang\/(?!deprecated\.json$)([^/]+)\.(json|lang)$/i.test(relativePath)) {
             needsProcessing = true;
           }
         }
@@ -1089,22 +1106,36 @@ export async function convertBuffer(
 
         if (needsProcessing) {
           if (direction === 'java-to-bedrock') {
-            if (relativePath.endsWith('.json') && targetPath.startsWith('texts/')) {
+            if (/\.(json|lang)$/i.test(relativePath) && targetPath.startsWith('texts/')) {
               if (!options.enableLanguageConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
                 continue;
               }
-              const converted = javaToBedrockLang(strFromU8(content));
-              const current = mergedLangs.get(targetPath) || "";
-              const prefix = current ? (current.endsWith('\n') ? '' : '\n') : '';
-              mergedLangs.set(targetPath, current + prefix + converted);
-
-              const langCode = targetPath.split('/').pop()?.replace('.lang', '');
-              if (langCode) supportedLanguages.add(langCode);
+              const rawCode = targetPath.split('/').pop()?.replace(/\.lang$/i, '') || '';
+              const bedrockCode = formatLocaleCode(rawCode, 'll_CC');
+              const normalizedTarget = `texts/${bedrockCode}.lang`;
+              const parsed = relativePath.toLowerCase().endsWith('.json')
+                ? parseJsonLangEntries(strFromU8(content))
+                : parseLangEntries(strFromU8(content), false);
+              if (!parsed) {
+                report.skippedCount++;
+                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid language JSON format' });
+                continue;
+              }
+              const mapped = mapLangEntries(parsed, 'java-to-bedrock');
+              let langMap = mergedLangs.get(normalizedTarget);
+              if (!langMap) {
+                langMap = new Map<string, string>();
+                mergedLangs.set(normalizedTarget, langMap);
+              }
+              for (const [k, v] of mapped) {
+                langMap.set(k, v);
+              }
+              if (bedrockCode) supportedLanguages.add(bedrockCode);
 
               report.convertedCount++;
-              report.details.push({ filename: path, status: 'converted', outputPath: targetPath });
+              report.details.push({ filename: path, status: 'converted', outputPath: normalizedTarget });
               continue;
             } else if (relativePath.endsWith('sounds.json')) {
               if (!options.enableSoundConversion) {
@@ -1158,13 +1189,23 @@ export async function convertBuffer(
                 report.details.push({ filename: path, status: 'skipped', reason: 'Failed to extract FSB audio' });
                 continue;
               }
-            } else if (relativePath.endsWith('.lang') && targetPath.endsWith('.json')) {
+            } else if (/^texts\/[^/]+\.lang$/i.test(relativePath)) {
               if (!options.enableLanguageConversion) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
                 continue;
               }
-              finalBytes = strToU8(bedrockToJavaLang(strFromU8(content)));
+              const rawCode = relativePath.replace(/^texts\//i, '').replace(/\.lang$/i, '');
+              if (targetJavaVersion.packFormat >= 4) {
+                const entries = mapLangEntries(parseLangEntries(strFromU8(content), true), 'bedrock-to-java');
+                finalBytes = strToU8(serializeJsonLangEntries(entries));
+                targetPath = `assets/minecraft/lang/${formatLocaleCode(rawCode, 'll_cc')}.json`;
+              } else {
+                const entries = mapLangEntries(parseLangEntries(strFromU8(content), false), 'bedrock-to-java');
+                finalBytes = strToU8(serializeLangEntries(entries));
+                const style = targetJavaVersion.packFormat <= 2 ? 'll_CC' : 'll_cc';
+                targetPath = `assets/minecraft/lang/${formatLocaleCode(rawCode, style)}.lang`;
+              }
             } else if (relativePath === 'textures/flipbook_textures.json' || relativePath === 'flipbook_textures.json') {
               if (!options.enableAnimationConversion) {
                 report.skippedCount++;
@@ -1224,6 +1265,36 @@ export async function convertBuffer(
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Invalid splashes.json format' });
                 continue;
+              }
+            }
+          } else if (direction === 'java-to-java') {
+            const lm = relativePath.match(/^assets\/(minecraft|realms)\/lang\/([^/]+)\.(json|lang)$/i);
+            if (lm) {
+              const [, ns, rawCode, rawExt] = lm;
+              const srcIsJson = rawExt.toLowerCase() === 'json';
+              const dstWantsJson = targetJavaVersion.packFormat >= 4;
+              const dstStyle = targetJavaVersion.packFormat <= 2 ? 'll_CC' : 'll_cc';
+              const outCode = formatLocaleCode(rawCode, dstStyle);
+              const outExt = dstWantsJson ? 'json' : 'lang';
+              targetPath = `assets/${ns.toLowerCase()}/lang/${outCode}.${outExt}`;
+              if (srcIsJson !== dstWantsJson) {
+                if (!options.enableLanguageConversion) {
+                  report.skippedCount++;
+                  report.details.push({ filename: path, status: 'skipped', reason: 'Language conversion disabled' });
+                  continue;
+                }
+                if (srcIsJson && !dstWantsJson) {
+                  const parsed = parseJsonLangEntries(strFromU8(content));
+                  if (!parsed) {
+                    report.skippedCount++;
+                    report.details.push({ filename: path, status: 'skipped', reason: 'Invalid language JSON format' });
+                    continue;
+                  }
+                  finalBytes = strToU8(serializeLangEntries(mapLangEntries(parsed, 'java-to-bedrock')));
+                } else {
+                  const parsed = parseLangEntries(strFromU8(content), true);
+                  finalBytes = strToU8(serializeJsonLangEntries(mapLangEntries(parsed, 'bedrock-to-java')));
+                }
               }
             }
           }
@@ -1980,8 +2051,10 @@ export async function convertBuffer(
         targetFiles['texts/languages.json'] = [strToU8(JSON.stringify(Array.from(supportedLanguages), null, 2)), { level: 1 }];
         report.convertedCount++;
       }
-      for (const [tPath, content] of mergedLangs.entries()) {
-        targetFiles[tPath] = [strToU8(content), { level: 1 }];
+      for (const [tPath, entries] of mergedLangs.entries()) {
+        if (isSafePath(tPath)) {
+          targetFiles[tPath] = [strToU8(serializeLangEntries(entries)), { level: 1 }];
+        }
       }
 
       if (options.enablePbrConversion && bedrockPbrSets.size > 0) {
