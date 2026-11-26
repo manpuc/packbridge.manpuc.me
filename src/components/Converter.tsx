@@ -380,7 +380,8 @@ export default function Converter({
         });
         const hasModelOrFontFiles = fileKeys.some(k => {
           const l = k.toLowerCase();
-          return (l.includes('assets/') || l.includes('textures/') || l.includes('font/')) && (l.endsWith('.json') || l.endsWith('.ttf') || l.endsWith('.otf'));
+          return (l.includes('assets/') || l.includes('textures/') || l.includes('font/') || l.includes('models/')) &&
+            (l.endsWith('.json') || l.endsWith('.jem') || l.endsWith('.jpm') || l.endsWith('.ttf') || l.endsWith('.otf'));
         });
 
         const hasJavaAssetsDir = fileKeys.some(k => {
@@ -389,7 +390,7 @@ export default function Converter({
         });
         const hasBedrockTexturesDir = fileKeys.some(k => {
           const l = k.toLowerCase();
-          return l.includes('textures/') || l.includes('sounds/') || l.includes('ui/');
+          return l.includes('textures/') || l.includes('sounds/') || l.includes('ui/') || l.includes('models/');
         });
 
         // Check for Datapack-only zip (has pack.mcmeta + data/ but no assets/)

@@ -54,7 +54,15 @@ import {
 } from './processors/gui';
 import { convertTgaToPng, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
 import { reencodeAudio, resetAudioReencodeSession } from './processors/audio';
-import { javaToBedrockGeometry, bedrockToJavaModel, isBedrockModelPath, isJavaModelPath } from './processors/models';
+import {
+  javaToBedrockGeometryDetailed,
+  bedrockToJavaModels,
+  extractBedrockGeometriesFromJson,
+  isBedrockModelPath,
+  isJavaModelPath,
+  isJavaCemPartPath,
+  type ExtractedBedrockGeometry
+} from './processors/models';
 import {
   compositeSnowyGrassSide,
   compositeJavaGrassSideToBedrockTga,
@@ -447,6 +455,8 @@ export async function convertBuffer(
   const pendingJavaDialStrips = new Map<DialItemKind, { sourcePath: string; bytes: Uint8Array }>();
   const pendingBedrockDialAtlases = new Map<DialItemKind, { sourcePath: string; bytes: Uint8Array; isTga: boolean; priority: number }>();
   const pendingBedrockDialIcons: Array<{ kind: DialItemKind; sourcePath: string }> = [];
+  const pendingBedrockModels: Array<{ sourcePath: string; relativePath: string; rawText: string }> = [];
+  const pendingJavaModels: Array<{ sourcePath: string; relativePath: string; rawText: string }> = [];
   const lowPriorityFallbackTargets = new Set<string>();
   const tgaWrittenTargets = new Set<string>();
 
@@ -762,15 +772,7 @@ export async function convertBuffer(
           report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is disabled (Beta)' });
           continue;
         }
-        const convertedModel = bedrockToJavaModel(strFromU8(content), relativePath, targetJavaVersion.packFormat);
-        if (convertedModel && isSafePath(convertedModel.outputPath) && isValidJavaAssetPath(convertedModel.outputPath)) {
-          targetFiles[convertedModel.outputPath] = [strToU8(convertedModel.content), { level: getFileCompressionLevel(convertedModel.outputPath) }];
-          report.convertedCount++;
-          report.details.push({ filename: path, status: 'converted', outputPath: convertedModel.outputPath });
-        } else {
-          report.skippedCount++;
-          report.details.push({ filename: path, status: 'skipped', reason: 'Unsupported or empty Bedrock geometry' });
-        }
+        pendingBedrockModels.push({ sourcePath: path, relativePath, rawText: strFromU8(content) });
         continue;
       } else if (direction === 'java-to-bedrock' && isJavaModelPath(relativePath)) {
         if (!options.enableModelConversion) {
@@ -778,20 +780,7 @@ export async function convertBuffer(
           report.details.push({ filename: path, status: 'skipped', reason: '3D Model conversion is disabled (Beta)' });
           continue;
         }
-        const fileNameNoExt = relativePath.split('/').pop()?.replace(/\.(json|jem)$/i, '') || 'custom';
-        const isBlock = relativePath.includes('/models/block/');
-        const isItem = relativePath.includes('/models/item/');
-        const prefix = isBlock ? 'block_' : isItem ? 'item_' : '';
-        const geoJson = javaToBedrockGeometry(strFromU8(content), `${prefix}${fileNameNoExt}`);
-        const outGeoPath = `models/entity/${prefix}${fileNameNoExt}.geo.json`;
-        if (geoJson && isSafePath(outGeoPath)) {
-          targetFiles[outGeoPath] = [strToU8(geoJson), { level: getFileCompressionLevel(outGeoPath) }];
-          report.convertedCount++;
-          report.details.push({ filename: path, status: 'converted', outputPath: outGeoPath });
-        } else {
-          report.skippedCount++;
-          report.details.push({ filename: path, status: 'skipped', reason: 'Model has no elements/cubes to convert' });
-        }
+        pendingJavaModels.push({ sourcePath: path, relativePath, rawText: strFromU8(content) });
         continue;
       }
       // Custom Skyboxes (OptiFine/MCPatcher world0 <-> Bedrock overworld_cubemap)
@@ -2239,6 +2228,138 @@ export async function convertBuffer(
             ? 'PBR texture_set metadata applied to _s/_n maps'
             : 'Unmapped PBR texture_set reference'
         });
+      }
+    }
+  }
+
+  // 3D Custom Model & Entity Geometry Conversion Phase (Deferred for cross-file parent/.jpm/:parent inheritance)
+  if (direction === 'bedrock-to-java' && options.enableModelConversion && pendingBedrockModels.length > 0) {
+    const externalGeometries = new Map<string, ExtractedBedrockGeometry>();
+    for (const entry of pendingBedrockModels) {
+      for (const g of extractBedrockGeometriesFromJson(entry.rawText)) {
+        externalGeometries.set(g.baseIdentifier.toLowerCase(), g);
+        externalGeometries.set(g.identifier.toLowerCase(), g);
+      }
+    }
+
+    for (const entry of pendingBedrockModels) {
+      const outputs = bedrockToJavaModels(entry.rawText, entry.relativePath, {
+        targetPackFormat: targetJavaVersion.packFormat,
+        externalGeometries,
+      });
+      if (outputs.length === 0) {
+        report.skippedCount++;
+        report.details.push({ filename: entry.sourcePath, status: 'skipped', reason: 'Unsupported or empty Bedrock geometry' });
+        continue;
+      }
+      let wroteAny = false;
+      for (const out of outputs) {
+        if (!isSafePath(out.outputPath) || !isValidJavaAssetPath(out.outputPath)) continue;
+        const alreadyWritten = Boolean(targetFiles[out.outputPath]);
+        targetFiles[out.outputPath] = [strToU8(out.content), { level: getFileCompressionLevel(out.outputPath) }];
+        if (!alreadyWritten) report.convertedCount++;
+        report.details.push({
+          filename: entry.sourcePath,
+          status: 'converted',
+          outputPath: out.outputPath,
+          ...(out.warning ? { warning: true, reason: out.warning } : {}),
+        });
+        wroteAny = true;
+      }
+      if (!wroteAny) {
+        report.skippedCount++;
+        report.details.push({ filename: entry.sourcePath, status: 'skipped', reason: 'Invalid or unsafe target model path' });
+      }
+    }
+  } else if (direction === 'java-to-bedrock' && options.enableModelConversion && pendingJavaModels.length > 0) {
+    const javaModelIndex = new Map<string, string>();
+    const javaJpmIndex = new Map<string, { sourcePath: string; rawText: string }>();
+    const consumedJpms = new Map<string, string>();
+
+    for (const entry of pendingJavaModels) {
+      const lowerRel = entry.relativePath.toLowerCase();
+      if (isJavaCemPartPath(entry.relativePath)) {
+        const cemRel = lowerRel.replace(/^assets\/minecraft\/(?:optifine|mcpatcher)\/cem\//, '');
+        javaJpmIndex.set(cemRel, { sourcePath: entry.sourcePath, rawText: entry.rawText });
+      } else if (lowerRel.startsWith('assets/minecraft/models/') && lowerRel.endsWith('.json')) {
+        const modelRef = lowerRel.slice('assets/minecraft/models/'.length, -'.json'.length);
+        javaModelIndex.set(modelRef, entry.rawText);
+      }
+    }
+
+    const resolveParent = (parentRef: string): string | null => {
+      const clean = parentRef.trim().replace(/^minecraft:/i, '').replace(/\.json$/i, '').toLowerCase();
+      return javaModelIndex.get(clean) ?? null;
+    };
+
+    for (const entry of pendingJavaModels) {
+      if (isJavaCemPartPath(entry.relativePath)) continue;
+
+      const lowerRel = entry.relativePath.toLowerCase();
+      let modelId = '';
+      let outGeoPath = '';
+
+      if (lowerRel.startsWith('assets/minecraft/models/block/')) {
+        const sub = lowerRel.slice('assets/minecraft/models/block/'.length, -'.json'.length);
+        const safeSub = sub.replace(/[^a-z0-9_./-]/g, '_');
+        modelId = `block_${safeSub}`;
+        outGeoPath = `models/entity/block_${safeSub}.geo.json`;
+      } else if (lowerRel.startsWith('assets/minecraft/models/item/')) {
+        const sub = lowerRel.slice('assets/minecraft/models/item/'.length, -'.json'.length);
+        const safeSub = sub.replace(/[^a-z0-9_./-]/g, '_');
+        modelId = `item_${safeSub}`;
+        outGeoPath = `models/entity/item_${safeSub}.geo.json`;
+      } else if (lowerRel.startsWith('assets/minecraft/models/')) {
+        const sub = lowerRel.slice('assets/minecraft/models/'.length, -'.json'.length);
+        const safeSub = sub.replace(/[^a-z0-9_./-]/g, '_');
+        modelId = safeSub;
+        outGeoPath = `models/entity/${safeSub}.geo.json`;
+      } else {
+        const sub = lowerRel.replace(/^assets\/minecraft\/(?:optifine|mcpatcher)\/cem\//, '').replace(/\.jem$/i, '');
+        const safeSub = sub.replace(/[^a-z0-9_./-]/g, '_');
+        modelId = safeSub;
+        outGeoPath = `models/entity/${safeSub}.geo.json`;
+      }
+
+      const jemDir = lowerRel.replace(/^assets\/minecraft\/(?:optifine|mcpatcher)\/cem\//, '').split('/').slice(0, -1).join('/');
+      const resolveJpm = (jpmRef: string): string | null => {
+        const cleanRef = jpmRef.trim().replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+        const candidate = jemDir ? `${jemDir}/${cleanRef}` : cleanRef;
+        const hitKey = javaJpmIndex.has(candidate) ? candidate : javaJpmIndex.has(cleanRef) ? cleanRef : null;
+        if (!hitKey) return null;
+        consumedJpms.set(hitKey, outGeoPath);
+        return javaJpmIndex.get(hitKey)!.rawText;
+      };
+
+      const res = javaToBedrockGeometryDetailed(entry.rawText, modelId, {
+        targetBedrockMinEngine: targetBedrockVersion.minEngineVersion,
+        resolveParent,
+        resolveJpm,
+      });
+
+      if (res && isSafePath(outGeoPath)) {
+        const alreadyWritten = Boolean(targetFiles[outGeoPath]);
+        targetFiles[outGeoPath] = [strToU8(res.content), { level: getFileCompressionLevel(outGeoPath) }];
+        if (!alreadyWritten) report.convertedCount++;
+        report.details.push({
+          filename: entry.sourcePath,
+          status: 'converted',
+          outputPath: outGeoPath,
+          ...(res.warning ? { warning: true, reason: res.warning } : {}),
+        });
+      } else {
+        report.skippedCount++;
+        report.details.push({ filename: entry.sourcePath, status: 'skipped', reason: 'Model has no custom elements/cubes to convert' });
+      }
+    }
+
+    for (const [jpmKey, jpmEntry] of javaJpmIndex.entries()) {
+      const consumerOut = consumedJpms.get(jpmKey);
+      if (consumerOut) {
+        report.details.push({ filename: jpmEntry.sourcePath, status: 'converted', outputPath: consumerOut });
+      } else {
+        report.skippedCount++;
+        report.details.push({ filename: jpmEntry.sourcePath, status: 'skipped', reason: 'Unreferenced OptiFine CEM part (.jpm)' });
       }
     }
   }
