@@ -28,20 +28,27 @@ export function ConversionReport({
 }: ConversionReportProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [hasEverOpened, setHasEverOpened] = useState(false);
-  const [filterType, setFilterType] = useState<'all' | 'error' | 'skipped'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'error' | 'skipped' | 'warning'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const isPerfect = report.errorCount === 0 && report.skippedCount === 0;
 
   const nonConvertedDetails = useMemo(() => {
-    return report.details.filter((d: ConversionResult) => d.status !== 'converted');
+    return report.details.filter((d: ConversionResult) => d.status !== 'converted' || Boolean(d.warning));
   }, [report.details]);
+
+  const warningCount = useMemo(() => {
+    return nonConvertedDetails.filter((d: ConversionResult) => d.status === 'converted' && Boolean(d.warning)).length;
+  }, [nonConvertedDetails]);
 
   const filteredDetails = useMemo(() => {
     if (!hasEverOpened) return [];
     const query = searchQuery.trim().toLowerCase();
     return nonConvertedDetails.filter((d: ConversionResult) => {
-      if (filterType !== 'all' && d.status !== filterType) return false;
+      if (filterType === 'warning') {
+        if (!d.warning) return false;
+      } else if (filterType !== 'all' && d.status !== filterType) {
+        return false;
+      }
       if (!query) return true;
       const nameMatch = d.filename.toLowerCase().includes(query);
       const reasonMatch = d.reason ? d.reason.toLowerCase().includes(query) : false;
@@ -74,7 +81,7 @@ export function ConversionReport({
     ];
 
     for (const item of nonConvertedDetails) {
-      const tag = item.status === 'skipped' ? '[SKIP]' : '[ERROR]';
+      const tag = item.status === 'skipped' ? '[SKIP]' : item.status === 'converted' ? '[WARN]' : '[ERROR]';
       lines.push(`${tag} ${item.filename}${item.reason ? ` - ${item.reason}` : ''}`);
     }
 
@@ -95,7 +102,7 @@ export function ConversionReport({
     setPage(1);
   };
 
-  const handleFilterChange = (type: 'all' | 'error' | 'skipped') => {
+  const handleFilterChange = (type: 'all' | 'error' | 'skipped' | 'warning') => {
     setFilterType(type);
     setPage(1);
   };
@@ -184,7 +191,7 @@ export function ConversionReport({
         </motion.div>
       </motion.div>
 
-      {(report.skippedCount > 0 || report.errorCount > 0) && (
+      {(report.skippedCount > 0 || report.errorCount > 0 || warningCount > 0) && (
         <motion.div
           layout
           initial={{ opacity: 0, y: 16 }}
@@ -201,7 +208,7 @@ export function ConversionReport({
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
               <AlertCircle size={18} color="var(--color-warning)" />
               <span style={{ color: 'var(--color-text)' }}>
-                {t.unsupportedTitle} ({report.skippedCount + report.errorCount})
+                {t.unsupportedTitle} ({nonConvertedDetails.length})
               </span>
             </span>
             <div
@@ -256,6 +263,15 @@ export function ConversionReport({
                             スキップ ({report.skippedCount})
                           </button>
                         )}
+                        {warningCount > 0 && (
+                          <button
+                            type="button"
+                            className={`report-filter-btn ${filterType === 'warning' ? 'active' : ''}`}
+                            onClick={() => handleFilterChange('warning')}
+                          >
+                            警告 ({warningCount})
+                          </button>
+                        )}
                       </div>
 
                       <button
@@ -281,7 +297,7 @@ export function ConversionReport({
                     >
                       {paginatedDetails.map((detail: ConversionResult, idx: number) => (
                         <div
-                          key={detail.filename || idx}
+                          key={`${detail.filename}-${detail.status}-${idx}`}
                           className="report-item"
                         >
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
@@ -292,8 +308,8 @@ export function ConversionReport({
                               </span>
                             )}
                           </div>
-                          <span className={`status-badge status-${detail.status}`} style={{ flexShrink: 0 }}>
-                            {detail.status === 'skipped' ? 'SKIP' : 'ERR'}
+                          <span className={`status-badge status-${detail.status === 'converted' ? 'skipped' : detail.status}`} style={{ flexShrink: 0 }}>
+                            {detail.status === 'skipped' ? 'SKIP' : detail.status === 'converted' ? 'WARN' : 'ERR'}
                           </span>
                         </div>
                       ))}

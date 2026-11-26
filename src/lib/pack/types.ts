@@ -3,6 +3,7 @@ export type PackType = 'java' | 'bedrock';
 export interface ConversionResult {
   filename: string;
   status: 'converted' | 'skipped' | 'error';
+  warning?: boolean;
   reason?: string;
   outputPath?: string;
 }

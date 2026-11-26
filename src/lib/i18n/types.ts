@@ -88,6 +88,7 @@ export interface Translation {
 
 	// Beta Features
 	betaFeatures: string;
+	betaActiveCount?: string;
 	enableGuiConversion: string;
 	enableModernGuiSprites?: string;
 	enableAudioReencode?: string;

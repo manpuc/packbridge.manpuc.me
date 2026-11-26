@@ -53,7 +53,7 @@ import {
   type CropBox
 } from './processors/gui';
 import { convertTgaToPng, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
-import { reencodeOgg } from './processors/audio';
+import { reencodeAudio, resetAudioReencodeSession } from './processors/audio';
 import { javaToBedrockGeometry, bedrockToJavaModel, isBedrockModelPath, isJavaModelPath } from './processors/models';
 import {
   compositeSnowyGrassSide,
@@ -113,6 +113,9 @@ export async function convertBuffer(
   onProgress?: (processedCount: number, totalFiles: number) => void
 ): Promise<{ buffer: Uint8Array; report: PackReport }> {
   const { direction } = options;
+  if (options.enableAudioReencode) {
+    resetAudioReencodeSession();
+  }
 
   // Load mappings
   await loadMappings(options.javaVersionId, options.bedrockVersionId);
@@ -1072,6 +1075,8 @@ export async function convertBuffer(
 
         let finalBytes: Uint8Array = content;
         let note: string | undefined;
+        let isWarning = false;
+        let extractedFromFsb = false;
 
         if (needsProcessing) {
           if (direction === 'java-to-bedrock') {
@@ -1144,6 +1149,7 @@ export async function convertBuffer(
               const extracted = await extractFsb5(content);
               if (extracted) {
                 finalBytes = extracted;
+                extractedFromFsb = true;
                 if (/\.fsb$/i.test(targetPath)) {
                   targetPath = targetPath.replace(/\.fsb$/i, '.ogg');
                 }
@@ -1321,16 +1327,26 @@ export async function convertBuffer(
           }
         }
 
-        if (options.enableAudioReencode && /\.ogg$/i.test(targetPath)) {
-          try {
-            const reencoded = await reencodeOgg(finalBytes);
-            if (reencoded) {
-              finalBytes = reencoded;
-            } else {
-              note = 'Audio re-encode failed, using original';
+        if (options.enableAudioReencode && /\.(ogg|wav|mp3)$/i.test(targetPath)) {
+          if (/\.(wav|mp3)$/i.test(targetPath)) {
+            const oggTarget = targetPath.replace(/\.(wav|mp3)$/i, '.ogg');
+            if (targetFiles[oggTarget]) {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'OGG equivalent already present' });
+              continue;
             }
-          } catch (e) {
-            console.warn("Audio re-encoding failed:", e);
+          }
+          onProgress?.(processedCount, report.totalFiles);
+          lastProgressTime = performance.now();
+          const audioRes = await reencodeAudio(finalBytes, { forceReencode: extractedFromFsb });
+          if (audioRes.status === 'reencoded') {
+            finalBytes = audioRes.data;
+            if (/\.(wav|mp3)$/i.test(targetPath)) {
+              targetPath = targetPath.replace(/\.(wav|mp3)$/i, '.ogg');
+            }
+          } else if (audioRes.status === 'failed') {
+            note = 'Audio re-encode failed, using original';
+            isWarning = true;
           }
         }
 
@@ -1355,6 +1371,7 @@ export async function convertBuffer(
                 continue;
               } else {
                 note = 'TGA decode failed, keeping raw bytes';
+                isWarning = true;
               }
             } catch (e) {
               console.warn("TGA to PNG conversion failed:", e);
@@ -1481,6 +1498,7 @@ export async function convertBuffer(
           filename: path,
           status: 'converted',
           outputPath: targetPath,
+          ...(isWarning ? { warning: true } : {}),
           ...(note ? { reason: note } : {})
         });
       } else {

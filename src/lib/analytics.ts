@@ -270,7 +270,7 @@ export function analyzeReportSafety(report: PackReport) {
 
   for (const item of report.details) {
     const fn = (item.filename || '').toLowerCase();
-    if (fn.endsWith('.ogg') || fn.endsWith('.fsb') || fn.includes('sound')) {
+    if (fn.endsWith('.ogg') || fn.endsWith('.fsb') || fn.endsWith('.wav') || fn.endsWith('.mp3') || fn.includes('sound')) {
       hasAudio = true;
     }
     if (fn.endsWith('.mcmeta') || fn.includes('flipbook_textures.json') || fn.includes('animation') || fn.includes('anim_')) {

@@ -541,8 +541,8 @@ export default function Converter({
       const url = URL.createObjectURL(result.blob);
       setDownloadUrl(url);
       saveContext(result.report.details
-        .filter((d) => d.status !== 'converted')
-        .map((d) => `[${d.status}] ${d.filename}: ${d.reason ?? ''}`)
+        .filter((d) => d.status !== 'converted' || Boolean(d.warning))
+        .map((d) => `[${d.status === 'converted' ? 'warn' : d.status}] ${d.filename}: ${d.reason ?? ''}`)
         .join('\n'));
 
       const safety = analyzeReportSafety(result.report);
@@ -588,7 +588,7 @@ export default function Converter({
   };
 
   const rs = getReportStrings(initialLang);
-  const showReportEntry = error === t.errorConversion || (report && (report.errorCount > 0 || report.skippedCount > 0));
+  const showReportEntry = error === t.errorConversion || (report && (report.errorCount > 0 || report.skippedCount > 0 || report.details.some((d) => d.warning)));
 
   const reset = () => {
     if (file && !report && !isProcessing) {

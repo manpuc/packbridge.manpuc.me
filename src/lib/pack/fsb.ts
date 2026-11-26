@@ -4,7 +4,7 @@
  */
 
 export async function extractFsb5(data: Uint8Array): Promise<Uint8Array | null> {
-  if (data.length < 8) return null;
+  if (data.length < 60) return null;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
   // Check Magic "FSB5"
@@ -25,7 +25,7 @@ export async function extractFsb5(data: Uint8Array): Promise<Uint8Array | null> 
   // Check if buffer offset is 4-byte aligned for fast Uint32Array search
   if (data.byteOffset % 4 === 0) {
     const u32 = new Uint32Array(data.buffer, data.byteOffset, Math.floor(data.byteLength / 4));
-    const startIdx = Math.floor(dataStart / 4);
+    const startIdx = Math.ceil(dataStart / 4);
 
     for (let i = startIdx; i < u32.length; i++) {
       if (u32[i] === 0x5367674F) { // 'OggS' in Little-Endian
@@ -36,7 +36,7 @@ export async function extractFsb5(data: Uint8Array): Promise<Uint8Array | null> 
   }
 
   // Unaligned fallback search
-  for (let i = dataStart; i < data.length - 4; i++) {
+  for (let i = dataStart; i <= data.length - 4; i++) {
     if (data[i] === 0x4F && data[i + 1] === 0x67 && data[i + 2] === 0x67 && data[i + 3] === 0x53) {
       return data.slice(i);
     }

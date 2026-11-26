@@ -156,6 +156,12 @@ export function DirectionSettings({
   t
 }: DirectionSettingsProps) {
   const [isBetaExpanded, setIsBetaExpanded] = useState(false);
+  const optInBetaCount = [
+    enableGuiConversion,
+    enableAudioReencode,
+    enablePbrConversion,
+    enableModelConversion,
+  ].filter(Boolean).length;
 
   const uiDirection: 'java-to-bedrock' | 'bedrock-to-java' | 'version-update' =
     direction === 'java-to-bedrock' ? 'java-to-bedrock' :
@@ -331,13 +337,25 @@ export function DirectionSettings({
             }}>BETA</span>
             <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{t.betaFeatures || 'Beta Features'}</span>
           </span>
-          <div
-            className="t-acc-chevron"
-            data-open={isBetaExpanded ? "true" : "false"}
-            aria-hidden="true"
-          >
-            <ChevronDown size={17} />
-          </div>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {!isBetaExpanded && optInBetaCount > 0 && (
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'var(--color-text-muted)',
+                fontVariantNumeric: 'tabular-nums'
+              }}>
+                {(t.betaActiveCount || '{count} active').replace('{count}', String(optInBetaCount))}
+              </span>
+            )}
+            <div
+              className="t-acc-chevron"
+              data-open={isBetaExpanded ? "true" : "false"}
+              aria-hidden="true"
+            >
+              <ChevronDown size={17} />
+            </div>
+          </span>
         </button>
 
         <div className="t-acc-panel" data-open={isBetaExpanded ? "true" : "false"}>
@@ -359,7 +377,7 @@ export function DirectionSettings({
               />
               <BetaOptionItem
                 id="audio-reencode"
-                label={t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~20MB)'}
+                label={t.enableAudioReencode || 'Re-encode Audio (FFmpeg, ~10MB)'}
                 checked={enableAudioReencode}
                 onChange={setEnableAudioReencode}
                 warningText={t.betaWarningAudioReencode}
