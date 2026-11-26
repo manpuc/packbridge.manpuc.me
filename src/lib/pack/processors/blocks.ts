@@ -2,7 +2,7 @@ import { getTargetContext } from '../rules';
 import { isUnsafeObjectKey } from '../security';
 import { getBedrockAtlasTile } from './animation';
 import { decodePngToRgbaSync } from './pbr';
-import { encodeRgbaToPngSync, encodeRgbaToTgaSync } from './tga';
+import { encodeRgbaToPngSync, encodeRgbaToTgaSync, getPngDimensions } from './tga';
 
 export interface BedrockLeafSpec {
   bedrockBase: string;
@@ -131,6 +131,7 @@ export function synthesizeBedrockLeafTextures(
 
   const decoded = decodePngToRgbaSync(pngBytes);
   if (!decoded) {
+    if (!getPngDimensions(pngBytes)) return null;
     const out: Record<string, Uint8Array> = {
       [`textures/blocks/${spec.bedrockBase}.png`]: pngBytes,
       [`textures/blocks/${spec.bedrockBase}_opaque.png`]: pngBytes,

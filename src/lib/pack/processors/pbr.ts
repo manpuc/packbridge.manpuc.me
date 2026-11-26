@@ -5,6 +5,7 @@
  */
 
 import { inflateSync, unzlibSync } from 'fflate';
+import { parseJsonc } from '../metadata';
 import { decodeTgaToRgba, encodeRgbaToPngSync } from './tga';
 
 export interface DecodedRgbaImage {
@@ -84,6 +85,7 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     offset = chunkStart + length + 4;
   }
 
+  const isInterlaced = interlace === 1;
   if (
     width <= 0 ||
     height <= 0 ||
@@ -94,8 +96,9 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     (bitDepth < 8 && colorType !== 0 && colorType !== 3) ||
     (bitDepth === 16 && colorType === 3) ||
     (colorType === 3 && !palette) ||
-    interlace !== 0 ||
-    totalIdatLen === 0
+    (interlace !== 0 && interlace !== 1) ||
+    totalIdatLen === 0 ||
+    totalIdatLen > MAX_PBR_PIXELS * 8
   ) {
     return null;
   }
@@ -108,6 +111,30 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
 
   if (channels === 0) return null;
 
+  const bpp = Math.max(1, (channels * bitDepth) >> 3);
+  const ADAM7_X0 = [0, 4, 0, 2, 0, 1, 0];
+  const ADAM7_DX = [8, 8, 4, 4, 2, 2, 1];
+  const ADAM7_Y0 = [0, 0, 4, 0, 2, 0, 1];
+  const ADAM7_DY = [8, 8, 4, 4, 2, 2, 1];
+
+  const passSpecs: Array<{ pw: number; ph: number; stride: number; x0: number; dx: number; y0: number; dy: number }> = [];
+  let expectedLen = 0;
+  if (!isInterlaced) {
+    const stride = Math.ceil((width * channels * bitDepth) / 8);
+    passSpecs.push({ pw: width, ph: height, stride, x0: 0, dx: 1, y0: 0, dy: 1 });
+    expectedLen = (stride + 1) * height;
+  } else {
+    for (let p = 0; p < 7; p++) {
+      const pw = Math.ceil((width - ADAM7_X0[p]) / ADAM7_DX[p]);
+      const ph = Math.ceil((height - ADAM7_Y0[p]) / ADAM7_DY[p]);
+      if (pw > 0 && ph > 0) {
+        const stride = Math.ceil((pw * channels * bitDepth) / 8);
+        passSpecs.push({ pw, ph, stride, x0: ADAM7_X0[p], dx: ADAM7_DX[p], y0: ADAM7_Y0[p], dy: ADAM7_DY[p] });
+        expectedLen += (stride + 1) * ph;
+      }
+    }
+  }
+
   const compressed = new Uint8Array(totalIdatLen);
   let pos = 0;
   for (const part of idatParts) {
@@ -117,173 +144,202 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
 
   let rawScanlines: Uint8Array;
   try {
-    rawScanlines = unzlibSync(compressed);
+    rawScanlines = unzlibSync(compressed, { out: new Uint8Array(expectedLen) });
   } catch {
     try {
-      rawScanlines = inflateSync(compressed);
+      rawScanlines = inflateSync(compressed, { out: new Uint8Array(expectedLen) });
     } catch {
       return null;
     }
   }
 
-  const bpp = Math.max(1, (channels * bitDepth) >> 3);
-  const stride = Math.ceil((width * channels * bitDepth) / 8);
-  const expectedLen = (stride + 1) * height;
   if (rawScanlines.length < expectedLen) return null;
 
-  const unfiltered = new Uint8Array(stride * height);
+  const unfilterPass = (srcOffset: number, pw: number, ph: number, stride: number): Uint8Array | null => {
+    const unfiltered = new Uint8Array(stride * ph);
+    for (let y = 0; y < ph; y++) {
+      const srcRow = srcOffset + y * (stride + 1);
+      const dstRow = y * stride;
+      const prevRow = (y - 1) * stride;
+      const filter = rawScanlines[srcRow];
+      if (filter > 4) return null;
 
-  for (let y = 0; y < height; y++) {
-    const srcRow = y * (stride + 1);
-    const dstRow = y * stride;
-    const prevRow = (y - 1) * stride;
-    const filter = rawScanlines[srcRow];
-    if (filter > 4) return null;
+      for (let x = 0; x < stride; x++) {
+        const raw = rawScanlines[srcRow + 1 + x];
+        const a = x >= bpp ? unfiltered[dstRow + x - bpp] : 0;
+        const b = y > 0 ? unfiltered[prevRow + x] : 0;
+        const c = y > 0 && x >= bpp ? unfiltered[prevRow + x - bpp] : 0;
 
-    for (let x = 0; x < stride; x++) {
-      const raw = rawScanlines[srcRow + 1 + x];
-      const a = x >= bpp ? unfiltered[dstRow + x - bpp] : 0;
-      const b = y > 0 ? unfiltered[prevRow + x] : 0;
-      const c = y > 0 && x >= bpp ? unfiltered[prevRow + x - bpp] : 0;
+        let val = raw;
+        if (filter === 1) val = (raw + a) & 0xff;
+        else if (filter === 2) val = (raw + b) & 0xff;
+        else if (filter === 3) val = (raw + ((a + b) >>> 1)) & 0xff;
+        else if (filter === 4) val = (raw + paethPredictor(a, b, c)) & 0xff;
 
-      let val = raw;
-      if (filter === 1) val = (raw + a) & 0xff;
-      else if (filter === 2) val = (raw + b) & 0xff;
-      else if (filter === 3) val = (raw + ((a + b) >>> 1)) & 0xff;
-      else if (filter === 4) val = (raw + paethPredictor(a, b, c)) & 0xff;
-
-      unfiltered[dstRow + x] = val;
-    }
-  }
-
-  if (colorType === 6 && bitDepth === 8) {
-    return { width, height, rgba: unfiltered };
-  }
-
-  const totalPixels = width * height;
-  const rgba = new Uint8Array(totalPixels * 4);
-
-  if (bitDepth === 16) {
-    if (colorType === 6) {
-      for (let i = 0; i < totalPixels; i++) {
-        const s = i * 8;
-        const d = i * 4;
-        rgba[d] = unfiltered[s];
-        rgba[d + 1] = unfiltered[s + 2];
-        rgba[d + 2] = unfiltered[s + 4];
-        rgba[d + 3] = unfiltered[s + 6];
+        unfiltered[dstRow + x] = val;
       }
-    } else if (colorType === 2) {
+    }
+    return unfiltered;
+  };
+
+  const passToRgba = (unfiltered: Uint8Array, pw: number, ph: number, stride: number): Uint8Array => {
+    if (colorType === 6 && bitDepth === 8) {
+      return unfiltered;
+    }
+    const totalPixels = pw * ph;
+    const rgba = new Uint8Array(totalPixels * 4);
+
+    if (bitDepth === 16) {
+      if (colorType === 6) {
+        for (let i = 0; i < totalPixels; i++) {
+          const s = i * 8;
+          const d = i * 4;
+          rgba[d] = unfiltered[s];
+          rgba[d + 1] = unfiltered[s + 2];
+          rgba[d + 2] = unfiltered[s + 4];
+          rgba[d + 3] = unfiltered[s + 6];
+        }
+      } else if (colorType === 2) {
+        const hasTrns = trns !== null && trns.length >= 6;
+        const trnsR = hasTrns ? (trns![0] << 8) | trns![1] : -1;
+        const trnsG = hasTrns ? (trns![2] << 8) | trns![3] : -1;
+        const trnsB = hasTrns ? (trns![4] << 8) | trns![5] : -1;
+        for (let i = 0; i < totalPixels; i++) {
+          const s = i * 6;
+          const d = i * 4;
+          const r16 = (unfiltered[s] << 8) | unfiltered[s + 1];
+          const g16 = (unfiltered[s + 2] << 8) | unfiltered[s + 3];
+          const b16 = (unfiltered[s + 4] << 8) | unfiltered[s + 5];
+          rgba[d] = unfiltered[s];
+          rgba[d + 1] = unfiltered[s + 2];
+          rgba[d + 2] = unfiltered[s + 4];
+          rgba[d + 3] = hasTrns && r16 === trnsR && g16 === trnsG && b16 === trnsB ? 0 : 255;
+        }
+      } else if (colorType === 0) {
+        const hasTrns = trns !== null && trns.length >= 2;
+        const trnsGray = hasTrns ? (trns![0] << 8) | trns![1] : -1;
+        for (let i = 0; i < totalPixels; i++) {
+          const s = i * 2;
+          const d = i * 4;
+          const v16 = (unfiltered[s] << 8) | unfiltered[s + 1];
+          const v = unfiltered[s];
+          rgba[d] = v;
+          rgba[d + 1] = v;
+          rgba[d + 2] = v;
+          rgba[d + 3] = hasTrns && v16 === trnsGray ? 0 : 255;
+        }
+      } else if (colorType === 4) {
+        for (let i = 0; i < totalPixels; i++) {
+          const s = i * 4;
+          const d = i * 4;
+          const v = unfiltered[s];
+          rgba[d] = v;
+          rgba[d + 1] = v;
+          rgba[d + 2] = v;
+          rgba[d + 3] = unfiltered[s + 2];
+        }
+      }
+      return rgba;
+    }
+
+    let samples = unfiltered;
+    if (bitDepth < 8) {
+      samples = new Uint8Array(pw * ph);
+      const mask = (1 << bitDepth) - 1;
+      const pixelsPerByte = 8 / bitDepth;
+      for (let y = 0; y < ph; y++) {
+        const rowOffset = y * stride;
+        for (let x = 0; x < pw; x++) {
+          const byteVal = unfiltered[rowOffset + Math.floor(x / pixelsPerByte)];
+          const shift = (pixelsPerByte - 1 - (x % pixelsPerByte)) * bitDepth;
+          samples[y * pw + x] = (byteVal >>> shift) & mask;
+        }
+      }
+    }
+
+    if (colorType === 2) {
       const hasTrns = trns !== null && trns.length >= 6;
-      const trnsR = hasTrns ? (trns![0] << 8) | trns![1] : -1;
-      const trnsG = hasTrns ? (trns![2] << 8) | trns![3] : -1;
-      const trnsB = hasTrns ? (trns![4] << 8) | trns![5] : -1;
+      const trnsR = hasTrns ? ((trns![0] << 8) | trns![1]) & 0xff : -1;
+      const trnsG = hasTrns ? ((trns![2] << 8) | trns![3]) & 0xff : -1;
+      const trnsB = hasTrns ? ((trns![4] << 8) | trns![5]) & 0xff : -1;
       for (let i = 0; i < totalPixels; i++) {
-        const s = i * 6;
+        const s = i * 3;
         const d = i * 4;
-        const r16 = (unfiltered[s] << 8) | unfiltered[s + 1];
-        const g16 = (unfiltered[s + 2] << 8) | unfiltered[s + 3];
-        const b16 = (unfiltered[s + 4] << 8) | unfiltered[s + 5];
-        rgba[d] = unfiltered[s];
-        rgba[d + 1] = unfiltered[s + 2];
-        rgba[d + 2] = unfiltered[s + 4];
-        rgba[d + 3] = hasTrns && r16 === trnsR && g16 === trnsG && b16 === trnsB ? 0 : 255;
+        const r = samples[s];
+        const g = samples[s + 1];
+        const b = samples[s + 2];
+        rgba[d] = r;
+        rgba[d + 1] = g;
+        rgba[d + 2] = b;
+        rgba[d + 3] = hasTrns && r === trnsR && g === trnsG && b === trnsB ? 0 : 255;
       }
     } else if (colorType === 0) {
       const hasTrns = trns !== null && trns.length >= 2;
       const trnsGray = hasTrns ? (trns![0] << 8) | trns![1] : -1;
+      const scale = 255 / ((1 << bitDepth) - 1);
       for (let i = 0; i < totalPixels; i++) {
-        const s = i * 2;
+        const raw = samples[i];
+        const v = Math.round(raw * scale);
         const d = i * 4;
-        const v16 = (unfiltered[s] << 8) | unfiltered[s + 1];
-        const v = unfiltered[s];
         rgba[d] = v;
         rgba[d + 1] = v;
         rgba[d + 2] = v;
-        rgba[d + 3] = hasTrns && v16 === trnsGray ? 0 : 255;
+        rgba[d + 3] = hasTrns && raw === trnsGray ? 0 : 255;
       }
     } else if (colorType === 4) {
       for (let i = 0; i < totalPixels; i++) {
-        const s = i * 4;
+        const s = i * 2;
         const d = i * 4;
-        const v = unfiltered[s];
+        const v = samples[s];
         rgba[d] = v;
         rgba[d + 1] = v;
         rgba[d + 2] = v;
-        rgba[d + 3] = unfiltered[s + 2];
+        rgba[d + 3] = samples[s + 1];
+      }
+    } else if (colorType === 3 && palette) {
+      for (let i = 0; i < totalPixels; i++) {
+        const idx = samples[i];
+        const pIdx = idx * 3;
+        const d = i * 4;
+        rgba[d] = pIdx < palette.length ? palette[pIdx] : 0;
+        rgba[d + 1] = pIdx + 1 < palette.length ? palette[pIdx + 1] : 0;
+        rgba[d + 2] = pIdx + 2 < palette.length ? palette[pIdx + 2] : 0;
+        rgba[d + 3] = trns && idx < trns.length ? trns[idx] : 255;
       }
     }
-    return { width, height, rgba };
+
+    return rgba;
+  };
+
+  if (!isInterlaced) {
+    const spec = passSpecs[0];
+    const unfiltered = unfilterPass(0, spec.pw, spec.ph, spec.stride);
+    if (!unfiltered) return null;
+    return { width, height, rgba: passToRgba(unfiltered, spec.pw, spec.ph, spec.stride) };
   }
 
-  // Unpack sub-byte samples (bitDepth 1, 2, 4) into 1-byte indices per pixel
-  let samples = unfiltered;
-  if (bitDepth < 8) {
-    samples = new Uint8Array(width * height);
-    const mask = (1 << bitDepth) - 1;
-    const pixelsPerByte = 8 / bitDepth;
-    for (let y = 0; y < height; y++) {
-      const rowOffset = y * stride;
-      for (let x = 0; x < width; x++) {
-        const byteVal = unfiltered[rowOffset + Math.floor(x / pixelsPerByte)];
-        const shift = (pixelsPerByte - 1 - (x % pixelsPerByte)) * bitDepth;
-        samples[y * width + x] = (byteVal >>> shift) & mask;
+  const outRgba = new Uint8Array(width * height * 4);
+  let srcOffset = 0;
+  for (const spec of passSpecs) {
+    const unfiltered = unfilterPass(srcOffset, spec.pw, spec.ph, spec.stride);
+    if (!unfiltered) return null;
+    srcOffset += (spec.stride + 1) * spec.ph;
+    const passRgba = passToRgba(unfiltered, spec.pw, spec.ph, spec.stride);
+    for (let py = 0; py < spec.ph; py++) {
+      const dy = spec.y0 + py * spec.dy;
+      for (let px = 0; px < spec.pw; px++) {
+        const dx = spec.x0 + px * spec.dx;
+        const sIdx = (py * spec.pw + px) * 4;
+        const dIdx = (dy * width + dx) * 4;
+        outRgba[dIdx] = passRgba[sIdx];
+        outRgba[dIdx + 1] = passRgba[sIdx + 1];
+        outRgba[dIdx + 2] = passRgba[sIdx + 2];
+        outRgba[dIdx + 3] = passRgba[sIdx + 3];
       }
     }
   }
 
-  if (colorType === 2) {
-    const hasTrns = trns !== null && trns.length >= 6;
-    const trnsR = hasTrns ? ((trns![0] << 8) | trns![1]) & 0xff : -1;
-    const trnsG = hasTrns ? ((trns![2] << 8) | trns![3]) & 0xff : -1;
-    const trnsB = hasTrns ? ((trns![4] << 8) | trns![5]) & 0xff : -1;
-    for (let i = 0; i < totalPixels; i++) {
-      const s = i * 3;
-      const d = i * 4;
-      const r = samples[s];
-      const g = samples[s + 1];
-      const b = samples[s + 2];
-      rgba[d] = r;
-      rgba[d + 1] = g;
-      rgba[d + 2] = b;
-      rgba[d + 3] = hasTrns && r === trnsR && g === trnsG && b === trnsB ? 0 : 255;
-    }
-  } else if (colorType === 0) {
-    const hasTrns = trns !== null && trns.length >= 2;
-    const trnsGray = hasTrns ? (trns![0] << 8) | trns![1] : -1;
-    const scale = 255 / ((1 << bitDepth) - 1);
-    for (let i = 0; i < totalPixels; i++) {
-      const raw = samples[i];
-      const v = Math.round(raw * scale);
-      const d = i * 4;
-      rgba[d] = v;
-      rgba[d + 1] = v;
-      rgba[d + 2] = v;
-      rgba[d + 3] = hasTrns && raw === trnsGray ? 0 : 255;
-    }
-  } else if (colorType === 4) {
-    for (let i = 0; i < totalPixels; i++) {
-      const s = i * 2;
-      const d = i * 4;
-      const v = samples[s];
-      rgba[d] = v;
-      rgba[d + 1] = v;
-      rgba[d + 2] = v;
-      rgba[d + 3] = samples[s + 1];
-    }
-  } else if (colorType === 3 && palette) {
-    for (let i = 0; i < totalPixels; i++) {
-      const idx = samples[i];
-      const pIdx = idx * 3;
-      const d = i * 4;
-      rgba[d] = pIdx < palette.length ? palette[pIdx] : 0;
-      rgba[d + 1] = pIdx + 1 < palette.length ? palette[pIdx + 1] : 0;
-      rgba[d + 2] = pIdx + 2 < palette.length ? palette[pIdx + 2] : 0;
-      rgba[d + 3] = trns && idx < trns.length ? trns[idx] : 255;
-    }
-  }
-
-  return { width, height, rgba };
+  return { width, height, rgba: outRgba };
 }
 
 export function decodeImageToRgbaSync(bytes: Uint8Array): DecodedRgbaImage | null {
@@ -700,17 +756,6 @@ export interface ParsedTextureSet {
   hasSubsurface?: boolean;
 }
 
-function parseJsoncLocal(raw: string): unknown {
-  const noComments = raw
-    .replace(/^\uFEFF/, '')
-    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, (m) => (m[0] === '"' ? m : ''));
-  const noTrailing = noComments.replace(
-    /"(?:\\.|[^"\\])*"|,\s*(?=[}\]])/g,
-    (m) => (m[0] === '"' ? m : '')
-  );
-  return JSON.parse(noTrailing);
-}
-
 function clampByte(n: unknown, fallback = 0): number {
   return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(255, Math.round(n))) : fallback;
 }
@@ -763,12 +808,9 @@ function parseTextureSetField(
   return {};
 }
 
-/**
- * Parses a Bedrock `*.texture_set.json` file to identify linked color, MER/MERS, and normal/heightmap textures or uniform values.
- */
 export function parseTextureSetJson(jsonStr: string): ParsedTextureSet | null {
   try {
-    const parsed = parseJsoncLocal(jsonStr) as Record<string, any>;
+    const parsed = parseJsonc(jsonStr) as Record<string, any>;
     const ts = parsed?.['minecraft:texture_set'];
     if (!ts || typeof ts !== 'object') return null;
 

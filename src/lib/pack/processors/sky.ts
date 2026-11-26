@@ -1,8 +1,9 @@
 import { strFromU8 } from 'fflate';
-import { decodeImageToRgbaSync, type DecodedRgbaImage } from './pbr';
+import { decodeImageToRgba, type DecodedRgbaImage } from './pbr';
 import { encodeRgbaToPngSync } from './tga';
 
 const MAX_SKY_DIMENSION = 8192;
+const MAX_SKY_PIXELS = 4096 * 4096;
 
 interface SkyboxTileSpec {
   col: number;
@@ -56,33 +57,6 @@ export function migrateJavaSkyProperties(content: string, targetPackFormat: numb
       return `${m[1]}${val}${m[3]}`;
     })
     .join('\n');
-}
-
-async function decodeSkyImage(bytes: Uint8Array): Promise<DecodedRgbaImage | null> {
-  const syncDecoded = decodeImageToRgbaSync(bytes);
-  if (syncDecoded) return syncDecoded;
-
-  if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
-    return null;
-  }
-
-  let bitmap: ImageBitmap | null = null;
-  try {
-    bitmap = await createImageBitmap(new Blob([bytes as any], { type: 'image/png' }));
-    if (bitmap.width <= 0 || bitmap.height <= 0 || bitmap.width > MAX_SKY_DIMENSION || bitmap.height > MAX_SKY_DIMENSION) {
-      return null;
-    }
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(bitmap, 0, 0);
-    const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-    return { width: bitmap.width, height: bitmap.height, rgba: new Uint8Array(imgData.data) };
-  } catch {
-    return null;
-  } finally {
-    bitmap?.close();
-  }
 }
 
 export function sliceOptiFineSkyToBedrockCubemap(img: DecodedRgbaImage): Record<string, Uint8Array> | null {
@@ -260,7 +234,7 @@ export async function convertJavaSkyToBedrockCubemap(
   candidates.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.relPath.localeCompare(b.relPath)));
 
   for (const cand of candidates) {
-    const decoded = await decodeSkyImage(cand.bytes);
+    const decoded = await decodeImageToRgba(cand.bytes, MAX_SKY_DIMENSION);
     if (!decoded) continue;
     const sliced = sliceOptiFineSkyToBedrockCubemap(decoded);
     if (sliced) {
@@ -290,7 +264,7 @@ export async function composeBedrockCubemapToOptiFineSky(
 
   for (const [idx, bytes] of faces.entries()) {
     if (idx < 0 || idx > 5) continue;
-    const decoded = await decodeSkyImage(bytes);
+    const decoded = await decodeImageToRgba(bytes, MAX_SKY_DIMENSION);
     if (!decoded) continue;
     decodedFaces.set(idx, decoded);
     maxSide = Math.max(maxSide, decoded.width, decoded.height);
@@ -298,7 +272,11 @@ export async function composeBedrockCubemapToOptiFineSky(
 
   if (decodedFaces.size === 0 || maxSide <= 0) return null;
 
-  const faceSize = Math.min(Math.floor(MAX_SKY_DIMENSION / 3), maxSide);
+  const faceSize = Math.min(
+    Math.floor(MAX_SKY_DIMENSION / 3),
+    Math.floor(Math.sqrt(MAX_SKY_PIXELS / 6)),
+    maxSide
+  );
   const outW = faceSize * 3;
   const outH = faceSize * 2;
   const outRgba = new Uint8Array(outW * outH * 4);

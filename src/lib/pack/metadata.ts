@@ -2,6 +2,17 @@
  * Common metadata and UUID helpers for pack conversion
  */
 
+export function parseJsonc(raw: string): unknown {
+  const noComments = raw
+    .replace(/^\uFEFF/, '')
+    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, (m) => (m[0] === '"' ? m : ''));
+  const noTrailing = noComments.replace(
+    /"(?:\\.|[^"\\])*"|,\s*(?=[}\]])/g,
+    (m) => (m[0] === '"' ? m : '')
+  );
+  return JSON.parse(noTrailing);
+}
+
 export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     try {

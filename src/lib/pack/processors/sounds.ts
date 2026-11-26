@@ -1,6 +1,9 @@
 import { getActiveMappings, getFallbackMappings } from '../rules';
 import { isUnsafeObjectKey } from '../security';
+import { parseJsonc } from '../metadata';
 import { compareBedrockVersion, type BedrockSemver } from './gui';
+
+export { parseJsonc };
 
 const EXTRA_JAVA_TO_BEDROCK_EVENTS: Record<string, string> = {
   'entity.fishing_bobber.retrieve': 'random.bowhit',
@@ -52,17 +55,6 @@ const AUDIO_EXT_RE = /\.(ogg|fsb|wav|mp3)$/i;
 
 function isPlainObject(v: unknown): v is Record<string, any> {
   return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
-}
-
-export function parseJsonc(raw: string): unknown {
-  const noComments = raw
-    .replace(/^\uFEFF/, '')
-    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, (m) => (m[0] === '"' ? m : ''));
-  const noTrailing = noComments.replace(
-    /"(?:\\.|[^"\\])*"|,\s*(?=[}\]])/g,
-    (m) => (m[0] === '"' ? m : '')
-  );
-  return JSON.parse(noTrailing);
 }
 
 function normalizeEventKey(raw: string): string {

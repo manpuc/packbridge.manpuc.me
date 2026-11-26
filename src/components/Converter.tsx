@@ -7,6 +7,7 @@ import { convertPackWithWorker } from '@/lib/pack/worker-client';
 import type { PackReport, ConversionDirection, ConversionOptions } from '@/lib/pack/types';
 import type { Translation, Language } from '@/lib/i18n';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, getJavaVersionByPackFormat, getBedrockVersionByEngineVersion, extractPackFormat, detectEditionAutoSwitch } from '@/lib/pack/versions';
+import { parseJsonc } from '@/lib/pack/metadata';
 import { useFileDrop } from '@/hooks/useFileDrop';
 import { Bug } from 'lucide-react';
 import { getReportStrings, reportHref, LAST_CONVERSION_KEY } from '@/lib/i18n/report';
@@ -422,7 +423,7 @@ export default function Converter({
           if (sourceEdition === 'java' && packMcmetaEntry) {
             const content = await packMcmetaEntry.async('string');
             if (!isMounted) return;
-            const json = JSON.parse(content);
+            const json = parseJsonc(content) as Record<string, any>;
             const rawFormat = extractPackFormat(json?.pack);
             if (rawFormat !== null) {
               const detected = getJavaVersionByPackFormat(rawFormat);
@@ -439,7 +440,7 @@ export default function Converter({
           } else if (sourceEdition === 'bedrock' && manifestEntry) {
             const content = await manifestEntry.async('string');
             if (!isMounted) return;
-            const json = JSON.parse(content);
+            const json = parseJsonc(content) as Record<string, any>;
             if (Array.isArray(json?.header?.min_engine_version)) {
               const detected = getBedrockVersionByEngineVersion(json.header.min_engine_version);
               if (detected) {
@@ -467,8 +468,15 @@ export default function Converter({
     };
   }, [file, zipInstance, direction, t, initialLang]);
 
+  // Revoke previous download Blob URL when replaced or on unmount
+  useEffect(() => {
+    return () => {
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    };
+  }, [downloadUrl]);
+
   const startConversion = async () => {
-    if (!file) return;
+    if (!file || isProcessing) return;
     setIsProcessing(true);
     setProgress(null);
     setError(null);
@@ -573,18 +581,25 @@ export default function Converter({
 
   const saveContext = (log: string) => {
     if (!file) return;
+    const MAX_LOG_CHARS = 100_000;
+    const cappedLog = log.length > MAX_LOG_CHARS
+      ? `${log.slice(0, MAX_LOG_CHARS)}\n... [truncated ${log.length - MAX_LOG_CHARS} chars]`
+      : log;
     try {
       sessionStorage.setItem(LAST_CONVERSION_KEY, JSON.stringify({
         direction: `${direction} (java ${selectedJavaVersion}, bedrock ${selectedBedrockVersion})`,
         fileName: file.name,
         fileSize: file.size,
-        log,
+        log: cappedLog,
       }));
     } catch { /* ignore */ }
   };
 
   const rs = getReportStrings(initialLang);
-  const showReportEntry = error === t.errorConversion || (report && (report.errorCount > 0 || report.skippedCount > 0 || report.details.some((d) => d.warning)));
+  const showReportEntry =
+    error === t.errorConversion ||
+    error === t.errorZeroConverted ||
+    (report && (report.errorCount > 0 || report.skippedCount > 0 || report.details.some((d) => d.warning)));
 
   const reset = () => {
     if (file && !report && !isProcessing) {
@@ -717,7 +732,7 @@ export default function Converter({
           id="report-entry"
           onClick={() => {
             trackEvent('report_click', {
-              source: error === t.errorConversion ? 'error_banner' : 'report_summary',
+              source: error === t.errorConversion || error === t.errorZeroConverted ? 'error_banner' : 'report_summary',
             });
           }}
         >

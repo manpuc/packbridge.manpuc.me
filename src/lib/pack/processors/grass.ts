@@ -8,32 +8,8 @@
  * This processor composites the snow overlay onto the pack's `dirt` texture.
  */
 
-import { decodeImageToRgbaSync, type DecodedRgbaImage } from './pbr';
+import { decodeImageToRgba, decodeImageToRgbaSync } from './pbr';
 import { encodeRgbaToPngSync, encodeRgbaToTgaSync } from './tga';
-
-async function decodeImageAsync(bytes: Uint8Array): Promise<DecodedRgbaImage | null> {
-  const sync = decodeImageToRgbaSync(bytes);
-  if (sync) return sync;
-
-  if (typeof createImageBitmap !== 'undefined' && typeof OffscreenCanvas !== 'undefined') {
-    try {
-      const bitmap = await createImageBitmap(new Blob([bytes as any]));
-      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      ctx.drawImage(bitmap, 0, 0);
-      const imgData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-      return {
-        width: bitmap.width,
-        height: bitmap.height,
-        rgba: new Uint8Array(imgData.data.buffer, imgData.data.byteOffset, imgData.data.byteLength),
-      };
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
 
 /**
  * Composites a potentially transparent Bedrock snowy grass side texture
@@ -43,7 +19,7 @@ export async function compositeSnowyGrassSide(
   snowBytes: Uint8Array,
   dirtBytes?: Uint8Array | null
 ): Promise<Uint8Array | null> {
-  const snowImg = await decodeImageAsync(snowBytes);
+  const snowImg = await decodeImageToRgba(snowBytes);
   if (!snowImg) return null;
 
   // 1. Check if the snow texture actually has any transparent/semi-transparent pixels
@@ -61,7 +37,7 @@ export async function compositeSnowyGrassSide(
   }
 
   // 2. Decode pack's dirt texture, or generate fallback dirt
-  let dirtImg = dirtBytes ? await decodeImageAsync(dirtBytes) : null;
+  let dirtImg = dirtBytes ? await decodeImageToRgba(dirtBytes) : null;
   if (!dirtImg) {
     dirtImg = generateFallbackDirtRgba(snowImg.width, snowImg.height);
   }

@@ -1,5 +1,6 @@
 import { getActiveMappings, getFallbackMappings } from '../rules';
 import { isUnsafeObjectKey } from '../security';
+import { parseJsonc } from '../metadata';
 
 export function formatLocaleCode(code: string, style: 'll_CC' | 'll_cc'): string {
   const trimmed = code.trim();
@@ -41,7 +42,7 @@ export function parseLangEntries(langContent: string, unescapeNewlines: boolean)
 
 export function parseJsonLangEntries(jsonContent: string): Map<string, string> | null {
   try {
-    const data = JSON.parse(jsonContent.replace(/^\uFEFF/, ''));
+    const data = parseJsonc(jsonContent);
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
 
     const entries = new Map<string, string>();

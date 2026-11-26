@@ -6,7 +6,7 @@ import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, convertTgaTo
 import { decodePngToRgbaSync, convertBedrockMerToLabPbrSpec } from './processors/pbr';
 import { processGuiSpriteSheet, BUTTON_WIDGET_METADATA } from './processors/gui';
 import { zlibSync } from 'fflate';
-import { extractPackFormat, extractMinPackFormat, detectEditionAutoSwitch } from './versions';
+import { extractPackFormat, extractMinPackFormat, detectEditionAutoSwitch, getBedrockVersionByEngineVersion } from './versions';
 import { analyzeReportSafety, categorizeError } from '../analytics';
 import { createZipSafetyFilter } from './security';
 import type { ConversionOptions } from './types';
@@ -2567,5 +2567,110 @@ describe('convertBuffer', () => {
 
     // 8. BUTTON_WIDGET_METADATA uses border: 3
     expect(JSON.parse(BUTTON_WIDGET_METADATA).gui.scaling.border).toBe(3);
+  });
+
+  it('hardens Adam7 PNGs, JSONC metadata/lang/animation, corrupt-asset isolation, and analytics/worker edge cases', async () => {
+    // 1. Real Adam7 interlaced 2x2 RGBA PNG decodes cleanly
+    const ihdr7 = new Uint8Array([0, 0, 0, 2, 0, 0, 0, 2, 8, 6, 0, 0, 1]);
+    // 2x2 Adam7 passes: pass 1 (0,0)=1x1, pass 6 (1,0)=1x1, pass 7 (0,1)&(1,1)=2x1
+    const rawAdam7 = new Uint8Array([
+      0, 10, 20, 30, 255,       // pass 1: (0,0)
+      0, 40, 50, 60, 255,       // pass 6: (1,0)
+      0, 70, 80, 90, 255, 100, 110, 120, 255, // pass 7: y=1, x=0..1
+    ]);
+    const idat7 = zlibSync(rawAdam7);
+    const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      crcTable[n] = c >>> 0;
+    }
+    const mkChunk = (type: string, data: Uint8Array) => {
+      const out = new Uint8Array(12 + data.length);
+      const dv = new DataView(out.buffer);
+      dv.setUint32(0, data.length, false);
+      for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+      out.set(data, 8);
+      let c = 0xffffffff;
+      for (let i = 4; i < 8 + data.length; i++) c = crcTable[(c ^ out[i]) & 0xff] ^ (c >>> 8);
+      dv.setUint32(8 + data.length, (c ^ 0xffffffff) >>> 0, false);
+      return out;
+    };
+    const adam7Png = new Uint8Array(sig.length + 25 + 12 + idat7.length + 12);
+    let p = 0;
+    for (const part of [sig, mkChunk('IHDR', ihdr7), mkChunk('IDAT', idat7), mkChunk('IEND', new Uint8Array(0))]) {
+      adam7Png.set(part, p);
+      p += part.length;
+    }
+    const decodedAdam7 = decodePngToRgbaSync(adam7Png);
+    expect(decodedAdam7).not.toBeNull();
+    expect(Array.from(decodedAdam7!.rgba)).toEqual([
+      10, 20, 30, 255,
+      40, 50, 60, 255,
+      70, 80, 90, 255,
+      100, 110, 120, 255,
+    ]);
+
+    // 2. JSONC + BOM in pack.mcmeta, lang .json, .png.mcmeta, and corrupt metadata warning in java-to-java
+    const jsoncRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8('\uFEFF{\n  // comment\n  "pack": { "pack_format": 46, "description": "JSONC", },\n}'),
+        'assets/minecraft/lang/en_us.json': strToU8('\uFEFF{\n  // lang\n  "block.minecraft.stone": "Stone",\n}'),
+        'assets/minecraft/textures/block/stone.png': encodeRgbaToPngSync(16, 32, new Uint8Array(16 * 32 * 4).fill(100)),
+        'assets/minecraft/textures/block/stone.png.mcmeta': strToU8('\uFEFF{\n  // anim\n  "animation": { "frametime": 4, },\n}'),
+      })),
+      'jsonc.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    );
+    const jsoncOut = unzipSync(jsoncRes.buffer);
+    expect(strFromU8(jsoncOut['texts/en_US.lang'])).toContain('tile.stone.stone.name=Stone');
+    expect(JSON.parse(strFromU8(jsoncOut['textures/flipbook_textures.json']))[0].ticks_per_frame).toBe(4);
+
+    const corruptMetaRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8('{ invalid json'),
+        'assets/minecraft/textures/block/stone.png': encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4)),
+      })),
+      'corrupt-meta.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
+    );
+    expect(corruptMetaRes.report.details.some(d => d.filename === 'pack.mcmeta' && d.warning === true)).toBe(true);
+
+    // 3. Corrupt leaf, corrupt grass_block_side, corrupt non-block 0x0 PNG, and Bedrock->Java .wav warning
+    const zeroDimPng = new Uint8Array(33);
+    zeroDimPng.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    const corruptAssetsRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/textures/block/oak_leaves.png': new Uint8Array([1, 2, 3, 4]),
+        'assets/minecraft/textures/block/grass_block_side.png': new Uint8Array([1, 2, 3, 4]),
+        'assets/minecraft/textures/block/stone.png': encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4)),
+      })),
+      'corrupt-j2b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    );
+    expect(corruptAssetsRes.report.details.some(d => d.reason === 'Invalid or corrupt leaf texture')).toBe(true);
+    expect(corruptAssetsRes.report.details.some(d => d.reason === 'Invalid or corrupt grass_block_side texture')).toBe(true);
+
+    const b2jWarnRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': strToU8(JSON.stringify({
+          format_version: 2,
+          header: { name: 'W', description: 'W', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+          modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+        })),
+        'textures/items/bad_item.png': zeroDimPng,
+        'sounds/custom/hit.wav': new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+      })),
+      'b2j-warn.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', enableAudioReencode: false }
+    );
+    expect(b2jWarnRes.report.details.some(d => d.filename === 'textures/items/bad_item.png' && d.status === 'skipped')).toBe(true);
+    expect(b2jWarnRes.report.details.some(d => d.filename === 'sounds/custom/hit.wav' && d.warning === true)).toBe(true);
+
+    // 4. versions.ts NaN guard & analytics ZipSafetyError categorization
+    expect(getBedrockVersionByEngineVersion([NaN, NaN, NaN])).toBeNull();
+    expect(categorizeError(new Error('Archive contains too many files'))).toBe('INVALID_ARCHIVE');
   });
 });

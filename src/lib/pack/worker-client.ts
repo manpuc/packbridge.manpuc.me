@@ -18,7 +18,7 @@ export async function convertPackWithWorker(
       return;
     }
 
-    const bufferPromise = preloadedBuffer ? Promise.resolve(preloadedBuffer) : file.arrayBuffer();
+    const bufferPromise = preloadedBuffer && preloadedBuffer.byteLength > 0 ? Promise.resolve(preloadedBuffer) : file.arrayBuffer();
     bufferPromise.then(fileBuffer => {
       worker.onmessage = (e) => {
         const data = e.data;
@@ -38,6 +38,11 @@ export async function convertPackWithWorker(
         err.preventDefault?.();
         worker.terminate();
         reject(new Error(err.message || 'Worker failed to load'));
+      };
+
+      worker.onmessageerror = () => {
+        worker.terminate();
+        reject(new Error('Worker message deserialization failed'));
       };
 
       worker.postMessage({ fileBuffer, fileName: file.name, options }, [fileBuffer]);

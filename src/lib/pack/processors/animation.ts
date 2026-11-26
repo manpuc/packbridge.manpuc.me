@@ -1,3 +1,5 @@
+import { parseJsonc } from '../metadata';
+
 export interface FlipbookEntry {
   flipbook_texture: string;
   atlas_tile: string;
@@ -100,7 +102,7 @@ export function getBedrockAtlasTile(texturePathNoExt: string): string {
  */
 export function parseJavaAnimation(mcmetaContent: string, bedrockPath: string): FlipbookEntry | null {
   try {
-    const data = JSON.parse(mcmetaContent.replace(/^\uFEFF/, ''));
+    const data = parseJsonc(mcmetaContent) as Record<string, any>;
     if (!data || typeof data.animation !== 'object' || data.animation === null || Array.isArray(data.animation)) {
       return null;
     }

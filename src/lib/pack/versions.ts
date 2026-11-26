@@ -70,6 +70,7 @@ export function getJavaVersionByPackFormat(format: number): string | null {
 
 export function getBedrockVersionByEngineVersion(version: number[]): string | null {
   if (!version || version.length < 3) return null;
+  if (!version.slice(0, 3).every(n => typeof n === 'number' && Number.isFinite(n))) return null;
   // BEDROCK_VERSIONS も降順に並んでいるため、
   // 指定された version 以下の最初のバージョン（最も近い過去バージョンまたは完全一致）を見つける
   return BEDROCK_VERSIONS.find(v => {

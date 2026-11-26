@@ -227,6 +227,12 @@ function makePngChunk(type: string, data: Uint8Array): Uint8Array {
 }
 
 export function encodeRgbaToPngSync(width: number, height: number, rgba: Uint8Array): Uint8Array {
+  if (width <= 0 || height <= 0 || width > MAX_TGA_DIMENSION || height > MAX_TGA_DIMENSION || width * height > MAX_TGA_PIXELS) {
+    throw new Error(`Invalid PNG dimensions: ${width}x${height}`);
+  }
+  if (rgba.length < width * height * 4) {
+    throw new Error(`RGBA buffer too small for ${width}x${height} PNG`);
+  }
   const stride = width * 4;
   const rawScanlines = new Uint8Array((stride + 1) * height);
   for (let y = 0; y < height; y++) {
@@ -359,6 +365,9 @@ export function normalizeJavaBlockAtlasPng(
       const scale = Math.max(1, Math.round(decoded.height / 12));
       const targetW = 32 * scale;
       const targetH = 16 * scale;
+      if (targetW > MAX_TGA_DIMENSION || targetH > MAX_TGA_DIMENSION || targetW * targetH > MAX_TGA_PIXELS) {
+        return null;
+      }
       const outRgba = new Uint8Array(targetW * targetH * 4);
       const copyW = Math.min(decoded.width, targetW);
       const copyH = Math.min(decoded.height, targetH);
@@ -377,6 +386,9 @@ export function normalizeJavaBlockAtlasPng(
       const scale = Math.max(1, Math.round(decoded.width / 8));
       const targetW = 16 * scale;
       const targetH = 16 * scale;
+      if (targetW > MAX_TGA_DIMENSION || targetH > MAX_TGA_DIMENSION || targetW * targetH > MAX_TGA_PIXELS) {
+        return null;
+      }
       const outRgba = new Uint8Array(targetW * targetH * 4);
       const copyW = Math.min(decoded.width, targetW);
       const copyH = Math.min(decoded.height, targetH);
@@ -425,6 +437,9 @@ export function normalizeJavaBlockAtlasPng(
 
   const targetW = Math.max(16, Math.round(decoded.width / 16) * 16);
   const targetH = Math.max(16, Math.round(decoded.height / 16) * 16);
+  if (targetW > MAX_TGA_DIMENSION || targetH > MAX_TGA_DIMENSION || targetW * targetH > MAX_TGA_PIXELS) {
+    return null;
+  }
   const outRgba = new Uint8Array(targetW * targetH * 4);
   const scaleX = targetW > decoded.width;
   const scaleY = targetH > decoded.height;

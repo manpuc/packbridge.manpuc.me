@@ -305,6 +305,7 @@ function convertCemToBedrock(
         mirrorTexture: node.mirrorTexture ?? mergedJpm.mirrorTexture,
       };
     } catch {
+      warnings.add('Failed to parse referenced CEM part (.jpm)');
       return node;
     }
   };
@@ -1016,6 +1017,9 @@ function convertBedrockBlockToJava(
 
   for (const bone of geo.bones) {
     if (!bone || bone.neverRender === true || !Array.isArray(bone.cubes)) continue;
+    if (bone.poly_mesh) {
+      warnings.add('Bedrock poly_mesh is not supported in Java JSON models');
+    }
     const boneInflate = toFinite(bone.inflate, 0);
     const boneMirror = Boolean(bone.mirror);
     const boneChain = getBoneChain(bone);

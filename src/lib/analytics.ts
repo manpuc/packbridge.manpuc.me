@@ -209,7 +209,7 @@ export function categorizeError(err: unknown): 'INVALID_ARCHIVE' | 'OUT_OF_MEMOR
   if (str.includes('worker') || str.includes('terminated')) {
     return 'WORKER_CRASH';
   }
-  if (str.includes('zip') || str.includes('corrupt') || str.includes('end of data') || str.includes('format') || str.includes('offset is out of bounds')) {
+  if (str.includes('zip') || str.includes('archive') || str.includes('corrupt') || str.includes('end of data') || str.includes('format') || str.includes('offset is out of bounds')) {
     return 'INVALID_ARCHIVE';
   }
   return 'UNKNOWN';
