@@ -25,7 +25,6 @@ export interface ConversionOptions {
   sourceJavaVersionId?: string;
   sourceBedrockVersionId?: string;
   enableGuiConversion: boolean;
-  enableModernGuiSprites?: boolean;
   enableAudioReencode: boolean;
   enableModelConversion?: boolean;
   enablePbrConversion?: boolean;

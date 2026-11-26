@@ -1,5 +1,5 @@
-import { decodeImageToRgba, type DecodedRgbaImage } from './pbr';
-import { encodeRgbaToPngSync } from './tga';
+import { decodeImageToRgba, decodePngToRgbaSync, type DecodedRgbaImage } from './pbr';
+import { encodeRgbaToPngSync, getPngDimensions, isValidPngHeader } from './tga';
 import {
   alphaBlendPixel,
   blitRgbaScaled,
@@ -7,6 +7,7 @@ import {
   cropRgbaBox,
   hasNonTransparentPixels,
   isJavaVillager2Version,
+  MAX_GUI_PIXELS,
   type BedrockSemver,
   type CropBox,
 } from './gui';
@@ -27,7 +28,7 @@ interface ContainerSpriteSpec {
   minBedrockVersion?: BedrockSemver;
 }
 
-const EFFECT_BG_MODERN_MCMETA = JSON.stringify(
+export const EFFECT_BG_MODERN_MCMETA = JSON.stringify(
   { gui: { scaling: { type: 'nine_slice', width: 120, height: 32, border: 4 } } },
   null,
   2
@@ -341,7 +342,7 @@ export function isSharedBedrockThemeContainer(path: string): boolean {
 }
 
 export function isBedrockContainerThemeOrPartPath(path: string): boolean {
-  return BEDROCK_CONTAINER_THEME_AND_PARTS.has(path.replace(/\.tga$/i, '.png'));
+  return BEDROCK_CONTAINER_THEME_AND_PARTS.has(path.toLowerCase().replace(/\.tga$/, '.png'));
 }
 
 export function getJavaSlotItemToBedrockUiPath(javaPath: string): string | null {
@@ -392,7 +393,7 @@ export function getBedrockContainerToModernJavaPaths(
   bedrockPath: string,
   targetJavaFormat: number
 ): string[] {
-  const normalized = bedrockPath.replace(/\.tga$/i, '.png');
+  const normalized = bedrockPath.toLowerCase().replace(/\.tga$/, '.png');
   const out: string[] = [];
 
   if (targetJavaFormat >= 18) {
@@ -431,6 +432,19 @@ export function getBedrockContainerToModernJavaPaths(
   }
 
   return out;
+}
+
+export function cropInset1pxIfLegacySlotSprite(javaRelPath: string, pngBytes: Uint8Array): Uint8Array {
+  if (!javaRelPath.startsWith(SPRITE_CONTAINER_PREFIX)) return pngBytes;
+  const rel = javaRelPath.slice(SPRITE_CONTAINER_PREFIX.length);
+  const needsInset = CONTAINER_SLOT_SPECS.some((s) => s.inset1px && s.legacySprite === rel);
+  if (!needsInset) return pngBytes;
+  const decoded = decodePngToRgbaSync(pngBytes);
+  if (!decoded || decoded.width !== decoded.height || decoded.width < 18 || decoded.width % 18 !== 0) {
+    return pngBytes;
+  }
+  const cropped = cropRgbaBox(decoded, { x: 1, y: 1, w: 16, h: 16 }, decoded.width / 18);
+  return encodeRgbaToPngSync(cropped.width, cropped.height, cropped.rgba);
 }
 
 export function migrateJavaContainerSlotPath(path: string, targetJavaFormat: number): string {
@@ -500,8 +514,18 @@ export async function sliceJavaContainerSheetForModernJava(
   const spec = CONTAINER_SHEETS[key];
   if (spec.sprites.length === 0) return null;
 
+  if (isValidPngHeader(pngBytes)) {
+    const dims = getPngDimensions(pngBytes);
+    if (!dims || dims.width * dims.height > MAX_GUI_PIXELS) return null;
+  }
   const img = await decodeImageToRgba(pngBytes, MAX_CONTAINER_DIMENSION);
-  if (!img || img.width < spec.sheetW || img.width > MAX_CONTAINER_DIMENSION || img.height > MAX_CONTAINER_DIMENSION) {
+  if (
+    !img ||
+    img.width < spec.sheetW ||
+    img.width > MAX_CONTAINER_DIMENSION ||
+    img.height > MAX_CONTAINER_DIMENSION ||
+    img.width * img.height > MAX_GUI_PIXELS
+  ) {
     return null;
   }
 
@@ -553,9 +577,11 @@ export function getJavaContainerModernSpriteTarget(
   }
 
   // Map 1.21.4+ slot/{banner,dye,banner_pattern,horse_armor,saddle,llama_armor}.png back to legacy sprites
+  let matchedInset1px = false;
   for (const slot of CONTAINER_SLOT_SPECS) {
     if (slot.legacySprite && `slot/${slot.modernSlot}.png` === rel) {
       rel = slot.legacySprite;
+      matchedInset1px = Boolean(slot.inset1px);
       break;
     }
   }
@@ -567,7 +593,9 @@ export function getJavaContainerModernSpriteTarget(
           key === 'villager' && isJavaVillager2Version(targetJavaFormat, targetVersionId) ? 'villager2.png' : `${key}.png`;
         return {
           sheetPath: `${JAVA_CONTAINER_PREFIX}${fileName}`,
-          box: sp.box,
+          box: matchedInset1px
+            ? { x: sp.box.x + 1, y: sp.box.y + 1, w: sp.box.w - 2, h: sp.box.h - 2 }
+            : sp.box,
           sheetW: spec.sheetW,
           sheetH: spec.sheetH,
         };

@@ -62,7 +62,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
     '1.21.4_to_1.21.50': [
       '「The Garden Awakens」アップデート世代である Java 1.21.4（pack_format 46）と Bedrock 1.21.5（min_engine_version [1, 21, 5]）のペアです。',
       'Java 1.21.4（pack_format 46）で刷新された assets/minecraft/items/ のアイテムモデル定義や、ペールガーデン（Pale Oak・Creaking・Resin 等）のテクスチャ・音源パスに対応しています。',
-      '1.20.2+ 分割GUIスプライト変換（標準で有効）により、textures/gui/sprites/hud/ の個別スプライトと統合版 textures/ui/ の相互変換も行えます。',
+      '1.20.2+ 分割GUIスプライト変換により、textures/gui/sprites/hud/ の個別スプライトと統合版 textures/ui/ の相互変換も行えます。',
     ],
     '1.20.4_to_1.20.80': [
       '配布リソースパックが非常に多い Java 1.20.3〜1.20.4（pack_format 22）と Bedrock 1.20.8（min_engine_version [1, 20, 8]）の安定版ペアです。',
@@ -84,7 +84,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
     '1.21.4_to_1.21.50': [
       'Designed for the "The Garden Awakens" release: Java 1.21.4 (pack_format 46) and Bedrock 1.21.5 (min_engine_version [1, 21, 5]).',
       'Accounts for the new assets/minecraft/items/ item model definitions introduced in Java 1.21.4 (pack_format 46) as well as Pale Garden assets (Pale Oak, Creaking, Resin).',
-      'Supports modern split HUD GUI sprites (textures/gui/sprites/hud/ ↔ textures/ui/) out of the box via the 1.20.2+ Split GUI Sprites option.',
+      'Supports modern split HUD GUI sprites (textures/gui/sprites/hud/ ↔ textures/ui/) out of the box.',
     ],
     '1.20.4_to_1.20.80': [
       'Pairs the widely used Java 1.20.3–1.20.4 (pack_format 22) release with Bedrock 1.20.8 (min_engine_version [1, 20, 8]).',
@@ -128,7 +128,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
     '1.21.4_to_1.21.50': [
       'The Garden Awakens 업데이트 세대인 Java 1.21.4(pack_format 46)와 Bedrock 1.21.5(min_engine_version [1, 21, 5]) 전용 페어입니다.',
       'Java 1.21.4(pack_format 46)에서 도입된 assets/minecraft/items/ 아이템 모델 정의와 창백한 정원(Pale Oak, Creaking, Resin) 에셋 경로를 정확히 매핑합니다.',
-      '기본 활성화된 1.20.2+ 분할 GUI 스프라이트 변환을 통해 textures/gui/sprites/hud/와 베드락 textures/ui/ 간의 상호 변환을 처리합니다.',
+      '1.20.2+ 분할 GUI 스프라이트 변환을 통해 textures/gui/sprites/hud/와 베드락 textures/ui/ 간의 상호 변환을 처리합니다.',
     ],
     '1.20.4_to_1.20.80': [
       '배포 리소스팩이 가장 많은 Java 1.20.3~1.20.4(pack_format 22)와 Bedrock 1.20.8(min_engine_version [1, 20, 8]) 안정화 버전 페어입니다.',

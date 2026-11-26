@@ -90,12 +90,10 @@ export interface Translation {
 	betaFeatures: string;
 	betaActiveCount?: string;
 	enableGuiConversion: string;
-	enableModernGuiSprites?: string;
 	enableAudioReencode?: string;
 	enablePbrConversion?: string;
 	enableModelConversion?: string;
 	betaWarningAudioReencode?: string;
-	betaWarningModernGuiSprites?: string;
 	betaWarningGuiConversion?: string;
 	betaWarningPbrConversion?: string;
 	betaWarningModelConversion?: string;

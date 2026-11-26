@@ -4,7 +4,7 @@ import { convertBuffer } from './convert-core';
 import { convertPackWithWorker } from './worker-client';
 import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, convertTgaToPng, getPngDimensions } from './processors/tga';
 import { decodePngToRgbaSync, convertBedrockMerToLabPbrSpec } from './processors/pbr';
-import { processGuiSpriteSheet } from './processors/gui';
+import { processGuiSpriteSheet, BUTTON_WIDGET_METADATA } from './processors/gui';
 import { zlibSync } from 'fflate';
 import { extractPackFormat, extractMinPackFormat, detectEditionAutoSwitch } from './versions';
 import { analyzeReportSafety, categorizeError } from '../analytics';
@@ -19,7 +19,6 @@ const baseOptions: Omit<ConversionOptions, 'direction'> = {
   javaVersionId: '1.21.4',
   bedrockVersionId: '1.21.50',
   enableGuiConversion: true,
-  enableModernGuiSprites: true,
   enableAudioReencode: false,
   enableModelConversion: true,
   enablePbrConversion: true,
@@ -392,26 +391,13 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/widget/button.png': png8,
       })),
       'modern-gui.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: false, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: false }
     );
     const j2bOut = unzipSync(j2bEnabled.buffer);
     expect(j2bOut['textures/ui/heart.png']).toBeDefined();
     expect(j2bOut['textures/ui/cross_hair.png']).toBeUndefined();
     expect(j2bOut['textures/ui/experiencenub.png']).toBeUndefined();
     expect(j2bOut['textures/ui/sprites/widget/button.png']).toBeUndefined();
-
-    const j2bDisabled = await convertBuffer(
-      toArrayBuffer(zipSync({
-        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'ModernGUIDisabled' } })),
-        'assets/minecraft/textures/block/stone.png': encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4)),
-        'assets/minecraft/textures/gui/sprites/hud/heart/full.png': png8,
-      })),
-      'modern-gui-off.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: true, enableModernGuiSprites: false }
-    );
-    const j2bDisabledOut = unzipSync(j2bDisabled.buffer);
-    expect(j2bDisabledOut['textures/ui/heart.png']).toBeUndefined();
-    expect(j2bDisabledOut['textures/ui/sprites/hud/heart/full.png']).toBeUndefined();
 
     // Minimal valid uncompressed 2x2 32-bit top-origin TGA
     const tga = new Uint8Array(18 + 2 * 2 * 4);
@@ -433,7 +419,7 @@ describe('convertBuffer', () => {
         'textures/ui/experiencenub.png': png8,
       })),
       'b2j-gui.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', enableGuiConversion: false, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', enableGuiConversion: false }
     );
     const b2jOut = unzipSync(b2j.buffer);
     expect(getPngDimensions(b2jOut['assets/minecraft/textures/gui/sprites/hud/heart/full.png'])).toEqual({ width: 2, height: 2 });
@@ -451,7 +437,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/hud/hotbar.png': encodeRgbaToPngSync(182, 22, hotbarRgba),
       })),
       'hotbar.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: false, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: false }
     );
     const j2bOut = unzipSync(j2b.buffer);
     expect(getPngDimensions(j2bOut['textures/ui/hotbar_start_cap.png'])).toEqual({ width: 1, height: 22 });
@@ -471,7 +457,7 @@ describe('convertBuffer', () => {
         'textures/ui/bubble_empty.png': encodeRgbaToPngSync(9, 9, new Uint8Array(9 * 9 * 4)),
       })),
       'b-hotbar.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: false, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: false }
     );
     const b2jOut = unzipSync(b2j.buffer);
     expect(getPngDimensions(b2jOut['assets/minecraft/textures/gui/sprites/hud/hotbar.png'])).toEqual({ width: 182, height: 22 });
@@ -489,7 +475,7 @@ describe('convertBuffer', () => {
         'textures/ui/bubble_empty.png': encodeRgbaToPngSync(9, 9, new Uint8Array(9 * 9 * 4)),
       })),
       'b-air-old.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.20.3', enableGuiConversion: false, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.20.3', enableGuiConversion: false }
     );
     const b2jOldOut = unzipSync(b2jOld.buffer);
     expect(b2jOldOut['assets/minecraft/textures/gui/sprites/hud/air.png']).toBeDefined();
@@ -532,7 +518,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/container/villager2.png': png16,
       })),
       'j-up.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
     );
     const upOut = unzipSync(upgrade.buffer);
     expect(upOut['assets/minecraft/textures/gui/sprites/hud/heart/full.png']).toBeDefined();
@@ -552,7 +538,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/container/villager.png': png16,
       })),
       'j-down.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.16.2', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.16.2' }
     );
     const downOut = unzipSync(downgrade.buffer);
     expect(getPngDimensions(downOut['assets/minecraft/textures/gui/icons.png'])).toEqual({ width: 256, height: 256 });
@@ -837,7 +823,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/container/crafter/disabled_slot.png': png18,
       })),
       'modern-containers.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.21.50', enableGuiConversion: true, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.21.50', enableGuiConversion: true }
     );
     const modOut = unzipSync(modJ2B.buffer);
     expect(modOut['textures/ui/flame_full_image.png']).toEqual(explicitFlame);
@@ -871,7 +857,6 @@ describe('convertBuffer', () => {
       direction: 'bedrock-to-java',
       javaVersionId: '1.21.4',
       enableGuiConversion: true,
-      enableModernGuiSprites: true,
     });
     const modOut = unzipSync(b2jModern.buffer);
     expect(getPngDimensions(modOut['assets/minecraft/textures/gui/container/inventory.png'])).toEqual({ width: 256, height: 256 });
@@ -885,7 +870,6 @@ describe('convertBuffer', () => {
       direction: 'bedrock-to-java',
       javaVersionId: '1.19.4',
       enableGuiConversion: true,
-      enableModernGuiSprites: true,
     });
     const legOut = unzipSync(b2jLegacy.buffer);
     const furDecoded = decodePngToRgbaSync(legOut['assets/minecraft/textures/gui/container/furnace.png']);
@@ -936,7 +920,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/item/empty_armor_slot_helmet.png': helmet,
       })),
       'j-1.19.4.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
     );
     const upOut = unzipSync(up.buffer);
     expect(upOut['assets/minecraft/textures/gui/sprites/container/furnace/lit_progress.png']).toBeDefined();
@@ -949,7 +933,6 @@ describe('convertBuffer', () => {
       ...baseOptions,
       direction: 'java-to-java',
       javaVersionId: '1.19.4',
-      enableModernGuiSprites: true,
     });
     const downOut = unzipSync(down.buffer);
     const downFur = decodePngToRgbaSync(downOut['assets/minecraft/textures/gui/container/furnace.png']);
@@ -1207,7 +1190,7 @@ describe('convertBuffer', () => {
       modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
     }));
 
-    // 1. Bedrock gui.png + hotbar_*.png: modern hotbar_*.png wins, Java-only sprites excluded, and enableModernGuiSprites:false respected
+    // 1. Bedrock gui.png + hotbar_*.png: modern hotbar_*.png wins, Java-only sprites excluded, and legacy gui.png gated by enableGuiConversion
     const legacyGui = encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4).fill(50));
     const modernHotbar0 = encodeRgbaToPngSync(20, 22, new Uint8Array(20 * 22 * 4).fill(210));
     const cap1 = encodeRgbaToPngSync(1, 22, new Uint8Array(1 * 22 * 4).fill(210));
@@ -1220,7 +1203,7 @@ describe('convertBuffer', () => {
         'textures/ui/hotbar_end_cap.png': cap1,
       })),
       'gui-prio.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: true, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: true }
     );
     const b2jGuiOut = unzipSync(b2jGui.buffer);
     expect(decodePngToRgbaSync(b2jGuiOut['assets/minecraft/textures/gui/sprites/hud/hotbar.png'])!.rgba[4]).toBe(210);
@@ -1228,18 +1211,18 @@ describe('convertBuffer', () => {
     expect(b2jGuiOut['assets/minecraft/textures/gui/sprites/widget/locked_button.png']).toBeUndefined();
     expect(b2jGuiOut['assets/minecraft/textures/gui/sprites/icon/draft_report.png']).toBeUndefined();
 
-    const b2jDisabled = await convertBuffer(
+    const b2jGuiOff = await convertBuffer(
       toArrayBuffer(zipSync({
         'manifest.json': manifest,
         'textures/gui/gui.png': legacyGui,
         'textures/ui/heart.png': encodeRgbaToPngSync(9, 9, new Uint8Array(9 * 9 * 4).fill(200)),
       })),
       'gui-off.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: true, enableModernGuiSprites: false }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: false }
     );
-    const b2jDisabledOut = unzipSync(b2jDisabled.buffer);
-    expect(b2jDisabledOut['assets/minecraft/textures/gui/sprites/hud/hotbar.png']).toBeUndefined();
-    expect(b2jDisabledOut['assets/minecraft/textures/gui/heart.png']).toBeUndefined();
+    const b2jGuiOffOut = unzipSync(b2jGuiOff.buffer);
+    expect(b2jGuiOffOut['assets/minecraft/textures/gui/sprites/hud/hotbar.png']).toBeUndefined();
+    expect(b2jGuiOffOut['assets/minecraft/textures/gui/sprites/hud/heart/full.png']).toBeDefined();
 
     // 2. Bedrock -> Java unmapped/unsupported textures/ui/* do not leak to textures/gui/*, and disguised TGA .png is decoded
     const disguisedTga = encodeRgbaToTgaSync(14, 14, new Uint8Array(14 * 14 * 4).fill(180));
@@ -1251,7 +1234,7 @@ describe('convertBuffer', () => {
         'textures/ui/flame_full_image.png': disguisedTga,
       })),
       'ui-guard.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.20.3', enableGuiConversion: true, enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.20.3', enableGuiConversion: true }
     );
     const guardOut = unzipSync(b2jGuard.buffer);
     expect(guardOut['assets/minecraft/textures/gui/bubble_empty.png']).toBeUndefined();
@@ -1273,7 +1256,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/container/smithing/error.png': crossFallback,
       })),
       'j2b-fallback.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     const j2bFbOut = unzipSync(j2bFallback.buffer);
     expect(j2bFbOut['textures/ui/flame_full_image.png']).toEqual(flamePrimary);
@@ -1288,7 +1271,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/hud/hotbar.png': encodeRgbaToPngSync(182, 22, new Uint8Array(182 * 22 * 4).fill(100)),
       })),
       'j2j-down.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.19.4', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.19.4' }
     );
     expect(unzipSync(j2jDown.buffer)['assets/minecraft/textures/gui/widgets.png']).toBeUndefined();
     expect(j2jDown.report.details.some((d) => d.status === 'skipped' && d.filename === 'assets/minecraft/textures/gui/sprites/container/furnace/lit_progress.png')).toBe(true);
@@ -1304,7 +1287,7 @@ describe('convertBuffer', () => {
         'textures/ui/effect_background.png': png120,
       })),
       'b2j-263.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '26.3.0', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '26.3.0' }
     );
     const out263 = unzipSync(b2j263.buffer);
     expect(out263['assets/minecraft/textures/gui/sprites/container/slot/banner.png']).toBeDefined();
@@ -1318,7 +1301,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/container/inventory/effect_background.png': png120,
       })),
       'j2b-263.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     expect(unzipSync(j2b263.buffer)['textures/ui/effect_background.png']).toEqual(png120);
 
@@ -1330,7 +1313,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/container/horse.png': encodeRgbaToPngSync(256, 256, horseRgba),
       })),
       'j2j-horse.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
     );
     const horseOut = unzipSync(j2jHorse.buffer);
     expect(getPngDimensions(horseOut['assets/minecraft/textures/gui/sprites/container/slot/horse_armor.png'])).toEqual({ width: 16, height: 16 });
@@ -1345,7 +1328,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/container/villager.png': encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4)),
       })),
       'j2j-112.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
     );
     const out112 = unzipSync(j2j112.buffer);
     expect(out112['assets/minecraft/textures/gui/sprites/hud/jump_bar_cooldown.png']).toBeUndefined();
@@ -1357,7 +1340,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/icons.png': encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4)),
       })),
       'j2j-multi.zip',
-      { ...baseOptions, direction: 'java-to-java', javaVersionId: '26.3.0', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '26.3.0' }
     );
     expect(unzipSync(j2jMulti.buffer)['assets/minecraft/textures/gui/sprites/hud/heart/full.png']).toBeDefined();
 
@@ -1370,7 +1353,7 @@ describe('convertBuffer', () => {
         'textures/ui/hotbar_0.png': modernHotbar0,
       })),
       'wide-cap.mcpack',
-      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
     );
     expect(getPngDimensions(unzipSync(b2jWideCap.buffer)['assets/minecraft/textures/gui/sprites/hud/hotbar.png'])).toEqual({ width: 182, height: 22 });
 
@@ -1380,7 +1363,7 @@ describe('convertBuffer', () => {
         'assets/minecraft/textures/gui/sprites/hud/hotbar.png': encodeRgbaToPngSync(256, 32, new Uint8Array(256 * 32 * 4).fill(120)),
       })),
       'hd-hotbar.zip',
-      { ...baseOptions, direction: 'java-to-bedrock', enableModernGuiSprites: true }
+      { ...baseOptions, direction: 'java-to-bedrock' }
     );
     const hdOut = unzipSync(hdHotbar.buffer);
     let totalW = getPngDimensions(hdOut['textures/ui/hotbar_start_cap.png'])!.width + getPngDimensions(hdOut['textures/ui/hotbar_end_cap.png'])!.width;
@@ -1595,8 +1578,7 @@ describe('convertBuffer', () => {
         ...baseOptions,
         direction: 'bedrock-to-java',
         javaVersionId: '1.21.4',
-        enableModernGuiSprites: true,
-      });
+        });
       const out = unzipSync(res.buffer);
       expect(decodePngToRgbaSync(out['assets/minecraft/textures/block/custom_pair.png'])!.rgba[0]).toBe(210);
       expect(decodePngToRgbaSync(out['assets/minecraft/textures/gui/sprites/container/furnace/lit_progress.png'])!.rgba[0]).toBe(220);
@@ -2438,5 +2420,152 @@ describe('convertBuffer', () => {
       totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0,
       details: [{ filename: 'textures/flipbook_textures.json', status: 'converted' }],
     }).hasAnimations).toBe(true);
+  });
+
+  it('hardens 1.20.2+ split GUI sprites for beta graduation (OOM pixel cap, ZIP order, 26.x mcmeta, case, TGA, inset, downgrade)', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'GuiGrad', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+
+    // 1. Pixel cap OOM guard: 8192x8192 PNG header is rejected cleanly without OOM
+    const hugeHeader = new Uint8Array(33);
+    hugeHeader.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    const dv = new DataView(hugeHeader.buffer);
+    dv.setUint32(16, 8192, false);
+    dv.setUint32(20, 8192, false);
+    const oomRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/textures/block/stone.png': encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4)),
+        'assets/minecraft/textures/gui/sprites/hud/hotbar.png': hugeHeader,
+      })),
+      'huge-gui.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: false }
+    );
+    expect(oomRes.report.errorCount).toBeGreaterThan(0);
+
+    // 2. ZIP-order priority: widgets.png listed BEFORE sprites/hud/hotbar.png -> modern hotbar.png wins without double-counting
+    const legacyWidgets = encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4).fill(40));
+    const modernHotbar = encodeRgbaToPngSync(182, 22, new Uint8Array(182 * 22 * 4).fill(220));
+    const orderRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/textures/gui/widgets.png': legacyWidgets,
+        'assets/minecraft/textures/gui/sprites/hud/hotbar.png': modernHotbar,
+      })),
+      'zip-order.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', enableGuiConversion: true }
+    );
+    const orderOut = unzipSync(orderRes.buffer);
+    expect(decodePngToRgbaSync(orderOut['textures/ui/hotbar_0.png'])!.rgba[0]).toBe(220);
+
+    // 3. Java 26.x effect_background.png.mcmeta emitted in bedrock-to-java and java-to-java, preserving custom .mcmeta
+    const png120 = encodeRgbaToPngSync(120, 32, new Uint8Array(120 * 32 * 4).fill(150));
+    const b2j263 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'textures/ui/effect_background.png': png120 })),
+      'b2j-263-mcmeta.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '26.3.0' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(b2j263['assets/minecraft/textures/gui/sprites/container/inventory/effect_background.png.mcmeta'])).gui.scaling.type).toBe('nine_slice');
+
+    const customMcmeta = JSON.stringify({ gui: { scaling: { type: 'stretch' } } });
+    const j2j263 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/textures/gui/sprites/container/inventory/effect_background.png': png120,
+        'assets/minecraft/textures/gui/sprites/container/inventory/effect_background.png.mcmeta': strToU8(customMcmeta),
+      })),
+      'j2j-263-mcmeta.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '26.3.0' }
+    )).buffer);
+    expect(strFromU8(j2j263['assets/minecraft/textures/gui/sprites/container/inventory/effect_background.png.mcmeta'])).toBe(customMcmeta);
+
+    // 4. Bedrock->Java container sprite duplicate .tga & corrupt PNG
+    const dupRes = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/ui/flame_full_image.png': encodeRgbaToPngSync(14, 14, new Uint8Array(14 * 14 * 4).fill(200)),
+        'textures/ui/flame_full_image.tga': encodeRgbaToTgaSync(14, 14, new Uint8Array(14 * 14 * 4).fill(50)),
+        'textures/ui/arrow_active.png': new Uint8Array([1, 2, 3, 4]),
+      })),
+      'dup-container.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: false }
+    );
+    expect(dupRes.report.details.some((d) => d.filename === 'textures/ui/flame_full_image.tga' && d.status === 'skipped')).toBe(true);
+    expect(dupRes.report.details.some((d) => d.filename === 'textures/ui/arrow_active.png' && d.status === 'skipped')).toBe(true);
+
+    // 5. Case-insensitive Bedrock UI
+    const caseOut = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/ui/Heart.PNG': encodeRgbaToPngSync(9, 9, new Uint8Array(9 * 9 * 4).fill(180)),
+        'textures/ui/HOTBAR_0.PNG': encodeRgbaToPngSync(20, 22, new Uint8Array(20 * 22 * 4).fill(180)),
+      })),
+      'case-ui.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
+    )).buffer);
+    expect(caseOut['assets/minecraft/textures/gui/sprites/hud/heart/full.png']).toBeDefined();
+    expect(caseOut['assets/minecraft/textures/gui/sprites/hud/hotbar.png']).toBeDefined();
+
+    // 6. Disguised TGA in textures/gui/icons.png
+    const tgaIcons = encodeRgbaToTgaSync(256, 256, new Uint8Array(256 * 256 * 4).fill(200));
+    const disguisedIconsOut = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({ 'manifest.json': manifest, 'textures/gui/icons.png': tgaIcons })),
+      'tga-icons.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4', enableGuiConversion: true }
+    )).buffer);
+    expect(disguisedIconsOut['assets/minecraft/textures/gui/sprites/hud/heart/full.png']).toBeDefined();
+
+    // 7. Downgrade without pack.mcmeta + untouched container passthrough + 16x16 horse slot inset
+    const noMcmetaDown = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'assets/minecraft/textures/gui/sprites/hud/heart/full.png': encodeRgbaToPngSync(9, 9, new Uint8Array(9 * 9 * 4).fill(200)),
+      })),
+      'no-mcmeta-down.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.19.4' }
+    )).buffer);
+    expect(getPngDimensions(noMcmetaDown['assets/minecraft/textures/gui/icons.png'])).toEqual({ width: 256, height: 256 });
+
+    const rawCrafting = encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4).fill(77));
+    const passthroughOut = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/textures/gui/container/crafting_table.png': rawCrafting,
+      })),
+      'passthrough-container.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.19.4' }
+    )).buffer);
+    expect(passthroughOut['assets/minecraft/textures/gui/container/crafting_table.png']).toEqual(rawCrafting);
+
+    const horseSlot18 = encodeRgbaToPngSync(18, 18, new Uint8Array(18 * 18 * 4).fill(140));
+    const horseUp = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 22 } })),
+        'assets/minecraft/textures/gui/sprites/container/horse/armor_slot.png': horseSlot18,
+      })),
+      'horse-up.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
+    )).buffer);
+    expect(getPngDimensions(horseUp['assets/minecraft/textures/gui/sprites/container/slot/horse_armor.png'])).toEqual({ width: 16, height: 16 });
+
+    const horseBase = encodeRgbaToPngSync(256, 256, new Uint8Array(256 * 256 * 4).fill(10));
+    const horseSlot16 = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(230));
+    const horseDown = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46 } })),
+        'assets/minecraft/textures/gui/container/horse.png': horseBase,
+        'assets/minecraft/textures/gui/sprites/container/slot/horse_armor.png': horseSlot16,
+      })),
+      'horse-down.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.19.4' }
+    )).buffer);
+    const horseDecoded = decodePngToRgbaSync(horseDown['assets/minecraft/textures/gui/container/horse.png'])!;
+    expect(horseDecoded.rgba[(220 * 256 + 0) * 4]).toBe(10);
+    expect(horseDecoded.rgba[(221 * 256 + 1) * 4]).toBe(230);
+
+    // 8. BUTTON_WIDGET_METADATA uses border: 3
+    expect(JSON.parse(BUTTON_WIDGET_METADATA).gui.scaling.border).toBe(3);
   });
 });

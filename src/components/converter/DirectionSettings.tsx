@@ -79,8 +79,6 @@ interface DirectionSettingsProps {
   hasFile?: boolean;
   enableGuiConversion: boolean;
   setEnableGuiConversion: (v: boolean) => void;
-  enableModernGuiSprites: boolean;
-  setEnableModernGuiSprites: (v: boolean) => void;
   enableAudioReencode: boolean;
   setEnableAudioReencode: (v: boolean) => void;
   enablePbrConversion: boolean;
@@ -145,8 +143,6 @@ export function DirectionSettings({
   hasFile,
   enableGuiConversion,
   setEnableGuiConversion,
-  enableModernGuiSprites,
-  setEnableModernGuiSprites,
   enableAudioReencode,
   setEnableAudioReencode,
   enablePbrConversion,
@@ -367,13 +363,6 @@ export function DirectionSettings({
                 checked={enableGuiConversion}
                 onChange={setEnableGuiConversion}
                 warningText={t.betaWarningGuiConversion}
-              />
-              <BetaOptionItem
-                id="modern-gui"
-                label={t.enableModernGuiSprites || 'Enable 1.20.2+ Split GUI Sprites'}
-                checked={enableModernGuiSprites}
-                onChange={setEnableModernGuiSprites}
-                warningText={t.betaWarningModernGuiSprites}
               />
               <BetaOptionItem
                 id="audio-reencode"

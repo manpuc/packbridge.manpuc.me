@@ -38,7 +38,8 @@ export function generateManifestContent(
   description: unknown,
   headerUuid: string,
   moduleUuid: string,
-  minEngineVersion: [number, number, number]
+  minEngineVersion: [number, number, number],
+  capabilities?: string[]
 ): string {
   const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
   const credit = "\nConverted by PackBridge (packbridge.manpuc.me)";
@@ -58,7 +59,8 @@ export function generateManifestContent(
         uuid: moduleUuid,
         version: [1, 0, 0]
       }
-    ]
+    ],
+    ...(capabilities && capabilities.length > 0 ? { capabilities } : {})
   };
   return JSON.stringify(manifest, null, 2);
 }

@@ -64,10 +64,16 @@ import {
   classifyBedrockPbrPath,
   classifyJavaLabPbrPath,
   convertBedrockMerToLabPbrSpec,
+  convertBedrockNormalToLabPbr,
+  convertBedrockHeightmapToLabPbr,
   convertLabPbrSpecToBedrockMer,
+  convertLabPbrNormalToBedrock,
+  synthesizeUniformLabPbrSpec,
+  synthesizeUniformColorPng,
   parseTextureSetJson,
   generateBedrockTextureSetJson,
-  decodePngToRgbaSync
+  decodePngToRgbaSync,
+  type ParsedTextureSet
 } from './processors/pbr';
 import {
   isPanoramaPath,
@@ -79,6 +85,8 @@ import {
   composeBedrockCubemapToOptiFineSky,
 } from './processors/sky';
 import {
+  EFFECT_BG_MODERN_MCMETA,
+  cropInset1pxIfLegacySlotSprite,
   isJavaContainerSheetPath,
   isSharedBedrockThemeContainer,
   isBedrockContainerThemeOrPartPath,
@@ -247,9 +255,13 @@ export async function convertBuffer(
     filePaths.some((p) => p.startsWith(packRoot) && p.substring(packRoot.length).startsWith('assets/minecraft/textures/gui/sprites/'));
   const shouldSplitLegacyJavaGui =
     direction === 'java-to-java' &&
-    Boolean(options.enableModernGuiSprites) &&
     targetJavaVersion.packFormat >= 18 &&
     (sourcePackFormat < 18 || (!hasModernSpritesInSource && (detectedSourceMinPackFormat ?? sourcePackFormat) < 18));
+  const effectiveSourceJavaFormat = Math.min(sourcePackFormat, detectedSourceMinPackFormat ?? sourcePackFormat);
+  const shouldComposeLegacyJavaGui =
+    direction === 'java-to-java' &&
+    targetJavaVersion.packFormat < 18 &&
+    (sourcePackFormat >= 18 || hasModernSpritesInSource);
 
   const formatTargetJavaPath = (jPath: string): string => {
     const formatted = targetJavaVersion.packFormat <= 3
@@ -303,7 +315,114 @@ export async function convertBuffer(
     }
   }
 
-  const bedrockPbrSets = new Map<string, { baseName: string; dir: string; hasMer: boolean; hasNormal: boolean }>();
+  const bedrockPbrSets = new Map<string, {
+    baseName: string;
+    dir: string;
+    hasMer: boolean;
+    hasSubsurface: boolean;
+    hasNormal: boolean;
+    hasHeightmap: boolean;
+  }>();
+  interface PendingBedrockPbrGroup {
+    baseBedrockTexturePath: string;
+    textureSetSourcePath?: string;
+    parsedTs?: ParsedTextureSet;
+    colorAliasFile?: { sourcePath: string; relPath: string; bytes: Uint8Array };
+    colorUniform?: [number, number, number, number];
+    merFile?: { sourcePath: string; bytes: Uint8Array; isTga: boolean; priority: number; hasSubsurface: boolean };
+    merUniform?: { values: [number, number, number, number]; hasSubsurface: boolean };
+    normalFile?: { sourcePath: string; bytes: Uint8Array; isTga: boolean; priority: number };
+    heightmapFile?: { sourcePath: string; bytes: Uint8Array; isTga: boolean; priority: number };
+  }
+  const pendingBedrockPbrGroups = new Map<string, PendingBedrockPbrGroup>();
+  const claimedBedrockPbrFiles = new Set<string>();
+  const claimedBedrockColorAliases = new Set<string>();
+
+  if (direction === 'bedrock-to-java') {
+    const bedrockActiveFiles = new Map<string, { sourcePath: string; relPath: string; bytes: Uint8Array }>();
+    for (const p of filePaths) {
+      if (!isSafePath(p) || p.includes('__MACOSX') || p.split('/').pop()?.startsWith('.') || !p.startsWith(packRoot)) continue;
+      let rel = p.substring(packRoot.length);
+      const spMatch = rel.match(/^subpacks\/([^/]+)\/(.+)$/);
+      if (spMatch) {
+        if (spMatch[1] !== activeSubpackFolder) continue;
+        rel = spMatch[2];
+      } else if (activeSubpackPaths.has(rel)) {
+        continue;
+      }
+      bedrockActiveFiles.set(rel.toLowerCase(), { sourcePath: p, relPath: rel, bytes: sourceFiles[p] });
+    }
+
+    const resolveBedrockTextureRef = (tsDir: string, ref: string) => {
+      const clean = ref.trim().replace(/\\/g, '/').replace(/^\.\//, '').replace(/\.(png|tga)$/i, '');
+      if (!clean) return null;
+      const candidate = clean.startsWith('textures/') ? clean : `${tsDir}${clean}`;
+      if (!isSafePath(`${candidate}.png`)) return null;
+      const lowerCand = candidate.toLowerCase();
+      const pngHit = bedrockActiveFiles.get(`${lowerCand}.png`);
+      if (pngHit) return { ...pngHit, isTga: false };
+      const tgaHit = bedrockActiveFiles.get(`${lowerCand}.tga`);
+      if (tgaHit) return { ...tgaHit, isTga: true };
+      return null;
+    };
+
+    for (const [lowerRel, entry] of bedrockActiveFiles.entries()) {
+      if (!/\.texture_set\.json(?:\.json)?$/i.test(lowerRel)) continue;
+      const baseBedrockTexturePath = entry.relPath.replace(/\.texture_set\.json(?:\.json)?$/i, '.png');
+      const groupKey = baseBedrockTexturePath.toLowerCase();
+      const lastSlash = entry.relPath.lastIndexOf('/');
+      const tsDir = lastSlash !== -1 ? entry.relPath.slice(0, lastSlash + 1) : '';
+      const parsedTs = parseTextureSetJson(strFromU8(entry.bytes));
+      const group: PendingBedrockPbrGroup = pendingBedrockPbrGroups.get(groupKey) || { baseBedrockTexturePath };
+      group.textureSetSourcePath = entry.sourcePath;
+      if (parsedTs) {
+        group.parsedTs = parsedTs;
+        if (parsedTs.color) {
+          const baseStem = baseBedrockTexturePath.replace(/\.png$/i, '').toLowerCase();
+          const hasDirectColor = bedrockActiveFiles.has(`${baseStem}.png`) || bedrockActiveFiles.has(`${baseStem}.tga`);
+          const colorHit = resolveBedrockTextureRef(tsDir, parsedTs.color);
+          if (colorHit && !hasDirectColor && colorHit.relPath.replace(/\.(png|tga)$/i, '').toLowerCase() !== baseStem) {
+            group.colorAliasFile = { sourcePath: colorHit.sourcePath, relPath: colorHit.relPath, bytes: colorHit.bytes };
+            claimedBedrockColorAliases.add(colorHit.relPath.toLowerCase());
+          }
+        } else if (parsedTs.colorUniform) {
+          group.colorUniform = parsedTs.colorUniform;
+        }
+
+        if (parsedTs.mer) {
+          const merHit = resolveBedrockTextureRef(tsDir, parsedTs.mer);
+          if (merHit) {
+            group.merFile = {
+              sourcePath: merHit.sourcePath,
+              bytes: merHit.bytes,
+              isTga: merHit.isTga,
+              priority: 2,
+              hasSubsurface: Boolean(parsedTs.hasSubsurface)
+            };
+            claimedBedrockPbrFiles.add(merHit.relPath.toLowerCase());
+          }
+        } else if (parsedTs.merUniform) {
+          group.merUniform = { values: parsedTs.merUniform, hasSubsurface: Boolean(parsedTs.hasSubsurface) };
+        }
+
+        if (parsedTs.normal) {
+          const normHit = resolveBedrockTextureRef(tsDir, parsedTs.normal);
+          if (normHit) {
+            group.normalFile = { sourcePath: normHit.sourcePath, bytes: normHit.bytes, isTga: normHit.isTga, priority: 2 };
+            claimedBedrockPbrFiles.add(normHit.relPath.toLowerCase());
+          }
+        }
+        if (parsedTs.heightmap) {
+          const hHit = resolveBedrockTextureRef(tsDir, parsedTs.heightmap);
+          if (hHit) {
+            group.heightmapFile = { sourcePath: hHit.sourcePath, bytes: hHit.bytes, isTga: hHit.isTga, priority: 2 };
+            claimedBedrockPbrFiles.add(hHit.relPath.toLowerCase());
+          }
+        }
+      }
+      pendingBedrockPbrGroups.set(groupKey, group);
+    }
+  }
   const javaOutputPngDims = new Map<string, { width: number; height: number }>();
   const pendingJavaFlipbooks: Array<{ sourcePath: string; javaPngPath: string; entry: FlipbookEntry }> = [];
   const writtenJavaMcmetas = new Map<string, string>();
@@ -331,20 +450,64 @@ export async function convertBuffer(
   const lowPriorityFallbackTargets = new Set<string>();
   const tgaWrittenTargets = new Set<string>();
 
-  const writeSlicedOutputs = (sourcePath: string, files: Record<string, Uint8Array>, mcmetas?: Record<string, string>) => {
+  const writeSlicedOutputs = (
+    sourcePath: string,
+    files: Record<string, Uint8Array>,
+    mcmetas?: Record<string, string>,
+    overwrite = false
+  ) => {
     for (const [outPath, outData] of Object.entries(files)) {
-      if (targetFiles[outPath]) continue;
+      if (!isSafePath(outPath)) continue;
+      if (!overwrite && targetFiles[outPath]) continue;
+      const alreadyWritten = Boolean(targetFiles[outPath]);
       targetFiles[outPath] = [outData, { level: getFileCompressionLevel(outPath) }];
       allTargetTextures.add(outPath);
-      report.convertedCount++;
+      if (!alreadyWritten) report.convertedCount++;
       report.details.push({ filename: sourcePath, status: 'converted', outputPath: outPath });
       const mcmeta = mcmetas?.[`${outPath}.mcmeta`];
-      if (mcmeta && !targetFiles[`${outPath}.mcmeta`]) {
+      if (mcmeta && (overwrite || !targetFiles[`${outPath}.mcmeta`])) {
+        const mcmetaWritten = Boolean(targetFiles[`${outPath}.mcmeta`]);
         targetFiles[`${outPath}.mcmeta`] = [strToU8(mcmeta), { level: getFileCompressionLevel(`${outPath}.mcmeta`) }];
-        report.convertedCount++;
+        if (!mcmetaWritten) report.convertedCount++;
         report.details.push({ filename: sourcePath, status: 'converted', outputPath: `${outPath}.mcmeta` });
       }
     }
+  };
+
+  const writeBedrockContainerSprites = (
+    sourcePath: string,
+    isTga: boolean,
+    bytes: Uint8Array,
+    jPaths: string[],
+    suppressCorruptSkip: boolean
+  ): boolean => {
+    const pngBytes = convertTgaToPng(bytes);
+    if (pngBytes && getPngDimensions(pngBytes)) {
+      let wroteAny = false;
+      for (const jp of jPaths) {
+        const formattedJp = formatTargetJavaPath(jp);
+        const replacingTga = !isTga && tgaWrittenTargets.has(formattedJp);
+        if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && (!targetFiles[formattedJp] || replacingTga)) {
+          targetFiles[formattedJp] = [pngBytes, { level: getFileCompressionLevel(formattedJp) }];
+          allTargetTextures.add(formattedJp);
+          if (isTga) tgaWrittenTargets.add(formattedJp);
+          else tgaWrittenTargets.delete(formattedJp);
+          if (!replacingTga) report.convertedCount++;
+          report.details.push({ filename: sourcePath, status: 'converted', outputPath: formattedJp });
+          wroteAny = true;
+        }
+      }
+      if (isTga && !wroteAny) {
+        report.skippedCount++;
+        report.details.push({ filename: sourcePath, status: 'skipped', reason: 'PNG equivalent already present' });
+      }
+      return true;
+    }
+    if (!suppressCorruptSkip) {
+      report.skippedCount++;
+      report.details.push({ filename: sourcePath, status: 'skipped', reason: 'Invalid or corrupt UI image' });
+    }
+    return false;
   };
 
   // Pre-load dirt texture for Bedrock -> Java conversion to composite transparent snowy grass
@@ -445,6 +608,17 @@ export async function convertBuffer(
     try {
       // 1. Handle PBR / Shader Companion Files (Bedrock RTX/Deferred <-> Java LabPBR)
       if (direction === 'bedrock-to-java') {
+        const lowerRel = relativePath.toLowerCase();
+        if (claimedBedrockPbrFiles.has(lowerRel)) {
+          if (!options.enablePbrConversion) {
+            report.skippedCount++;
+            report.details.push({ filename: path, status: 'skipped', reason: 'PBR/Shader map conversion is disabled (Beta)' });
+          }
+          continue;
+        }
+        if (options.enablePbrConversion && claimedBedrockColorAliases.has(lowerRel)) {
+          continue;
+        }
         const pbrInfo = classifyBedrockPbrPath(relativePath);
         if (pbrInfo) {
           if (!options.enablePbrConversion) {
@@ -453,60 +627,63 @@ export async function convertBuffer(
             continue;
           }
           if (pbrInfo.type === 'texture_set') {
-            const parsedTs = parseTextureSetJson(strFromU8(content));
-            const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
-            report.skippedCount++;
-            report.details.push({
-              filename: path,
-              status: 'skipped',
-              reason: parsedTs && baseJava
-                ? 'PBR texture_set metadata applied to _s/_n maps'
-                : 'Unmapped PBR texture_set reference'
-            });
             continue;
           }
 
-          const baseJava = getTargetContext(pbrInfo.baseBedrockTexturePath, 'bedrock-to-java');
-          if (!baseJava) {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'Base texture for PBR map is unmapped' });
-            continue;
-          }
-          const formattedBase = formatTargetJavaPath(baseJava);
+          const groupKey = pbrInfo.baseBedrockTexturePath.toLowerCase();
+          const group: PendingBedrockPbrGroup = pendingBedrockPbrGroups.get(groupKey) || {
+            baseBedrockTexturePath: pbrInfo.baseBedrockTexturePath
+          };
+          const isTga = lowerRel.endsWith('.tga');
 
           if (pbrInfo.type === 'mer' || pbrInfo.type === 'mers') {
-            const rawSpecPng = await convertBedrockMerToLabPbrSpec(content, pbrInfo.type === 'mers');
-            const specPath = formattedBase.replace(/\.png$/i, '_s.png');
-            const specPng = rawSpecPng ? normalizeJavaBlockAtlasPng(specPath, rawSpecPng, decodePngToRgbaSync) : null;
-            if (specPng && isSafePath(specPath) && isValidJavaAssetPath(specPath)) {
-              targetFiles[specPath] = [specPng, { level: getFileCompressionLevel(specPath) }];
-              allTargetTextures.add(specPath);
-              const dims = getPngDimensions(specPng);
-              if (dims) javaOutputPngDims.set(specPath, dims);
-              report.convertedCount++;
-              report.details.push({ filename: path, status: 'converted', outputPath: specPath });
+            const isMers = pbrInfo.type === 'mers';
+            const existing = group.merFile;
+            const shouldReplace =
+              !existing ||
+              1 > existing.priority ||
+              (existing.priority === 1 && ((isMers && !existing.hasSubsurface) || (isMers === existing.hasSubsurface && existing.isTga && !isTga)));
+            if (shouldReplace) {
+              if (existing) {
+                report.skippedCount++;
+                report.details.push({ filename: existing.sourcePath, status: 'skipped', reason: 'Superseded by primary PBR map' });
+              }
+              group.merFile = { sourcePath: path, bytes: content, isTga, priority: 1, hasSubsurface: isMers };
+              pendingBedrockPbrGroups.set(groupKey, group);
             } else {
               report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'Failed to decode Bedrock MER map' });
+              report.details.push({ filename: path, status: 'skipped', reason: 'Superseded by primary PBR map' });
             }
-            continue;
-          } else if (pbrInfo.type === 'normal' || pbrInfo.type === 'heightmap') {
-            const normPath = formattedBase.replace(/\.png$/i, '_n.png');
-            const rawNormBytes = convertTgaToPng(content);
-            const normBytes = rawNormBytes ? normalizeJavaBlockAtlasPng(normPath, rawNormBytes, decodePngToRgbaSync) : null;
-            if (normBytes && isSafePath(normPath) && isValidJavaAssetPath(normPath)) {
-              targetFiles[normPath] = [normBytes, { level: getFileCompressionLevel(normPath) }];
-              allTargetTextures.add(normPath);
-              const dims = getPngDimensions(normBytes);
-              if (dims) javaOutputPngDims.set(normPath, dims);
-              report.convertedCount++;
-              report.details.push({ filename: path, status: 'converted', outputPath: normPath });
+          } else if (pbrInfo.type === 'normal') {
+            const existing = group.normalFile;
+            const shouldReplace = !existing || 1 > existing.priority || (existing.priority === 1 && existing.isTga && !isTga);
+            if (shouldReplace) {
+              if (existing) {
+                report.skippedCount++;
+                report.details.push({ filename: existing.sourcePath, status: 'skipped', reason: 'Superseded by primary PBR map' });
+              }
+              group.normalFile = { sourcePath: path, bytes: content, isTga, priority: 1 };
+              pendingBedrockPbrGroups.set(groupKey, group);
             } else {
               report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'Failed to decode Bedrock normal/height map' });
+              report.details.push({ filename: path, status: 'skipped', reason: 'Superseded by primary PBR map' });
             }
-            continue;
+          } else if (pbrInfo.type === 'heightmap') {
+            const existing = group.heightmapFile;
+            const shouldReplace = !existing || 1 > existing.priority || (existing.priority === 1 && existing.isTga && !isTga);
+            if (shouldReplace) {
+              if (existing) {
+                report.skippedCount++;
+                report.details.push({ filename: existing.sourcePath, status: 'skipped', reason: 'Superseded by primary PBR map' });
+              }
+              group.heightmapFile = { sourcePath: path, bytes: content, isTga, priority: 1 };
+              pendingBedrockPbrGroups.set(groupKey, group);
+            } else {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Superseded by primary PBR map' });
+            }
           }
+          continue;
         }
       } else if (direction === 'java-to-bedrock') {
         const labPbrInfo = classifyJavaLabPbrPath(relativePath);
@@ -526,29 +703,52 @@ export async function convertBuffer(
           const lastSlash = baseNoExt.lastIndexOf('/');
           const dir = lastSlash !== -1 ? baseNoExt.slice(0, lastSlash) : 'textures';
           const baseName = lastSlash !== -1 ? baseNoExt.slice(lastSlash + 1) : baseNoExt;
-          const setMeta = bedrockPbrSets.get(baseNoExt) || { baseName, dir, hasMer: false, hasNormal: false };
+          const setMeta = bedrockPbrSets.get(baseNoExt) || {
+            baseName,
+            dir,
+            hasMer: false,
+            hasSubsurface: false,
+            hasNormal: false,
+            hasHeightmap: false
+          };
 
           if (labPbrInfo.type === 'specular') {
-            const merBytes = convertLabPbrSpecToBedrockMer(content) || content;
+            const allowSubsurface = compareBedrockVersion(targetBedrockVersion.minEngineVersion, [1, 21, 30]) >= 0;
+            const merRes = await convertLabPbrSpecToBedrockMer(content, allowSubsurface);
+            if (!merRes) {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Failed to decode Java LabPBR specular map' });
+              continue;
+            }
             const merPath = `${baseNoExt}_mer.png`;
             if (isSafePath(merPath)) {
-              targetFiles[merPath] = [merBytes, { level: getFileCompressionLevel(merPath) }];
+              const alreadyWritten = Boolean(targetFiles[merPath]);
+              targetFiles[merPath] = [merRes.png, { level: getFileCompressionLevel(merPath) }];
               allTargetTextures.add(merPath);
               setMeta.hasMer = true;
+              setMeta.hasSubsurface = setMeta.hasSubsurface || merRes.hasSubsurface;
               bedrockPbrSets.set(baseNoExt, setMeta);
-              report.convertedCount++;
+              if (!alreadyWritten) report.convertedCount++;
               report.details.push({ filename: path, status: 'converted', outputPath: merPath });
             }
             continue;
           } else {
-            const normPath = `${baseNoExt}_normal.png`;
-            if (isSafePath(normPath)) {
-              targetFiles[normPath] = [content, { level: getFileCompressionLevel(normPath) }];
-              allTargetTextures.add(normPath);
-              setMeta.hasNormal = true;
+            const normRes = await convertLabPbrNormalToBedrock(content);
+            if (!normRes) {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Failed to decode Java LabPBR normal map' });
+              continue;
+            }
+            const outPbrPath = normRes.kind === 'heightmap' ? `${baseNoExt}_heightmap.png` : `${baseNoExt}_normal.png`;
+            if (isSafePath(outPbrPath)) {
+              const alreadyWritten = Boolean(targetFiles[outPbrPath]);
+              targetFiles[outPbrPath] = [normRes.png, { level: getFileCompressionLevel(outPbrPath) }];
+              allTargetTextures.add(outPbrPath);
+              if (normRes.kind === 'heightmap') setMeta.hasHeightmap = true;
+              else setMeta.hasNormal = true;
               bedrockPbrSets.set(baseNoExt, setMeta);
-              report.convertedCount++;
-              report.details.push({ filename: path, status: 'converted', outputPath: normPath });
+              if (!alreadyWritten) report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: outPbrPath });
             }
             continue;
           }
@@ -633,7 +833,7 @@ export async function convertBuffer(
 
       if (direction === 'bedrock-to-java' && isBedrockContainerThemeOrPartPath(relativePath)) {
         const isTga = relativePath.toLowerCase().endsWith('.tga');
-        const normUi = relativePath.replace(/\.tga$/i, '.png');
+        const normUi = relativePath.toLowerCase().replace(/\.tga$/, '.png');
         let handled = false;
         if (options.enableGuiConversion) {
           if (!pendingBedrockContainerUi.has(normUi) || !isTga) {
@@ -641,29 +841,13 @@ export async function convertBuffer(
           }
           handled = true;
         }
-        if (options.enableModernGuiSprites && targetJavaVersion.packFormat >= 18) {
+        if (targetJavaVersion.packFormat >= 18) {
           const jPaths = getBedrockContainerToModernJavaPaths(relativePath, targetJavaVersion.packFormat);
           if (jPaths.length > 0) {
-            const pngBytes = convertTgaToPng(content);
-            if (pngBytes) {
-              for (const jp of jPaths) {
-                const formattedJp = formatTargetJavaPath(jp);
-                const replacingTga = !isTga && tgaWrittenTargets.has(formattedJp);
-                if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && (!targetFiles[formattedJp] || replacingTga)) {
-                  targetFiles[formattedJp] = [pngBytes, { level: getFileCompressionLevel(formattedJp) }];
-                  allTargetTextures.add(formattedJp);
-                  if (isTga) tgaWrittenTargets.add(formattedJp);
-                  else tgaWrittenTargets.delete(formattedJp);
-                  if (!replacingTga) report.convertedCount++;
-                  report.details.push({ filename: path, status: 'converted', outputPath: formattedJp });
-                }
-              }
-              handled = true;
-            } else if (!handled) {
-              report.skippedCount++;
-              report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or corrupt UI image' });
+            if (!writeBedrockContainerSprites(path, isTga, content, jPaths, handled) && !handled) {
               continue;
             }
+            handled = true;
           }
         }
         if (handled) {
@@ -671,9 +855,9 @@ export async function convertBuffer(
         }
       }
 
-      if (direction === 'java-to-java' && options.enableModernGuiSprites) {
+      if (direction === 'java-to-java') {
         if (shouldSplitLegacyJavaGui && isJavaContainerSheetPath(relativePath)) {
-          const sliced = await sliceJavaContainerSheetForModernJava(relativePath, content, targetJavaVersion.packFormat, sourcePackFormat);
+          const sliced = await sliceJavaContainerSheetForModernJava(relativePath, content, targetJavaVersion.packFormat, effectiveSourceJavaFormat);
           if (sliced) {
             writeSlicedOutputs(path, sliced.sprites, sliced.mcmetas);
             if (sliced.clippedSheet) {
@@ -689,7 +873,7 @@ export async function convertBuffer(
             }
             continue;
           }
-        } else if (sourcePackFormat >= 18 && targetJavaVersion.packFormat < 18) {
+        } else if (shouldComposeLegacyJavaGui) {
           if (isJavaContainerSheetPath(relativePath)) {
             const outSheet = formatTargetJavaPath(
               migrateJavaGuiContainerPath(relativePath, targetJavaVersion.packFormat, targetJavaVersion.id)
@@ -716,10 +900,10 @@ export async function convertBuffer(
       }
 
       // GUI Version & Edition Routing
-      if (direction === 'java-to-bedrock' && options.enableModernGuiSprites && relativePath === 'assets/minecraft/textures/gui/sprites/hud/hotbar.png') {
+      if (direction === 'java-to-bedrock' && relativePath === 'assets/minecraft/textures/gui/sprites/hud/hotbar.png') {
         try {
           const hotbarParts = await processGuiSpriteSheet(content, HOTBAR_SLICE_MAPPINGS, { baseWidth: 182, baseHeight: 22 });
-          writeSlicedOutputs(path, hotbarParts);
+          writeSlicedOutputs(path, hotbarParts, undefined, true);
         } catch (e) {
           console.warn('Failed to slice Java hotbar.png:', e);
           report.errorCount++;
@@ -728,8 +912,8 @@ export async function convertBuffer(
         continue;
       }
 
-      if (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18 && options.enableModernGuiSprites) {
-        const normalizedUiPath = relativePath.replace(/\.tga$/i, '.png');
+      if (direction === 'bedrock-to-java' && targetJavaVersion.packFormat >= 18) {
+        const normalizedUiPath = relativePath.toLowerCase().replace(/\.tga$/, '.png');
         if (Object.hasOwn(HOTBAR_SLICE_MAPPINGS, normalizedUiPath)) {
           if (!pendingBedrockHotbarParts.has(normalizedUiPath) || !relativePath.toLowerCase().endsWith('.tga')) {
             pendingBedrockHotbarParts.set(normalizedUiPath, content);
@@ -755,10 +939,9 @@ export async function convertBuffer(
         }
       }
 
-      if (direction === 'java-to-java' && options.enableModernGuiSprites) {
+      if (direction === 'java-to-java') {
         if (shouldSplitLegacyJavaGui) {
-          const effectiveSourceFmt = Math.min(sourcePackFormat, detectedSourceMinPackFormat ?? sourcePackFormat);
-          const sheetSpec = getJavaSheetToModernSprites(relativePath, effectiveSourceFmt, targetJavaVersion.packFormat);
+          const sheetSpec = getJavaSheetToModernSprites(relativePath, effectiveSourceJavaFormat, targetJavaVersion.packFormat);
           if (sheetSpec) {
             try {
               const sliced = await processGuiSpriteSheet(content, sheetSpec.mappings);
@@ -770,7 +953,7 @@ export async function convertBuffer(
             }
             continue;
           }
-        } else if (sourcePackFormat >= 18 && targetJavaVersion.packFormat < 18) {
+        } else if (shouldComposeLegacyJavaGui) {
           if (relativePath === 'assets/minecraft/textures/gui/icons.png') {
             pendingGuiSheetBases.icons = content;
             continue;
@@ -907,55 +1090,30 @@ export async function convertBuffer(
       let isLowPriorityGuiFallback = false;
       const isJavaModernSpritePath =
         direction === 'java-to-bedrock' && relativePath.startsWith('assets/minecraft/textures/gui/sprites/');
-      if (options.enableModernGuiSprites) {
-        if (direction === 'java-to-bedrock') {
-          const bGui = getModernJavaToBedrockGuiPath(relativePath, targetBedrockVersion.minEngineVersion);
-          if (bGui) {
-            targetPath = bGui;
+      if (direction === 'java-to-bedrock') {
+        const bGui = getModernJavaToBedrockGuiPath(relativePath, targetBedrockVersion.minEngineVersion);
+        if (bGui) {
+          targetPath = bGui;
+          isModernSpriteHandled = true;
+        } else {
+          const bContainer = getModernJavaContainerToBedrockPath(relativePath, targetBedrockVersion.minEngineVersion);
+          if (bContainer) {
+            targetPath = bContainer.path;
             isModernSpriteHandled = true;
-          } else {
-            const bContainer = getModernJavaContainerToBedrockPath(relativePath, targetBedrockVersion.minEngineVersion);
-            if (bContainer) {
-              targetPath = bContainer.path;
-              isModernSpriteHandled = true;
-              isLowPriorityGuiFallback = bContainer.isFallback;
-            }
+            isLowPriorityGuiFallback = bContainer.isFallback;
           }
-        } else if (direction === 'bedrock-to-java') {
-          const jGui = targetJavaVersion.packFormat >= 18 ? getBedrockToModernJavaGuiPath(relativePath, targetJavaVersion.packFormat) : null;
-          if (jGui) {
-            targetPath = jGui;
-            isModernSpriteHandled = true;
-          } else {
-            const jContainerPaths = getBedrockContainerToModernJavaPaths(relativePath, targetJavaVersion.packFormat);
-            if (jContainerPaths.length > 0) {
-              const isTga = relativePath.toLowerCase().endsWith('.tga');
-              const pngBytes = convertTgaToPng(content);
-              if (pngBytes) {
-                let wroteAny = false;
-                for (const jp of jContainerPaths) {
-                  const formattedJp = formatTargetJavaPath(jp);
-                  const replacingTga = !isTga && tgaWrittenTargets.has(formattedJp);
-                  if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && (!targetFiles[formattedJp] || replacingTga)) {
-                    targetFiles[formattedJp] = [pngBytes, { level: getFileCompressionLevel(formattedJp) }];
-                    allTargetTextures.add(formattedJp);
-                    if (isTga) tgaWrittenTargets.add(formattedJp);
-                    else tgaWrittenTargets.delete(formattedJp);
-                    if (!replacingTga) report.convertedCount++;
-                    report.details.push({ filename: path, status: 'converted', outputPath: formattedJp });
-                    wroteAny = true;
-                  }
-                }
-                if (isTga && !wroteAny) {
-                  report.skippedCount++;
-                  report.details.push({ filename: path, status: 'skipped', reason: 'PNG equivalent already present' });
-                }
-              } else {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'Invalid or corrupt UI image' });
-              }
-              continue;
-            }
+        }
+      } else if (direction === 'bedrock-to-java') {
+        const jGui = targetJavaVersion.packFormat >= 18 ? getBedrockToModernJavaGuiPath(relativePath, targetJavaVersion.packFormat) : null;
+        if (jGui) {
+          targetPath = jGui;
+          isModernSpriteHandled = true;
+        } else {
+          const jContainerPaths = getBedrockContainerToModernJavaPaths(relativePath, targetJavaVersion.packFormat);
+          if (jContainerPaths.length > 0) {
+            const isTga = relativePath.toLowerCase().endsWith('.tga');
+            writeBedrockContainerSprites(path, isTga, content, jContainerPaths, false);
+            continue;
           }
         }
       }
@@ -965,7 +1123,7 @@ export async function convertBuffer(
         report.details.push({
           filename: path,
           status: 'skipped',
-          reason: options.enableModernGuiSprites ? 'Unmapped 1.20.2+ GUI sprite' : 'Modern GUI sprites conversion disabled'
+          reason: 'Unmapped 1.20.2+ GUI sprite'
         });
         continue;
       }
@@ -973,16 +1131,14 @@ export async function convertBuffer(
       if (
         direction === 'bedrock-to-java' &&
         !targetPath &&
-        relativePath.startsWith('textures/ui/') &&
+        relativePath.toLowerCase().startsWith('textures/ui/') &&
         !isPanoramaPath(relativePath)
       ) {
         report.skippedCount++;
         report.details.push({
           filename: path,
           status: 'skipped',
-          reason: options.enableModernGuiSprites
-            ? 'Unmapped or unsupported Bedrock UI texture for target Java version'
-            : 'Modern GUI sprites conversion disabled',
+          reason: 'Unmapped or unsupported Bedrock UI texture for target Java version',
         });
         continue;
       }
@@ -1299,14 +1455,9 @@ export async function convertBuffer(
           options.enableGuiConversion &&
           direction === 'bedrock-to-java' &&
           targetJavaVersion.packFormat >= 18 &&
-          (relativePath === 'textures/gui/icons.png' || relativePath === 'textures/gui/gui.png')
+          (relativePath.toLowerCase() === 'textures/gui/icons.png' || relativePath.toLowerCase() === 'textures/gui/gui.png')
         ) {
-          if (options.enableModernGuiSprites) {
-            pendingBedrockLegacyGuiSheets.push({ sourcePath: path, relativePath, bytes: content });
-          } else {
-            report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'Modern GUI sprites conversion disabled' });
-          }
+          pendingBedrockLegacyGuiSheets.push({ sourcePath: path, relativePath: relativePath.toLowerCase(), bytes: content });
           continue;
         } else if (
           options.enableGuiConversion &&
@@ -1414,6 +1565,13 @@ export async function convertBuffer(
               }
             }
           }
+        }
+
+        if (
+          (direction === 'java-to-bedrock' && isModernSpriteHandled) ||
+          (direction === 'java-to-java' && targetJavaVersion.packFormat >= 46 && targetPath !== relativePath)
+        ) {
+          finalBytes = cropInset1pxIfLegacySlotSprite(relativePath, finalBytes);
         }
 
         if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {
@@ -1580,7 +1738,12 @@ export async function convertBuffer(
     if (!sheetSpec) continue;
     try {
       const sliced = await processGuiSpriteSheet(sheet.bytes, sheetSpec.mappings, { skipTransparent: true });
-      writeSlicedOutputs(sheet.sourcePath, sliced, sheetSpec.mcmetas);
+      if (Object.keys(sliced).length === 0) {
+        report.skippedCount++;
+        report.details.push({ filename: sheet.sourcePath, status: 'skipped', reason: 'No non-transparent GUI sprites found in sheet' });
+      } else {
+        writeSlicedOutputs(sheet.sourcePath, sliced, sheetSpec.mcmetas);
+      }
     } catch (e) {
       console.warn('Failed to slice Bedrock GUI spritesheet:', e);
       report.errorCount++;
@@ -1608,7 +1771,7 @@ export async function convertBuffer(
       return;
     }
     // shortcut: cannot bundle copyrighted vanilla Java GUI sheets, so base-less synthesis leaves unprovided sprites transparent; require bundled/user base if full vanilla fallback is ever needed.
-    const composed = await composeGuiSpriteSheet(entries, 256, 256, base);
+    const composed = entries.length > 0 ? await composeGuiSpriteSheet(entries, 256, 256, base) : (base ?? null);
     if (composed) {
       targetFiles[outPath] = [composed, { level: getFileCompressionLevel(outPath) }];
       allTargetTextures.add(outPath);
@@ -1676,8 +1839,7 @@ export async function convertBuffer(
   } else if (direction === 'java-to-java' && (pendingJavaContainerBases.size > 0 || pendingJavaContainerSprites.size > 0)) {
     for (const [sheetPath, base] of pendingJavaContainerBases.entries()) {
       const entries = pendingJavaContainerSprites.get(sheetPath) ?? [];
-      const composed = await composeGuiSpriteSheet(entries, base.sheetW, base.sheetH, base.bytes);
-      const outBytes = composed ?? base.bytes;
+      const outBytes = entries.length > 0 ? (await composeGuiSpriteSheet(entries, base.sheetW, base.sheetH, base.bytes)) ?? base.bytes : base.bytes;
       if (isSafePath(sheetPath) && isValidJavaAssetPath(sheetPath) && !targetFiles[sheetPath]) {
         targetFiles[sheetPath] = [outBytes, { level: getFileCompressionLevel(sheetPath) }];
         allTargetTextures.add(sheetPath);
@@ -1961,6 +2123,126 @@ export async function convertBuffer(
     }
   }
 
+  // Bedrock -> Java PBR Composition Phase (texture_set.json + MER/MERS/Normal/Heightmap -> LabPBR _s/_n)
+  if (direction === 'bedrock-to-java' && options.enablePbrConversion && pendingBedrockPbrGroups.size > 0) {
+    const convertedMerCache = new Map<string, Uint8Array | null>();
+    for (const group of pendingBedrockPbrGroups.values()) {
+      const baseJava = getTargetContext(group.baseBedrockTexturePath, 'bedrock-to-java');
+      if (!baseJava) {
+        for (const src of [group.textureSetSourcePath, group.colorAliasFile?.sourcePath, group.merFile?.sourcePath, group.normalFile?.sourcePath, group.heightmapFile?.sourcePath]) {
+          if (src) {
+            report.skippedCount++;
+            report.details.push({ filename: src, status: 'skipped', reason: 'Base texture for PBR map is unmapped' });
+          }
+        }
+        continue;
+      }
+
+      const formattedBase = formatTargetJavaPath(baseJava);
+      let producedAny = false;
+
+      if (!targetFiles[formattedBase] && isSafePath(formattedBase) && isValidJavaAssetPath(formattedBase)) {
+        if (group.colorAliasFile) {
+          const rawColor = convertTgaToPng(group.colorAliasFile.bytes);
+          const colorPng = rawColor ? normalizeJavaBlockAtlasPng(formattedBase, rawColor, decodePngToRgbaSync) : null;
+          if (colorPng) {
+            targetFiles[formattedBase] = [colorPng, { level: getFileCompressionLevel(formattedBase) }];
+            allTargetTextures.add(formattedBase);
+            const dims = getPngDimensions(colorPng);
+            if (dims) javaOutputPngDims.set(formattedBase, dims);
+            report.convertedCount++;
+            report.details.push({ filename: group.colorAliasFile.sourcePath, status: 'converted', outputPath: formattedBase });
+            producedAny = true;
+          }
+        } else if (group.colorUniform) {
+          const colorPng = synthesizeUniformColorPng(16, 16, group.colorUniform);
+          if (colorPng) {
+            targetFiles[formattedBase] = [colorPng, { level: getFileCompressionLevel(formattedBase) }];
+            allTargetTextures.add(formattedBase);
+            javaOutputPngDims.set(formattedBase, { width: 16, height: 16 });
+            report.convertedCount++;
+            report.details.push({ filename: group.textureSetSourcePath || formattedBase, status: 'converted', outputPath: formattedBase });
+            producedAny = true;
+          }
+        }
+      }
+
+      const specPath = formattedBase.replace(/\.png$/i, '_s.png');
+      if (group.merFile) {
+        const cacheKey = `${group.merFile.sourcePath}:${group.merFile.hasSubsurface ? 1 : 0}`;
+        let rawSpecPng = convertedMerCache.get(cacheKey);
+        if (rawSpecPng === undefined) {
+          rawSpecPng = await convertBedrockMerToLabPbrSpec(group.merFile.bytes, group.merFile.hasSubsurface);
+          convertedMerCache.set(cacheKey, rawSpecPng);
+        }
+        const specPng = rawSpecPng ? normalizeJavaBlockAtlasPng(specPath, rawSpecPng, decodePngToRgbaSync) : null;
+        if (specPng && isSafePath(specPath) && isValidJavaAssetPath(specPath)) {
+          const alreadyWritten = Boolean(targetFiles[specPath]);
+          targetFiles[specPath] = [specPng, { level: getFileCompressionLevel(specPath) }];
+          allTargetTextures.add(specPath);
+          const dims = getPngDimensions(specPng);
+          if (dims) javaOutputPngDims.set(specPath, dims);
+          if (!alreadyWritten) report.convertedCount++;
+          report.details.push({ filename: group.merFile.sourcePath, status: 'converted', outputPath: specPath });
+          producedAny = true;
+        } else {
+          report.skippedCount++;
+          report.details.push({ filename: group.merFile.sourcePath, status: 'skipped', reason: 'Failed to decode Bedrock MER map' });
+        }
+      } else if (group.merUniform) {
+        const targetDims = javaOutputPngDims.get(formattedBase) ?? { width: 16, height: 16 };
+        const rawSpecPng = synthesizeUniformLabPbrSpec(targetDims.width, targetDims.height, group.merUniform.values, group.merUniform.hasSubsurface);
+        const specPng = rawSpecPng ? normalizeJavaBlockAtlasPng(specPath, rawSpecPng, decodePngToRgbaSync) : null;
+        if (specPng && isSafePath(specPath) && isValidJavaAssetPath(specPath)) {
+          const alreadyWritten = Boolean(targetFiles[specPath]);
+          targetFiles[specPath] = [specPng, { level: getFileCompressionLevel(specPath) }];
+          allTargetTextures.add(specPath);
+          const dims = getPngDimensions(specPng);
+          if (dims) javaOutputPngDims.set(specPath, dims);
+          if (!alreadyWritten) report.convertedCount++;
+          report.details.push({ filename: group.textureSetSourcePath || specPath, status: 'converted', outputPath: specPath });
+          producedAny = true;
+        }
+      }
+
+      const normPath = formattedBase.replace(/\.png$/i, '_n.png');
+      if (group.normalFile || group.heightmapFile) {
+        const rawNormBytes = group.normalFile
+          ? await convertBedrockNormalToLabPbr(group.normalFile.bytes, group.heightmapFile?.bytes)
+          : await convertBedrockHeightmapToLabPbr(group.heightmapFile!.bytes);
+        const normBytes = rawNormBytes ? normalizeJavaBlockAtlasPng(normPath, rawNormBytes, decodePngToRgbaSync) : null;
+        const primaryNormSrc = group.normalFile?.sourcePath || group.heightmapFile!.sourcePath;
+        if (normBytes && isSafePath(normPath) && isValidJavaAssetPath(normPath)) {
+          const alreadyWritten = Boolean(targetFiles[normPath]);
+          targetFiles[normPath] = [normBytes, { level: getFileCompressionLevel(normPath) }];
+          allTargetTextures.add(normPath);
+          const dims = getPngDimensions(normBytes);
+          if (dims) javaOutputPngDims.set(normPath, dims);
+          if (!alreadyWritten) report.convertedCount++;
+          report.details.push({ filename: primaryNormSrc, status: 'converted', outputPath: normPath });
+          if (group.normalFile && group.heightmapFile) {
+            report.details.push({ filename: group.heightmapFile.sourcePath, status: 'converted', outputPath: normPath });
+          }
+          producedAny = true;
+        } else {
+          report.skippedCount++;
+          report.details.push({ filename: primaryNormSrc, status: 'skipped', reason: 'Failed to decode Bedrock normal/height map' });
+        }
+      }
+
+      if (group.textureSetSourcePath) {
+        report.skippedCount++;
+        report.details.push({
+          filename: group.textureSetSourcePath,
+          status: 'skipped',
+          reason: group.parsedTs && producedAny
+            ? 'PBR texture_set metadata applied to _s/_n maps'
+            : 'Unmapped PBR texture_set reference'
+        });
+      }
+    }
+  }
+
   // Finalization Phase
   // Only synthesize and append metadata if there was at least one legitimately converted pack file
   if (report.convertedCount > 0) {
@@ -2036,19 +2318,48 @@ export async function convertBuffer(
         for (const [baseNoExt, meta] of bedrockPbrSets.entries()) {
           const tsPath = `${baseNoExt}.texture_set.json`;
           if (isSafePath(tsPath)) {
-            const tsContent = generateBedrockTextureSetJson(meta.baseName, meta.hasMer, meta.hasNormal);
+            const tsContent = generateBedrockTextureSetJson(meta.baseName, {
+              hasMer: meta.hasMer,
+              hasSubsurface: meta.hasSubsurface,
+              hasNormal: meta.hasNormal,
+              hasHeightmap: meta.hasHeightmap
+            });
             targetFiles[tsPath] = [strToU8(tsContent), { level: getFileCompressionLevel(tsPath) }];
             report.convertedCount++;
           }
         }
       }
 
-      // Ensure manifest.json exists
+      const pbrCapabilities =
+        options.enablePbrConversion &&
+        bedrockPbrSets.size > 0 &&
+        compareBedrockVersion(targetBedrockVersion.minEngineVersion, [1, 16, 0]) >= 0
+          ? ['raytraced']
+          : undefined;
+
+      // Ensure manifest.json exists (and include PBR capabilities when applicable)
       if (!targetFiles['manifest.json']) {
-        const manifestStr = generateManifestContent(packName, packDescription, headerUuid, moduleUuid, targetBedrockVersion.minEngineVersion);
+        const manifestStr = generateManifestContent(
+          packName,
+          packDescription,
+          headerUuid,
+          moduleUuid,
+          targetBedrockVersion.minEngineVersion,
+          pbrCapabilities
+        );
         targetFiles['manifest.json'] = [strToU8(manifestStr), { level: getFileCompressionLevel('manifest.json') }];
         report.convertedCount++;
         report.details.push({ filename: 'pack.mcmeta', status: 'converted', outputPath: 'manifest.json', reason: 'Generated fallback manifest' });
+      } else if (pbrCapabilities) {
+        const manifestStr = generateManifestContent(
+          packName,
+          packDescription,
+          headerUuid,
+          moduleUuid,
+          targetBedrockVersion.minEngineVersion,
+          pbrCapabilities
+        );
+        targetFiles['manifest.json'] = [strToU8(manifestStr), { level: getFileCompressionLevel('manifest.json') }];
       }
     } else if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
       if (direction === 'bedrock-to-java') {
@@ -2116,6 +2427,18 @@ export async function convertBuffer(
           writtenJavaMcmetas.set(mcmetaPath, finalMcmeta);
           report.convertedCount++;
           report.details.push({ filename: pngPath, status: 'converted', outputPath: mcmetaPath });
+        }
+      }
+
+      if (targetJavaVersion.packFormat >= 75) {
+        for (const name of ['effect_background.png', 'effect_background_ambient.png']) {
+          const spritePath = `assets/minecraft/textures/gui/sprites/container/inventory/${name}`;
+          const mcmetaPath = `${spritePath}.mcmeta`;
+          if (targetFiles[spritePath] && !targetFiles[mcmetaPath]) {
+            targetFiles[mcmetaPath] = [strToU8(EFFECT_BG_MODERN_MCMETA), { level: getFileCompressionLevel(mcmetaPath) }];
+            report.convertedCount++;
+            report.details.push({ filename: spritePath, status: 'converted', outputPath: mcmetaPath });
+          }
         }
       }
 

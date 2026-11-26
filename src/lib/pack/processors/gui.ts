@@ -1,4 +1,4 @@
-import { encodeRgbaToPngSync, getPngDimensions } from './tga';
+import { encodeRgbaToPngSync, getPngDimensions, isValidPngHeader } from './tga';
 import { decodeImageToRgba, type DecodedRgbaImage } from './pbr';
 
 export interface CropBox {
@@ -22,6 +22,7 @@ export interface GuiSpriteSpec {
 }
 
 const MAX_GUI_DIMENSION = 8192;
+export const MAX_GUI_PIXELS = 4096 * 4096;
 
 export function compareBedrockVersion(a: BedrockSemver, b: BedrockSemver): number {
   for (let i = 0; i < 3; i++) {
@@ -55,7 +56,7 @@ export const BUTTON_WIDGET_METADATA = JSON.stringify(
         type: 'nine_slice',
         width: 200,
         height: 20,
-        border: { left: 20, top: 4, right: 20, bottom: 4 },
+        border: 3,
       },
     },
   },
@@ -367,7 +368,7 @@ export function getBedrockToModernJavaGuiPath(
   targetJavaFormat: number
 ): string | null {
   if (targetJavaFormat < 18) return null;
-  const normalized = bedrockPath.replace(/\.tga$/i, '.png');
+  const normalized = bedrockPath.toLowerCase().replace(/\.tga$/, '.png');
   const spec = ALL_BEDROCK_MAPPED_SPECS.find((s) => s.bedrockPath === normalized);
   if (!spec) return null;
   if (targetJavaFormat < Math.max(18, spec.minJavaFormat ?? 18)) return null;
@@ -452,7 +453,7 @@ export function getBedrockGuiSheetTarget(
   bedrockPath: string,
   targetJavaFormat: number
 ): { sheet: 'icons' | 'widgets'; box: CropBox; isPrimary: boolean } | null {
-  const normalized = bedrockPath.replace(/\.tga$/i, '.png');
+  const normalized = bedrockPath.toLowerCase().replace(/\.tga$/, '.png');
   if (Object.hasOwn(HOTBAR_SLICE_MAPPINGS, normalized)) {
     return { sheet: 'widgets', box: HOTBAR_SLICE_MAPPINGS[normalized], isPrimary: true };
   }
@@ -476,18 +477,20 @@ export async function processGuiSpriteSheet(
   mappings: Record<string, CropBox>,
   options?: { baseWidth?: number; baseHeight?: number; skipTransparent?: boolean }
 ): Promise<Record<string, Uint8Array>> {
-  const dims = getPngDimensions(pngData);
-  if (!dims) {
-    throw new Error('Invalid or oversized GUI PNG image');
+  if (isValidPngHeader(pngData)) {
+    const dims = getPngDimensions(pngData);
+    if (!dims || dims.width * dims.height > MAX_GUI_PIXELS) {
+      throw new Error('Invalid or oversized GUI PNG image');
+    }
   }
 
   const baseWidth = options?.baseWidth ?? 256;
-  const scaleX = dims.width / baseWidth;
-  const scaleY = options?.baseHeight ? dims.height / options.baseHeight : scaleX;
   const decoded = await decodeImageToRgba(pngData, MAX_GUI_DIMENSION);
-  if (!decoded) {
+  if (!decoded || decoded.width * decoded.height > MAX_GUI_PIXELS) {
     throw new Error('Failed to decode GUI PNG image');
   }
+  const scaleX = decoded.width / baseWidth;
+  const scaleY = options?.baseHeight ? decoded.height / options.baseHeight : scaleX;
 
   const results: Record<string, Uint8Array> = {};
   for (const [targetPath, box] of Object.entries(mappings)) {
@@ -504,11 +507,12 @@ export async function composeGuiSpriteSheet(
   sheetHeight: number,
   baseSheetBytes?: Uint8Array | null
 ): Promise<Uint8Array | null> {
-  const base = baseSheetBytes ? await decodeImageToRgba(baseSheetBytes, MAX_GUI_DIMENSION) : null;
+  const rawBase = baseSheetBytes ? await decodeImageToRgba(baseSheetBytes, MAX_GUI_DIMENSION) : null;
+  const base = rawBase && rawBase.width * rawBase.height <= MAX_GUI_PIXELS ? rawBase : null;
   const decodedEntries: Array<{ bytes: Uint8Array; box: CropBox; isPrimary?: boolean; img: DecodedRgbaImage }> = [];
   for (const e of entries) {
     const img = await decodeImageToRgba(e.bytes, MAX_GUI_DIMENSION);
-    if (img) decodedEntries.push({ ...e, img });
+    if (img && img.width * img.height <= MAX_GUI_PIXELS) decodedEntries.push({ ...e, img });
   }
 
   if (!base && decodedEntries.length === 0) return null;
@@ -526,7 +530,9 @@ export async function composeGuiSpriteSheet(
     }
   }
   scale = Math.max(scale, reliableScale > 0 ? reliableScale : fallbackScale);
-  const maxScale = Math.max(1, Math.floor(Math.min(MAX_GUI_DIMENSION / sheetWidth, MAX_GUI_DIMENSION / sheetHeight)));
+  const maxScaleByDim = Math.floor(Math.min(MAX_GUI_DIMENSION / sheetWidth, MAX_GUI_DIMENSION / sheetHeight));
+  const maxScaleByPixels = Math.floor(Math.sqrt(MAX_GUI_PIXELS / (sheetWidth * sheetHeight)));
+  const maxScale = Math.max(1, Math.min(maxScaleByDim, maxScaleByPixels));
   scale = Math.min(scale, maxScale);
 
   const outW = sheetWidth * scale;
@@ -534,7 +540,8 @@ export async function composeGuiSpriteSheet(
   const outRgba = new Uint8Array(outW * outH * 4);
 
   if (base) {
-    blitRgbaScaled(outRgba, outW, outH, base, 0, 0, outW, outH);
+    const baseDrawH = Math.min(outH, Math.max(1, Math.round(base.height * (outW / base.width))));
+    blitRgbaScaled(outRgba, outW, outH, base, 0, 0, outW, baseDrawH);
   }
 
   // Draw secondary/shared-box sprites first so primary sprites win overlapping slots

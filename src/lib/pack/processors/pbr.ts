@@ -14,6 +14,7 @@ export interface DecodedRgbaImage {
 }
 
 const MAX_PBR_DIMENSION = 8192;
+const MAX_PBR_PIXELS = 4096 * 4096;
 
 function paethPredictor(a: number, b: number, c: number): number {
   const p = a + b - c;
@@ -88,9 +89,11 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     height <= 0 ||
     width > MAX_PBR_DIMENSION ||
     height > MAX_PBR_DIMENSION ||
+    width * height > MAX_PBR_PIXELS ||
     ![1, 2, 4, 8, 16].includes(bitDepth) ||
     (bitDepth < 8 && colorType !== 0 && colorType !== 3) ||
     (bitDepth === 16 && colorType === 3) ||
+    (colorType === 3 && !palette) ||
     interlace !== 0 ||
     totalIdatLen === 0
   ) {
@@ -135,6 +138,7 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
     const dstRow = y * stride;
     const prevRow = (y - 1) * stride;
     const filter = rawScanlines[srcRow];
+    if (filter > 4) return null;
 
     for (let x = 0; x < stride; x++) {
       const raw = rawScanlines[srcRow + 1 + x];
@@ -300,8 +304,10 @@ export async function decodeImageToRgba(
   maxDim = MAX_PBR_DIMENSION
 ): Promise<DecodedRgbaImage | null> {
   const sync = decodeImageToRgbaSync(bytes);
-  if (sync && sync.width <= maxDim && sync.height <= maxDim) {
-    return sync;
+  if (sync) {
+    return sync.width <= maxDim && sync.height <= maxDim && sync.width * sync.height <= MAX_PBR_PIXELS
+      ? sync
+      : null;
   }
 
   if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
@@ -311,7 +317,13 @@ export async function decodeImageToRgba(
   let bitmap: ImageBitmap | null = null;
   try {
     bitmap = await createImageBitmap(new Blob([bytes as any], { type: 'image/png' }));
-    if (bitmap.width <= 0 || bitmap.height <= 0 || bitmap.width > maxDim || bitmap.height > maxDim) {
+    if (
+      bitmap.width <= 0 ||
+      bitmap.height <= 0 ||
+      bitmap.width > maxDim ||
+      bitmap.height > maxDim ||
+      bitmap.width * bitmap.height > MAX_PBR_PIXELS
+    ) {
       return null;
     }
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
@@ -331,21 +343,43 @@ export async function decodeImageToRgba(
   }
 }
 
+function packBedrockMerPixelToLabPbr(
+  out: Uint8Array,
+  idx: number,
+  metallic: number,
+  emissive: number,
+  roughness: number,
+  sss: number,
+  hasSubsurface: boolean
+): void {
+  // Both Bedrock RTX/Vibrant Visuals MER Blue and LabPBR _s Red store perceptual smoothness/roughness.
+  const smoothness = 255 - roughness;
+
+  // In LabPBR, 230..254 are hardcoded metal IDs and 255 is custom metal (albedo as F0).
+  // Map Bedrock metals (>=128) to 255 so they never collide with hardcoded metal IDs, and dielectrics to 10..51 (4%..20% F0).
+  const f0OrMetal = metallic >= 128
+    ? 255
+    : Math.round((0.04 + (metallic / 128) * 0.16) * 255);
+
+  // Subsurface Scattering (65..255 in LabPBR when SSS > 0)
+  const labB = hasSubsurface && sss > 0
+    ? Math.min(255, 65 + Math.round((sss / 255) * 190))
+    : 0;
+
+  // Emissive (in LabPBR, alpha 255 means NO emission; 1..254 means increasing emission)
+  const labA = emissive > 0
+    ? Math.max(1, Math.min(254, Math.round((emissive / 255) * 254)))
+    : 255;
+
+  out[idx] = smoothness;
+  out[idx + 1] = f0OrMetal;
+  out[idx + 2] = labB;
+  out[idx + 3] = labA;
+}
+
 /**
  * Converts Bedrock MER / MERS map (`*_mer.png`, `*_mers.png`, or `.tga`)
  * into Java LabPBR 1.3 Specular Map (`*_s.png`).
- *
- * Bedrock MER(S):
- *   R = Metalness (0..255)
- *   G = Emissive (0..255)
- *   B = Linear Roughness (0..255)
- *   A = Subsurface Scattering (0..255, when MERS)
- *
- * Java LabPBR 1.3 Specular (`_s.png`):
- *   R = Perceptual Smoothness: (1.0 - sqrt(roughness)) * 255
- *   G = F0 / Metalness (0..229 = dielectric F0, 230..255 = metal)
- *   B = Porosity (0..64) / Subsurface Scattering (65..255)
- *   A = Emissive (0..254 = 0..100% emissive, 255 = 0% emissive)
  */
 export async function convertBedrockMerToLabPbrSpec(
   merBytes: Uint8Array,
@@ -362,35 +396,78 @@ export async function convertBedrockMerToLabPbrSpec(
 
   for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
-    const metallic = rgba[idx];
-    const emissive = rgba[idx + 1];
-    const roughness = rgba[idx + 2];
-    const sss = hasSubsurface ? rgba[idx + 3] : 0;
-
-    // 1. Perceptual Smoothness = 1.0 - sqrt(linearRoughness)
-    const normRoughness = roughness / 255;
-    const smoothness = Math.round(Math.max(0, Math.min(1, 1 - Math.sqrt(normRoughness))) * 255);
-
-    // 2. Metalness / F0
-    // In LabPBR, values >= 230 represent metals (255 = pure metal albedo); dielectric F0 is ~4..229.
-    const f0OrMetal = metallic >= 200
-      ? Math.max(230, metallic)
-      : Math.max(4, Math.min(229, Math.round((metallic / 200) * 225) + 4));
-
-    // 3. Subsurface Scattering (65..255 in LabPBR when SSS > 0)
-    const labB = sss > 4 ? Math.min(255, 65 + Math.round((sss / 255) * 190)) : 0;
-
-    // 4. Emissive (in LabPBR, alpha 255 means NO emission; 1..254 means increasing emission)
-    const labA = emissive > 0
-      ? Math.max(1, Math.min(254, Math.round((emissive / 255) * 253) + 1))
-      : 255;
-
-    out[idx] = smoothness;
-    out[idx + 1] = f0OrMetal;
-    out[idx + 2] = labB;
-    out[idx + 3] = labA;
+    packBedrockMerPixelToLabPbr(
+      out,
+      idx,
+      rgba[idx],
+      rgba[idx + 1],
+      rgba[idx + 2],
+      hasSubsurface ? rgba[idx + 3] : 0,
+      hasSubsurface
+    );
   }
 
+  return encodeRgbaToPngSync(width, height, out);
+}
+
+/**
+ * Synthesizes a uniform LabPBR 1.3 Specular Map (`*_s.png`) from constant Bedrock MER(S) values.
+ */
+export function synthesizeUniformLabPbrSpec(
+  width: number,
+  height: number,
+  mer: [number, number, number, number],
+  hasSubsurface = false
+): Uint8Array | null {
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    width > MAX_PBR_DIMENSION ||
+    height > MAX_PBR_DIMENSION ||
+    width * height > MAX_PBR_PIXELS
+  ) {
+    return null;
+  }
+  const pixel = new Uint8Array(4);
+  packBedrockMerPixelToLabPbr(pixel, 0, mer[0], mer[1], mer[2], mer[3], hasSubsurface);
+  const totalPixels = width * height;
+  const out = new Uint8Array(totalPixels * 4);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    out[idx] = pixel[0];
+    out[idx + 1] = pixel[1];
+    out[idx + 2] = pixel[2];
+    out[idx + 3] = pixel[3];
+  }
+  return encodeRgbaToPngSync(width, height, out);
+}
+
+/**
+ * Synthesizes a uniform RGBA PNG from a constant color value.
+ */
+export function synthesizeUniformColorPng(
+  width: number,
+  height: number,
+  rgbaVal: [number, number, number, number]
+): Uint8Array | null {
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    width > MAX_PBR_DIMENSION ||
+    height > MAX_PBR_DIMENSION ||
+    width * height > MAX_PBR_PIXELS
+  ) {
+    return null;
+  }
+  const totalPixels = width * height;
+  const out = new Uint8Array(totalPixels * 4);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    out[idx] = rgbaVal[0];
+    out[idx + 1] = rgbaVal[1];
+    out[idx + 2] = rgbaVal[2];
+    out[idx + 3] = rgbaVal[3];
+  }
   return encodeRgbaToPngSync(width, height, out);
 }
 
@@ -398,14 +475,27 @@ export async function convertBedrockMerToLabPbrSpec(
  * Converts Java LabPBR 1.3 Specular Map (`*_s.png`)
  * into Bedrock MER / MERS map (`*_mer.png`).
  */
-export function convertLabPbrSpecToBedrockMer(specBytes: Uint8Array): Uint8Array | null {
-  const decoded = decodeImageToRgbaSync(specBytes);
+export async function convertLabPbrSpecToBedrockMer(
+  specBytes: Uint8Array,
+  allowSubsurface = false
+): Promise<{ png: Uint8Array; hasSubsurface: boolean } | null> {
+  const decoded = await decodeImageToRgba(specBytes);
   if (!decoded) return null;
 
   const { width, height, rgba } = decoded;
-  const out = new Uint8Array(rgba.length);
   const totalPixels = width * height;
 
+  let hasSubsurface = false;
+  if (allowSubsurface) {
+    for (let i = 0; i < totalPixels; i++) {
+      if (rgba[i * 4 + 2] > 65) {
+        hasSubsurface = true;
+        break;
+      }
+    }
+  }
+
+  const out = new Uint8Array(rgba.length);
   for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
     const smoothness = rgba[idx];
@@ -413,58 +503,300 @@ export function convertLabPbrSpecToBedrockMer(specBytes: Uint8Array): Uint8Array
     const porosityOrSss = rgba[idx + 2];
     const labEmissive = rgba[idx + 3];
 
-    // 1. Metallic from LabPBR G channel
-    const metallic = f0 >= 230 ? 255 : Math.max(0, Math.round(((f0 - 4) / 225) * 180));
+    // 1. Metallic from LabPBR G channel (0..229 = dielectric, 230..255 = metal)
+    const metallic = f0 >= 230 ? 255 : 0;
 
     // 2. Emissive from LabPBR A channel (255 = 0 emission)
     const emissive = labEmissive === 255 ? 0 : Math.min(255, Math.round((labEmissive / 254) * 255));
 
-    // 3. Linear Roughness = (1.0 - perceptualSmoothness)^2
-    const perceptualRoughness = 1 - smoothness / 255;
-    const roughness = Math.round(Math.max(0, Math.min(1, perceptualRoughness * perceptualRoughness)) * 255);
+    // 3. Roughness = 255 - perceptualSmoothness
+    const roughness = 255 - smoothness;
 
-    // 4. Subsurface Scattering
-    const sss = porosityOrSss >= 65
-      ? Math.round(((porosityOrSss - 65) / 190) * 255)
+    // 4. Subsurface Scattering (MERS A channel; 255 opaque when standard 3-channel MER)
+    const alpha = hasSubsurface
+      ? (metallic > 0 ? 0 : (porosityOrSss >= 65 ? Math.round(((porosityOrSss - 65) / 190) * 255) : 0))
       : 255;
 
     out[idx] = metallic;
     out[idx + 1] = emissive;
     out[idx + 2] = roughness;
-    out[idx + 3] = sss;
+    out[idx + 3] = alpha;
+  }
+
+  return {
+    png: encodeRgbaToPngSync(width, height, out),
+    hasSubsurface
+  };
+}
+
+/**
+ * Converts Bedrock Normal Map (and optional Heightmap) into Java LabPBR 1.3 Normal Map (`*_n.png`).
+ * R = X, G = Y (DirectX Y-), B = 255 (neutral AO), A = Heightmap (or 255 flush).
+ */
+export async function convertBedrockNormalToLabPbr(
+  normalBytes: Uint8Array,
+  heightBytes?: Uint8Array | null
+): Promise<Uint8Array | null> {
+  const decoded = await decodeImageToRgba(normalBytes);
+  if (!decoded) return null;
+
+  const decodedHeight = heightBytes ? await decodeImageToRgba(heightBytes) : null;
+  const { width, height, rgba } = decoded;
+  const out = new Uint8Array(rgba.length);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      out[idx] = rgba[idx];
+      out[idx + 1] = rgba[idx + 1];
+      out[idx + 2] = 255; // Neutral LabPBR AO (never copy Bedrock Z-normal into AO)
+
+      if (decodedHeight) {
+        const hx = Math.min(decodedHeight.width - 1, Math.floor((x * decodedHeight.width) / width));
+        const hy = Math.min(decodedHeight.height - 1, Math.floor((y * decodedHeight.height) / height));
+        const hIdx = (hy * decodedHeight.width + hx) * 4;
+        const lum = Math.round(
+          0.299 * decodedHeight.rgba[hIdx] +
+          0.587 * decodedHeight.rgba[hIdx + 1] +
+          0.114 * decodedHeight.rgba[hIdx + 2]
+        );
+        out[idx + 3] = Math.max(1, lum);
+      } else {
+        out[idx + 3] = 255;
+      }
+    }
   }
 
   return encodeRgbaToPngSync(width, height, out);
 }
 
-export interface ParsedTextureSet {
-  color?: string;
-  mer?: string;
-  normal?: string;
-  heightmap?: string;
-  hasSubsurface?: boolean;
+/**
+ * Converts Bedrock grayscale Heightmap into Java LabPBR 1.3 Normal Map (`*_n.png`)
+ * using a seamless 3x3 Sobel filter (DirectX Y- convention) and stores height in Alpha.
+ */
+export async function convertBedrockHeightmapToLabPbr(
+  heightBytes: Uint8Array,
+  strength = 1.5
+): Promise<Uint8Array | null> {
+  const decoded = await decodeImageToRgba(heightBytes);
+  if (!decoded) return null;
+
+  const { width, height, rgba } = decoded;
+  const totalPixels = width * height;
+  const heights = new Uint8Array(totalPixels);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    heights[i] = Math.round(0.299 * rgba[idx] + 0.587 * rgba[idx + 1] + 0.114 * rgba[idx + 2]);
+  }
+
+  const isAnimatedStrip = height > width && height % width === 0;
+  const frameH = isAnimatedStrip ? width : height;
+  const out = new Uint8Array(totalPixels * 4);
+
+  const sample = (x: number, y: number, frameBase: number): number => {
+    const wx = ((x % width) + width) % width;
+    const localY = (((y - frameBase) % frameH) + frameH) % frameH;
+    return heights[(frameBase + localY) * width + wx];
+  };
+
+  for (let y = 0; y < height; y++) {
+    const frameBase = isAnimatedStrip ? Math.floor(y / frameH) * frameH : 0;
+    for (let x = 0; x < width; x++) {
+      const tl = sample(x - 1, y - 1, frameBase);
+      const t = sample(x, y - 1, frameBase);
+      const tr = sample(x + 1, y - 1, frameBase);
+      const l = sample(x - 1, y, frameBase);
+      const r = sample(x + 1, y, frameBase);
+      const bl = sample(x - 1, y + 1, frameBase);
+      const b = sample(x, y + 1, frameBase);
+      const br = sample(x + 1, y + 1, frameBase);
+
+      const sobelX = -tl + tr - 2 * l + 2 * r - bl + br;
+      const sobelY = -tl - 2 * t - tr + bl + 2 * b + br;
+      const gx = (sobelX / (4 * 255)) * strength;
+      const gy = (sobelY / (4 * 255)) * strength;
+
+      // DirectX Y- convention: +X right, +Y down
+      const nx = -gx;
+      const ny = -gy;
+      const nz = 1.0;
+      const invLen = 1 / Math.hypot(nx, ny, nz);
+
+      const idx = (y * width + x) * 4;
+      out[idx] = Math.round((nx * invLen * 0.5 + 0.5) * 255);
+      out[idx + 1] = Math.round((ny * invLen * 0.5 + 0.5) * 255);
+      out[idx + 2] = 255;
+      out[idx + 3] = Math.max(1, heights[y * width + x]);
+    }
+  }
+
+  return encodeRgbaToPngSync(width, height, out);
 }
 
 /**
- * Parses a Bedrock `*.texture_set.json` file to identify linked color, MER/MERS, and normal/heightmap textures.
+ * Converts Java LabPBR 1.3 Normal Map (`*_n.png`) into Bedrock Normal Map or Heightmap.
+ * Reconstructs Z normal into Blue and sets Alpha = 255; emits a grayscale Heightmap if RG is flat and Alpha varies.
+ */
+export async function convertLabPbrNormalToBedrock(
+  normalBytes: Uint8Array
+): Promise<{ kind: 'normal' | 'heightmap'; png: Uint8Array } | null> {
+  const decoded = await decodeImageToRgba(normalBytes);
+  if (!decoded) return null;
+
+  const { width, height, rgba } = decoded;
+  const totalPixels = width * height;
+
+  let hasNormalDetail = false;
+  let minA = 255;
+  let maxA = 0;
+
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    if (Math.abs(rgba[idx] - 128) > 2 || Math.abs(rgba[idx + 1] - 128) > 2) {
+      hasNormalDetail = true;
+    }
+    const a = rgba[idx + 3];
+    if (a < minA) minA = a;
+    if (a > maxA) maxA = a;
+  }
+
+  const out = new Uint8Array(rgba.length);
+  if (!hasNormalDetail && minA < maxA) {
+    for (let i = 0; i < totalPixels; i++) {
+      const idx = i * 4;
+      const h = rgba[idx + 3];
+      out[idx] = h;
+      out[idx + 1] = h;
+      out[idx + 2] = h;
+      out[idx + 3] = 255;
+    }
+    return { kind: 'heightmap', png: encodeRgbaToPngSync(width, height, out) };
+  }
+
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 4;
+    const r = rgba[idx];
+    const g = rgba[idx + 1];
+    const nx = (r / 255) * 2 - 1;
+    const ny = (g / 255) * 2 - 1;
+    const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+    out[idx] = r;
+    out[idx + 1] = g;
+    out[idx + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+    out[idx + 3] = 255;
+  }
+
+  return { kind: 'normal', png: encodeRgbaToPngSync(width, height, out) };
+}
+
+export interface ParsedTextureSet {
+  color?: string;
+  colorUniform?: [number, number, number, number];
+  mer?: string;
+  merUniform?: [number, number, number, number];
+  normal?: string;
+  heightmap?: string;
+  heightmapUniform?: number;
+  hasSubsurface?: boolean;
+}
+
+function parseJsoncLocal(raw: string): unknown {
+  const noComments = raw
+    .replace(/^\uFEFF/, '')
+    .replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, (m) => (m[0] === '"' ? m : ''));
+  const noTrailing = noComments.replace(
+    /"(?:\\.|[^"\\])*"|,\s*(?=[}\]])/g,
+    (m) => (m[0] === '"' ? m : '')
+  );
+  return JSON.parse(noTrailing);
+}
+
+function clampByte(n: unknown, fallback = 0): number {
+  return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(255, Math.round(n))) : fallback;
+}
+
+function parseHexUniform(hex: string, defaultAlpha: number): [number, number, number, number] | null {
+  const clean = hex.trim();
+  if (/^#[0-9a-f]{6}$/i.test(clean)) {
+    return [
+      parseInt(clean.slice(1, 3), 16),
+      parseInt(clean.slice(3, 5), 16),
+      parseInt(clean.slice(5, 7), 16),
+      defaultAlpha
+    ];
+  }
+  // shortcut: assumes #RRGGBBAA hex order when 8-digit hex is used in texture_set.json
+  if (/^#[0-9a-f]{8}$/i.test(clean)) {
+    return [
+      parseInt(clean.slice(1, 3), 16),
+      parseInt(clean.slice(3, 5), 16),
+      parseInt(clean.slice(5, 7), 16),
+      parseInt(clean.slice(7, 9), 16)
+    ];
+  }
+  return null;
+}
+
+function parseTextureSetField(
+  val: unknown,
+  defaultAlpha: number
+): { ref?: string; uniform?: [number, number, number, number] } {
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('#')) {
+      const hex = parseHexUniform(trimmed, defaultAlpha);
+      return hex ? { uniform: hex } : {};
+    }
+    const normalized = trimmed.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\.(png|tga)$/i, '');
+    return normalized ? { ref: normalized } : {};
+  }
+  if (Array.isArray(val) && val.length >= 3) {
+    return {
+      uniform: [
+        clampByte(val[0]),
+        clampByte(val[1]),
+        clampByte(val[2]),
+        val.length >= 4 ? clampByte(val[3], defaultAlpha) : defaultAlpha
+      ]
+    };
+  }
+  return {};
+}
+
+/**
+ * Parses a Bedrock `*.texture_set.json` file to identify linked color, MER/MERS, and normal/heightmap textures or uniform values.
  */
 export function parseTextureSetJson(jsonStr: string): ParsedTextureSet | null {
   try {
-    const cleaned = jsonStr.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseJsoncLocal(jsonStr) as Record<string, any>;
     const ts = parsed?.['minecraft:texture_set'];
     if (!ts || typeof ts !== 'object') return null;
 
     const result: ParsedTextureSet = {};
-    if (typeof ts.color === 'string') result.color = ts.color;
-    if (typeof ts.metalness_emissive_roughness_subsurface === 'string') {
-      result.mer = ts.metalness_emissive_roughness_subsurface;
+    const colorField = parseTextureSetField(ts.color, 255);
+    if (colorField.ref) result.color = colorField.ref;
+    if (colorField.uniform) result.colorUniform = colorField.uniform;
+
+    if (ts.metalness_emissive_roughness_subsurface !== undefined) {
+      const mersField = parseTextureSetField(ts.metalness_emissive_roughness_subsurface, 0);
+      if (mersField.ref) result.mer = mersField.ref;
+      if (mersField.uniform) result.merUniform = mersField.uniform;
       result.hasSubsurface = true;
-    } else if (typeof ts.metalness_emissive_roughness === 'string') {
-      result.mer = ts.metalness_emissive_roughness;
+    } else if (ts.metalness_emissive_roughness !== undefined) {
+      const merField = parseTextureSetField(ts.metalness_emissive_roughness, 255);
+      if (merField.ref) result.mer = merField.ref;
+      if (merField.uniform) result.merUniform = merField.uniform;
     }
-    if (typeof ts.normal === 'string') result.normal = ts.normal;
-    if (typeof ts.heightmap === 'string') result.heightmap = ts.heightmap;
+
+    const normalField = parseTextureSetField(ts.normal, 255);
+    if (normalField.ref) result.normal = normalField.ref;
+
+    if (typeof ts.heightmap === 'number' && Number.isFinite(ts.heightmap)) {
+      result.heightmapUniform = clampByte(ts.heightmap);
+    } else {
+      const heightField = parseTextureSetField(ts.heightmap, 255);
+      if (heightField.ref) result.heightmap = heightField.ref;
+    }
 
     return result;
   } catch {
@@ -472,33 +804,59 @@ export function parseTextureSetJson(jsonStr: string): ParsedTextureSet | null {
   }
 }
 
+export interface BedrockTextureSetOptions {
+  hasMer?: boolean;
+  hasSubsurface?: boolean;
+  hasNormal?: boolean;
+  hasHeightmap?: boolean;
+}
+
 /**
- * Generates a Bedrock `*.texture_set.json` file (format_version 1.16.100, compatible with 1.16.100 - 1.26.60+).
+ * Generates a Bedrock `*.texture_set.json` file (`1.21.30` when MERS subsurface is used, `1.16.100` otherwise).
  */
 export function generateBedrockTextureSetJson(
   baseName: string,
-  hasMer: boolean,
-  hasNormal: boolean
+  hasMerOrOptions: boolean | BedrockTextureSetOptions,
+  hasNormalArg = false
 ): string {
+  const opts: BedrockTextureSetOptions = typeof hasMerOrOptions === 'boolean'
+    ? { hasMer: hasMerOrOptions, hasNormal: hasNormalArg }
+    : hasMerOrOptions;
+
   const textureSet: Record<string, string> = {
     color: baseName
   };
-  if (hasMer) {
-    textureSet.metalness_emissive_roughness = `${baseName}_mer`;
+  if (opts.hasMer) {
+    if (opts.hasSubsurface) {
+      textureSet.metalness_emissive_roughness_subsurface = `${baseName}_mer`;
+    } else {
+      textureSet.metalness_emissive_roughness = `${baseName}_mer`;
+    }
   }
-  if (hasNormal) {
+  if (opts.hasNormal) {
     textureSet.normal = `${baseName}_normal`;
+  } else if (opts.hasHeightmap) {
+    textureSet.heightmap = `${baseName}_heightmap`;
   }
 
   return JSON.stringify(
     {
-      format_version: '1.16.100',
+      format_version: opts.hasSubsurface ? '1.21.30' : '1.16.100',
       'minecraft:texture_set': textureSet
     },
     null,
     2
   );
 }
+
+const VANILLA_BEDROCK_NORMAL_DIFFUSE = new Set([
+  'textures/blocks/piston_top_normal',
+  'textures/blocks/rail_normal',
+  'textures/blocks/red_sandstone_normal',
+  'textures/blocks/sandstone_normal',
+  'textures/items/book_normal',
+  'textures/items/minecart_normal',
+]);
 
 /**
  * Checks if a Bedrock relative path is a PBR companion asset (`*.texture_set.json`, `*_mer.png`, `*_mers.png`, `*_normal.png`, `*_heightmap.png`).
@@ -512,9 +870,21 @@ export function classifyBedrockPbrPath(relativePath: string): {
     return { type: 'texture_set', baseBedrockTexturePath: base };
   }
 
-  const m = relativePath.match(/^(textures\/.*?)_(mers|mer|normal|heightmap)(?:_weak)?\.(png|tga)$/i);
+  const m = relativePath.match(
+    /^(textures\/(?:blocks?|items?|entity|models|environment|painting|particle|trims)\/.*?)_(mers|mer|normal|heightmap)(?:_weak)?\.(png|tga)$/i
+  );
   if (m) {
     const rawKind = m[2].toLowerCase() as 'mer' | 'mers' | 'normal' | 'heightmap';
+    if (rawKind === 'normal') {
+      const normKey = relativePath
+        .toLowerCase()
+        .replace(/\.(png|tga)$/i, '')
+        .replace(/^textures\/block\//, 'textures/blocks/')
+        .replace(/^textures\/item\//, 'textures/items/');
+      if (VANILLA_BEDROCK_NORMAL_DIFFUSE.has(normKey)) {
+        return null;
+      }
+    }
     return {
       type: rawKind,
       baseBedrockTexturePath: `${m[1]}.png`
@@ -531,10 +901,10 @@ export function classifyJavaLabPbrPath(relativePath: string): {
   type: 'specular' | 'normal';
   baseJavaTexturePath: string;
 } | null {
-  const m = relativePath.match(/^(assets\/minecraft\/textures\/.*?)_([sn])\.png$/);
+  const m = relativePath.match(/^(assets\/minecraft\/textures\/(?!(?:gui|font|colormap|misc)\/).*?)_([sn])\.png$/i);
   if (m) {
     return {
-      type: m[2] === 's' ? 'specular' : 'normal',
+      type: m[2].toLowerCase() === 's' ? 'specular' : 'normal',
       baseJavaTexturePath: `${m[1]}.png`
     };
   }

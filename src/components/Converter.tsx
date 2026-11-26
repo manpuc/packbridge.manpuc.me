@@ -63,7 +63,6 @@ export default function Converter({
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
   const [isAutoDetected, setIsAutoDetected] = useState(false);
   const [enableGuiConversion, setEnableGuiConversion] = useState(false);
-  const [enableModernGuiSprites, setEnableModernGuiSprites] = useState(true);
   const [enableAudioReencode, setEnableAudioReencode] = useState(false);
   const [enablePbrConversion, setEnablePbrConversion] = useState(false);
   const [enableModelConversion, setEnableModelConversion] = useState(false);
@@ -89,9 +88,6 @@ export default function Converter({
     try {
       const savedGui = localStorage.getItem(`${BETA_KEY_PREFIX}gui`);
       if (savedGui !== null) setEnableGuiConversion(savedGui === 'true');
-
-      const savedModernGui = localStorage.getItem(`${BETA_KEY_PREFIX}modern_gui`);
-      if (savedModernGui !== null) setEnableModernGuiSprites(savedModernGui === 'true');
 
       const savedAudioReencode = localStorage.getItem(`${BETA_KEY_PREFIX}audio_reencode`);
       if (savedAudioReencode !== null) setEnableAudioReencode(savedAudioReencode === 'true');
@@ -501,7 +497,6 @@ export default function Converter({
         sourceJavaVersionId: isAutoDetected && direction.startsWith('java') ? sourceJavaVersion : undefined,
         sourceBedrockVersionId: isAutoDetected && direction.startsWith('bedrock') ? sourceBedrockVersion : undefined,
         enableGuiConversion,
-        enableModernGuiSprites,
         enableAudioReencode,
         enablePbrConversion,
         enableModelConversion
@@ -672,8 +667,6 @@ export default function Converter({
         hasFile={!!file}
         enableGuiConversion={enableGuiConversion}
         setEnableGuiConversion={persistBeta('gui', setEnableGuiConversion)}
-        enableModernGuiSprites={enableModernGuiSprites}
-        setEnableModernGuiSprites={persistBeta('modern_gui', setEnableModernGuiSprites)}
         enableAudioReencode={enableAudioReencode}
         setEnableAudioReencode={persistBeta('audio_reencode', setEnableAudioReencode)}
         enablePbrConversion={enablePbrConversion}

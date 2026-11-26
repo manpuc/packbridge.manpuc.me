@@ -103,7 +103,6 @@ const baseOptions: ConversionOptions = {
   javaVersionId: '1.21.4',
   bedrockVersionId: '1.21.50',
   enableGuiConversion: false,
-  enableModernGuiSprites: true,
   enableAudioReencode: true,
 };
 
