@@ -28,8 +28,6 @@ const { reversePair, sameDirectionPairs } = getRelatedVersionPages(spec);
 const homeHref = `/${lang}`;
 const hubHref = getConvertHubHref(lang);
 const currentHref = getVersionPageHref(lang, spec);
-const isJ2B = spec.direction === "java-to-bedrock";
-const mevFormatted = `[${spec.bedrockMinEngineVersion.join(", ")}]`;
 ---
 
 <Layout

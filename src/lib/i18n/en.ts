@@ -45,6 +45,12 @@ const en: Translation = {
 	statusConverted: "Converted",
 	statusSkipped: "Skipped",
 	statusError: "Error",
+	statusWarning: "Warning",
+	reportSearchPlaceholder: "Filter by filename or reason...",
+	reportFilterAll: "All",
+	reportNoMatches: "No matching files found",
+	reportPrev: "Prev",
+	reportNext: "Next",
 
 	summaryTitle: "Conversion Complete!",
 	countTotal: "Total Files",
@@ -76,15 +82,16 @@ const en: Translation = {
 	error404Description: "We're sorry, the page you're looking for doesn't exist or has been moved.",
 
 	// Terms of Use
-	termsLastUpdated: "November 1, 2026",
+	termsLastUpdatedLabel: "Last Updated",
+	termsLastUpdated: "November 27, 2026",
 	termsSections: [
 		{
 			title: "1. Service Usage",
-			content: "This service is a tool for converting Minecraft resource packs and texture packs between Java and Bedrock editions. All processing occurs locally within the browser; no files are sent to external servers.",
+			content: "This service converts Minecraft resource packs and texture packs between Java and Bedrock editions, updates pack versions within the same edition, and offers experimental beta features (GUI conversion, FFmpeg audio re-encoding, PBR shader maps, and 3D custom models). All conversion processing occurs locally within your browser; pack files are never uploaded to external servers. Converted pack metadata (manifest.json, pack.mcmeta, .jem) includes a PackBridge attribution credit.",
 		},
 		{
-			title: "2. Disclaimer (Self-Responsibility)",
-			content: "Use of this service and its source code is strictly at your own risk. Perfect conversion of all files is not guaranteed, and issues may occur in the converted data. The developer shall not be held liable for any damages, data loss, or issues arising from the use of this service or derived code.",
+			title: "2. Disclaimer & Third-Party Rights",
+			content: "Use of this service and its source code is strictly at your own risk. Perfect conversion of all files (including experimental beta features) is not guaranteed, and visual or functional issues may occur in converted data. The developer shall not be held liable for any damages, data loss, or issues arising from the use of this service or derived code.\nWhen converting, using, or redistributing third-party resource packs, you are solely responsible for verifying and complying with the original creator's license and terms.\nNOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
 		},
 		{
 			title: "3. Copyright and License",
@@ -92,7 +99,7 @@ const en: Translation = {
 		},
 		{
 			title: "4. Prohibited Actions",
-			content: "Excessive load on the network, interference with site operation, and illegal or immoral activities are prohibited.",
+			content: "Excessive load on the network, interference with site operation, infringement of third-party intellectual property rights, and illegal or abusive activities are prohibited.",
 		},
 		{
 			title: "5. Changes to Terms",
@@ -100,7 +107,7 @@ const en: Translation = {
 		},
 		{
 			title: "6. Privacy Policy",
-			content: "• Data Processing: All data converted via this service is processed locally within the user's browser. Content is never sent to or collected by servers.\n• Analytics: This site uses Umami to understand usage patterns. It collects statistical data and does not identify individual users.\n• Local Storage: We use browser localStorage to save your language and theme (dark mode) preferences.",
+			content: "• Data Processing: All pack files converted via this service are processed locally within your browser. Pack archives and internal assets are never uploaded to or collected by servers.\n• External Libraries & Fonts: Enabling the Audio Re-encode beta downloads SHA-256-verified FFmpeg libraries from external CDNs (unpkg.com / cdn.jsdelivr.net) when needed, and pages load web fonts from Google Fonts. Your pack files are never sent to these providers, though standard HTTP request metadata (such as IP address) is processed by their CDNs.\n• Analytics: This site uses cookie-less Umami to collect anonymous usage statistics and sanitized technical error summaries (with filenames, paths, URLs, and personal data masked). No personally identifiable information or pack content is collected.\n• Browser Storage (localStorage / sessionStorage): Used to save language, theme, UI state, and beta feature preferences, an anonymous local conversion count (without any UUID) for aggregate first-time/repeat statistics, and temporary conversion logs/cooldown timestamps for bug reporting (cleared on reset or when the tab closes).\n• Bug Reports: Only if you voluntarily submit a bug report, your form inputs, optional reply email (Formspree direct reports only, used solely to reply), browser/OS info, and any filename/error logs you choose to attach are sent to Formspree (formspree.io) or public GitHub Issues (github.com). Pack archive files themselves are never uploaded.",
 		},
 	],
 	backToHome: "Back to Home",

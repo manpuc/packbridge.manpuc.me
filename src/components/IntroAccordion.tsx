@@ -8,10 +8,8 @@ interface IntroAccordionProps {
 
 export default function IntroAccordion({ t }: IntroAccordionProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    setHasMounted(true);
     try {
       if (sessionStorage.getItem('pb_intro_open') === 'true') {
         setIsOpen(true);

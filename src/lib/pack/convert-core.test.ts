@@ -2672,5 +2672,66 @@ describe('convertBuffer', () => {
     // 4. versions.ts NaN guard & analytics ZipSafetyError categorization
     expect(getBedrockVersionByEngineVersion([NaN, NaN, NaN])).toBeNull();
     expect(categorizeError(new Error('Archive contains too many files'))).toBe('INVALID_ARCHIVE');
+    expect(categorizeError(new Error('Suspicious compression ratio detected (possible Zip Bomb)'))).toBe('INVALID_ARCHIVE');
+  });
+
+  it('deduplicates PackBridge credits on round-trips and prevents nested pack icons from overwriting root icons', async () => {
+    const rootIcon = encodeRgbaToPngSync(2, 2, new Uint8Array(2 * 2 * 4).fill(11));
+    const nestedIcon = encodeRgbaToPngSync(2, 2, new Uint8Array(2 * 2 * 4).fill(222));
+    const stonePng = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(50));
+
+    // Root pack.png should win over nested sub/pack.png and not double-increment convertedCount
+    const j2b = await convertBuffer(
+      toArrayBuffer(
+        zipSync({
+          'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Roundtrip Pack' } })),
+          'pack.png': rootIcon,
+          'docs/pack.png': nestedIcon,
+          'assets/minecraft/textures/block/stone.png': stonePng,
+        })
+      ),
+      'roundtrip.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    );
+    const j2bOut = unzipSync(j2b.buffer);
+    expect(j2bOut['pack_icon.png']).toEqual(rootIcon);
+    expect(
+      j2b.report.details.some(
+        (d) => d.filename === 'docs/pack.png' && d.status === 'skipped' && d.reason === 'Pack icon already present'
+      )
+    ).toBe(true);
+
+    const manifest1 = JSON.parse(strFromU8(j2bOut['manifest.json']));
+    expect((manifest1.header.description as string).match(/packbridge\.manpuc\.me/gi)?.length).toBe(1);
+
+    // Round-trip Bedrock -> Java -> Bedrock must not duplicate packbridge.manpuc.me
+    const b2j = await convertBuffer(toArrayBuffer(j2b.buffer), 'roundtrip.mcpack', {
+      ...baseOptions,
+      direction: 'bedrock-to-java',
+    });
+    const b2jOut = unzipSync(b2j.buffer);
+    const mcmeta = JSON.parse(strFromU8(b2jOut['pack.mcmeta']));
+    expect((mcmeta.pack.description as string).match(/packbridge\.manpuc\.me/gi)?.length).toBe(1);
+
+    const j2bAgain = await convertBuffer(toArrayBuffer(b2j.buffer), 'roundtrip-2.zip', {
+      ...baseOptions,
+      direction: 'java-to-bedrock',
+    });
+    const manifest2 = JSON.parse(strFromU8(unzipSync(j2bAgain.buffer)['manifest.json']));
+    expect((manifest2.header.description as string).match(/packbridge\.manpuc\.me/gi)?.length).toBe(1);
+
+    // Fallback still works when only a nested pack.png exists
+    const fallbackRes = await convertBuffer(
+      toArrayBuffer(
+        zipSync({
+          'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'Nested Icon Only' } })),
+          'nested/pack.png': nestedIcon,
+          'assets/minecraft/textures/block/stone.png': stonePng,
+        })
+      ),
+      'nested-only.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    );
+    expect(unzipSync(fallbackRes.buffer)['pack_icon.png']).toEqual(nestedIcon);
   });
 });

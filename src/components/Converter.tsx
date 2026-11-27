@@ -482,9 +482,8 @@ export default function Converter({
     setError(null);
     const startTime = Date.now();
 
-    // 匿名利用回数の取得とインクリメント（UUID不保持）
+    // 匿名利用回数の取得（成功時にのみインクリメント、UUID不保持）
     const prevCount = getLocalConversionCount();
-    const nextCount = incrementLocalConversionCount();
 
     trackEvent('conversion_start', {
       direction,
@@ -494,7 +493,7 @@ export default function Converter({
       opt_gui: enableGuiConversion,
       opt_audio_reencode: enableAudioReencode,
       user_type: prevCount === 0 ? 'first_time' : 'repeat',
-      usage_tier: getUsageTier(nextCount),
+      usage_tier: getUsageTier(prevCount + 1),
       ui_lang: initialLang,
     });
 
@@ -544,10 +543,16 @@ export default function Converter({
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       const url = URL.createObjectURL(result.blob);
       setDownloadUrl(url);
-      saveContext(result.report.details
-        .filter((d) => d.status !== 'converted' || Boolean(d.warning))
-        .map((d) => `[${d.status === 'converted' ? 'warn' : d.status}] ${d.filename}: ${d.reason ?? ''}`)
-        .join('\n'));
+      incrementLocalConversionCount();
+
+      const nonCleanDetails = result.report.details.filter((d) => d.status !== 'converted' || Boolean(d.warning));
+      if (nonCleanDetails.length > 0 || result.report.errorCount > 0 || result.report.skippedCount > 0) {
+        saveContext(nonCleanDetails
+          .map((d) => `[${d.status === 'converted' ? 'warn' : d.status}] ${d.filename}: ${d.reason ?? ''}`)
+          .join('\n'));
+      } else {
+        try { sessionStorage.removeItem(LAST_CONVERSION_KEY); } catch { /* ignore */ }
+      }
 
       const safety = analyzeReportSafety(result.report);
       trackEvent('conversion_success', {
@@ -570,7 +575,7 @@ export default function Converter({
         java_version: selectedJavaVersion,
         bedrock_version: selectedBedrockVersion,
         error_category: categorizeError(err),
-        error_message: sanitizeErrorMessage(err),
+        error_message: sanitizeErrorMessage(err, file.name),
         opt_audio_reencode: enableAudioReencode,
         size_tier: getSizeTier(file.size),
       });
@@ -610,6 +615,7 @@ export default function Converter({
     }
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     if (iconUrl) URL.revokeObjectURL(iconUrl);
+    try { sessionStorage.removeItem(LAST_CONVERSION_KEY); } catch { /* ignore */ }
     fileBufferRef.current = null;
     autoSwitchedFileRef.current = null;
     setFile(null);

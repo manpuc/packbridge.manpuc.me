@@ -44,6 +44,12 @@ const fr: Translation = {
 	statusConverted: "Converti",
 	statusSkipped: "Ignoré",
 	statusError: "Erreur",
+	statusWarning: "Avertissement",
+	reportSearchPlaceholder: "Filtrer par nom de fichier ou raison...",
+	reportFilterAll: "Tous",
+	reportNoMatches: "Aucun fichier correspondant trouvé",
+	reportPrev: "Précédent",
+	reportNext: "Suivant",
 
 	summaryTitle: "Conversion terminée !",
 	countTotal: "Total des fichiers",
@@ -75,15 +81,16 @@ const fr: Translation = {
 	error404Description: "Désolé, la page que vous recherchez n'existe pas ou a été déplacée.",
 
 	// Terms of Use
-	termsLastUpdated: "1 novembre 2026",
+	termsLastUpdatedLabel: "Dernière mise à jour",
+	termsLastUpdated: "27 novembre 2026",
 	termsSections: [
 		{
 			title: "1. Utilisation du service",
-			content: "Ce service est un outil de conversion de packs de ressources et de packs de textures Minecraft entre les éditions Java et Bedrock. Tout le traitement s'effectue localement dans le navigateur ; aucun fichier n'est envoyé à des serveurs externes.",
+			content: "Ce service permet de convertir des packs de ressources et de textures Minecraft entre les éditions Java et Bedrock, de migrer les versions au sein d'une même édition et d'utiliser des fonctionnalités bêta expérimentales (conversion GUI, ré-encodage audio FFmpeg, textures PBR/shaders et modèles 3D personnalisés). Tout le traitement s'effectue localement dans votre navigateur ; aucun pack n'est envoyé sur un serveur externe. Les métadonnées converties (manifest.json, pack.mcmeta, .jem) incluent une mention de crédit PackBridge.",
 		},
 		{
-			title: "2. Clause de non-responsabilité",
-			content: "L'utilisation de ce service et de son code source se fait à vos propres risques. La conversion parfaite n'est pas garantie. Le développeur ne saurait être tenu responsable des dommages ou problèmes découlant de l'utilisation de ce service.",
+			title: "2. Clause de non-responsabilité et droits des tiers",
+			content: "L'utilisation de ce service et de son code source se fait à vos propres risques. La conversion parfaite de tous les fichiers (y compris les fonctionnalités bêta) n'est pas garantie et des anomalies peuvent survenir. Le développeur ne saurait être tenu responsable des dommages ou pertes liés à l'utilisation du service.\nLors de la conversion, de l'utilisation ou de la redistribution de packs créés par des tiers, il vous appartient de vérifier et de respecter la licence et les conditions de l'auteur original.\nCECI N'EST PAS UN PRODUIT OFFICIEL MINECRAFT. NON APPROUVÉ PAR OU ASSOCIÉ À MOJANG OU MICROSOFT (NOT AN OFFICIAL MINECRAFT PRODUCT).",
 		},
 		{
 			title: "3. Droit d'auteur et licence",
@@ -91,7 +98,7 @@ const fr: Translation = {
 		},
 		{
 			title: "4. Actions interdites",
-			content: "Toute action interférant avec le fonctionnement du site ou enfreignant la loi est interdite.",
+			content: "Toute surcharge excessive du réseau, entrave au fonctionnement du site, atteinte aux droits de propriété intellectuelle de tiers ou infraction à la loi est interdite.",
 		},
 		{
 			title: "5. Modifications des conditions",
@@ -99,7 +106,7 @@ const fr: Translation = {
 		},
 		{
 			title: "6. Politique de confidentialité",
-			content: "• Traitement des données : Toutes les données sont traitées localement dans le navigateur. Le contenu n'est jamais envoyé ni collecté par des serveurs.\n• Analyse : Ce site utilise Umami pour comprendre les modèles d'utilisation. Les données collectées sont statistiques et anonymes.\n• Stockage local : Nous utilisons le localStorage du navigateur pour enregistrer vos préférences de langue et de thème.",
+			content: "• Traitement des données : Tous les packs convertis sont traités localement dans votre navigateur. Leur contenu n'est jamais envoyé ni collecté par des serveurs.\n• Bibliothèques externes et polices : L'activation de la bêta de ré-encodage audio télécharge les bibliothèques FFmpeg vérifiées par SHA-256 depuis des CDN externes (unpkg.com / cdn.jsdelivr.net), et le site charge des polices via Google Fonts. Vos fichiers de pack ne sont jamais transmis à ces fournisseurs, bien que les métadonnées HTTP standard (telles que l'adresse IP) soient traitées par leurs CDN.\n• Analyse : Ce site utilise Umami (sans cookies) pour recueillir des statistiques anonymes ainsi que des résumés d'erreurs techniques anonymisés (noms de fichiers, chemins, URL et données personnelles masqués).\n• Stockage du navigateur (localStorage / sessionStorage) : Utilisé pour enregistrer la langue, le thème, l'état de l'interface, les préférences bêta, un compteur local anonyme de conversions (sans UUID) à des fins statistiques, et les journaux temporaires pour le signalement de bugs (effacés lors de la réinitialisation ou à la fermeture de l'onglet).\n• Signalement de bugs : Uniquement lorsque vous soumettez volontairement un rapport de bug, vos saisies, votre e-mail de réponse facultatif (envoi direct Formspree uniquement, utilisé exclusivement pour vous répondre), les informations navigateur/OS et les journaux que vous choisissez de joindre sont transmis à Formspree (formspree.io) ou à GitHub Issues public (github.com). L'archive du pack elle-même n'est jamais envoyée.",
 		},
 	],
 	backToHome: "Retour à l'accueil",
@@ -111,7 +118,7 @@ const fr: Translation = {
 	enableAudioReencode: 'Ré-encoder les fichiers audio (FFmpeg, ~10 Mo)',
 	enablePbrConversion: 'Conversion PBR / Shaders (RTX ⇄ LabPBR)',
 	enableModelConversion: 'Conversion de modèles 3D (Geo ⇄ JSON/CEM)',
-	betaWarningAudioReencode: 'Télécharge ~10 Mo de bibliothèques FFmpeg lors de la première utilisation et augmente considérablement le temps de conversion et la charge CPU.',
+	betaWarningAudioReencode: 'Télécharge ~10 Mo de bibliothèques FFmpeg lors de la première utilisation et ré-encode les fichiers .wav/.mp3 ou .ogg non 44,1 kHz/non Vorbis tout en préservant les canaux mono/stéréo (augmente le temps de conversion et la charge CPU).',
 	betaWarningGuiConversion: 'Découpe dynamiquement icons.png et widgets.png, ce qui peut augmenter l\'utilisation de la mémoire sur les packs HD. En raison des différences structurelles entre Java et Bedrock, certains inventaires ou conteneurs peuvent ne pas s\'aligner parfaitement.',
 	betaWarningPbrConversion: 'Convertit les textures PBR Bedrock (_mer/_normal) et LabPBR Java (_s/_n). Allonge le temps de traitement et nécessite un mod de shaders (Iris/OptiFine) sur Java.',
 	betaWarningModelConversion: 'Convertit expérimentalement les modèles 3D et la géométrie d\'entités (.geo.json ⇄ .json / OptiFine CEM .jem). Certaines structures complexes peuvent présenter des décalages.',

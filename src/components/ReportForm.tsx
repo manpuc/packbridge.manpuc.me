@@ -37,9 +37,9 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
   const [email, setEmail] = useState('');
   const [gotcha, setGotcha] = useState(''); // Honeypot field
   const [include, setInclude] = useState<Record<AutoKey, boolean>>({
-    direction: true,
-    file: true,
-    log: true,
+    direction: false,
+    file: false,
+    log: false,
     env: true,
     version: true,
   });
@@ -63,6 +63,7 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
         if (fromConversion) {
           setKind('conversion');
           setShowAuto(true);
+          setInclude((prev) => ({ ...prev, direction: true, file: true, log: true }));
         }
       }
     } catch {
@@ -85,12 +86,11 @@ export default function ReportForm({ lang, backToHome }: { lang: Language; backT
       `### What happened\n${summary.trim()}`,
       expected.trim() && `### Expected / Actual\n${expected.trim()}`,
       steps.trim() && `### Steps to reproduce\n${steps.trim()}`,
-      email.trim() && `### Contact Email\n${email.trim()}`,
       env_.length && `### Environment\n${env_.join('\n')}`,
       ctx && include.log && log && `### Log\n\`\`\`\n${isTruncated ? log.slice(0, LOG_LIMIT) + '\n… (truncated)' : log}\n\`\`\``,
     ];
     return parts.filter(Boolean).join('\n\n');
-  }, [include, env, ctx, kindLabel, summary, expected, steps, email, log, isTruncated]);
+  }, [include, env, ctx, kindLabel, summary, expected, steps, log, isTruncated]);
 
   // Direct Submission via Formspree (No GitHub account needed)
   const submitDirect = async (e: React.FormEvent) => {

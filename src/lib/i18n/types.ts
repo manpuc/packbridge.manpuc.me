@@ -48,6 +48,12 @@ export interface Translation {
 	statusConverted: string;
 	statusSkipped: string;
 	statusError: string;
+	statusWarning: string;
+	reportSearchPlaceholder: string;
+	reportFilterAll: string;
+	reportNoMatches: string;
+	reportPrev: string;
+	reportNext: string;
 
 	summaryTitle: string;
 	countTotal: string;
@@ -80,6 +86,7 @@ export interface Translation {
 	error404Description: string;
 
 	// Terms of Use specific
+	termsLastUpdatedLabel: string;
 	termsLastUpdated: string;
 	termsSections: TermItem[];
 	backToHome: string;

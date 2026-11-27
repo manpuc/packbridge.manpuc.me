@@ -62,8 +62,8 @@ Triggered when the user clicks the "Convert" button.
 | `detection` | `"auto_detected"` \| `"manual_changed"` | `"auto_detected"` = user accepted automatic version detection; `"manual_changed"` = user manually adjusted version/edition. |
 | `opt_gui` | `boolean` | Whether beta GUI conversion is enabled. |
 | `opt_audio_reencode` | `boolean` | Whether high-load ffmpeg.wasm audio re-encoding is enabled. |
-| `user_type` | `"first_time"` \| `"repeat"` | Anonymous client-side determination via localStorage count (no UUID used). |
-| `usage_tier` | `"1st"` \| `"2-5th"` \| `"6-10th"` \| `"11th+"` | Cumulative conversions performed by this browser. Indicates retention. |
+| `user_type` | `"first_time"` \| `"repeat"` | Anonymous client-side determination via localStorage count of completed conversions (no UUID used). |
+| `usage_tier` | `"1st"` \| `"2-5th"` \| `"6-10th"` \| `"11th+"` | Cumulative conversion attempt tier based on completed conversions in this browser. Indicates retention. |
 | `ui_lang` | String (e.g., `"ja"`, `"en"`, `"zh"`, `"es"`) | Active UI language at conversion time. |
 
 ---

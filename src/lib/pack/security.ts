@@ -6,7 +6,6 @@ export const MAX_SAFE_FILE_COUNT = 25000;
 export const MAX_SAFE_UNCOMPRESSED_BYTES = 1024 * 1024 * 1024; // 1 GB safe limit to avoid tab OOM
 export const MAX_SAFE_COMPRESSION_RATIO = 100; // e.g. 50MB compressing to <500KB is suspicious
 export const LARGE_FILE_WARN_THRESHOLD_BYTES = 350 * 1024 * 1024; // 350 MB threshold to alert user
-export const MAX_INPUT_FILE_SIZE_BYTES = LARGE_FILE_WARN_THRESHOLD_BYTES;
 export const MAX_PRELOAD_BUFFER_BYTES = 100 * 1024 * 1024; // 100 MB cap for preloading input buffer
 
 export interface ZipSafetyError extends Error {
@@ -95,7 +94,7 @@ export function createZipSafetyFilter(tracker: ZipSafetyTracker) {
     // Protect against classic zip bombs with astronomical compression ratios
     const compressed = file.size ?? 0;
     if (compressed > 0 && uncompressed > 50 * 1024 * 1024 && uncompressed / compressed > MAX_SAFE_COMPRESSION_RATIO) {
-      throw createSafetyError(`Suspicious compression ratio detected in ${file.name} (possible Zip Bomb)`);
+      throw createSafetyError('Suspicious compression ratio detected (possible Zip Bomb)');
     }
 
     return true;

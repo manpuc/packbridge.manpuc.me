@@ -17,7 +17,6 @@ interface Props {
 const {
 	title,
 	description,
-	keywords: propKeywords,
 	lang = "ja",
 	faqItems,
 	breadcrumbs,
@@ -53,10 +52,6 @@ const localeMap: Record<string, string> = {
 	de: "de_DE",
 };
 
-const keywords =
-	propKeywords ||
-	"Minecraft, Resource Pack, Texture Pack, Converter, Java to Bedrock, Bedrock to Java, PackBridge, マイクラ, リソースパック, テクスチャパック, テクスチャ 変換, 変換, 統合版";
-
 const softwareAppStructuredData = {
 	"@context": "https://schema.org",
 	"@type": "SoftwareApplication",
@@ -82,7 +77,7 @@ const softwareAppStructuredData = {
 		"Resource Pack & Texture Pack Conversion",
 		"Local Processing",
 		"Fast Conversion",
-		"Up to 2 GB Packs",
+		"Up to 1 GB Packs",
 	],
 };
 

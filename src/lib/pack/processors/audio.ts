@@ -59,12 +59,12 @@ async function fetchVerifiedBlobURL(
         throw new Error(`HTTP ${res.status} fetching ${fileName}`);
       }
       const buf = await res.arrayBuffer();
-      // shortcut: SHA-256 verification runs when WebCrypto subtle is available (secure contexts).
-      if (globalThis.crypto?.subtle) {
-        const hash = await sha256Hex(buf);
-        if (hash !== FFMPEG_CORE_SHA256[fileName]) {
-          throw new Error(`FFmpeg integrity check failed for ${fileName}`);
-        }
+      if (!globalThis.crypto?.subtle) {
+        throw new Error('WebCrypto subtle is required for FFmpeg integrity check');
+      }
+      const hash = await sha256Hex(buf);
+      if (hash !== FFMPEG_CORE_SHA256[fileName]) {
+        throw new Error(`FFmpeg integrity check failed for ${fileName}`);
       }
       return URL.createObjectURL(new Blob([buf], { type: mimeType }));
     } catch (err) {

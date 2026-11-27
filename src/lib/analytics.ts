@@ -215,10 +215,17 @@ export function categorizeError(err: unknown): 'INVALID_ARCHIVE' | 'OUT_OF_MEMOR
   return 'UNKNOWN';
 }
 
+const KNOWN_FILE_EXT_PATTERN =
+  'zip|mcpack|png|tga|ogg|fsb|wav|mp3|json|mcmeta|lang|properties|jem|jpm|fsh|vsh|glsl|txt|js|mjs|wasm|rar|7z|jar';
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * エラーメッセージからファイル名・パス・URL・個人情報を除去し、先頭200文字に制限する
  */
-export function sanitizeErrorMessage(err: unknown): string {
+export function sanitizeErrorMessage(err: unknown, sensitiveFileName?: string): string {
   if (!err) return 'unknown';
 
   let raw = '';
@@ -237,20 +244,28 @@ export function sanitizeErrorMessage(err: unknown): string {
   }
 
   // 1行目のみを採用してスタックトレース混入を防止
-  const firstLine = raw.split(/\r?\n/)[0] ?? '';
+  let line = raw.split(/\r?\n/)[0] ?? '';
 
-  const sanitized = firstLine
+  if (sensitiveFileName && sensitiveFileName.trim()) {
+    line = line.replace(new RegExp(escapeRegExp(sensitiveFileName.trim()), 'gi'), '[file]');
+  }
+
+  const sanitized = line
     // URL (http/https/blob/file)
     .replace(/\b(?:https?|blob|file):\/\/[^\s)'"`<>]+/gi, '[url]')
     // メールアドレス
     .replace(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g, '[email]')
+    // クォートされた絶対パス（空白・非ASCII対応）
+    .replace(/(['"`])(?:[a-zA-Z]:[\\/]|\/)[^'"`\r\n]+\1/g, '$1[path]$1')
+    // クォートされた拡張子付きファイル名・相対パス（空白・非ASCII対応）
+    .replace(new RegExp(`(['"\`])[^'"\`\\r\\n]+\\.(?:${KNOWN_FILE_EXT_PATTERN})\\1`, 'gi'), '$1[file]$1')
     // Windowsドライブパス (C:\... or C:/...)
     .replace(/\b[a-zA-Z]:[\\/][^\s:'"`<>|]+/g, '[path]')
-    // スラッシュを含むファイルパス (/assets/... or foo/bar.png)
-    .replace(/(?:\/|[a-zA-Z0-9_.-]+\/)[a-zA-Z0-9_./\\-]+/g, '[path]')
-    // 拡張子付きの単独ファイル名
+    // スラッシュを含むファイルパス（非ASCII対応: /assets/... or 日本語/石.png）
+    .replace(/(?:\/|[^\s/\\:'"`<>|(),[\]]+\/)[^\s:'"`<>|(),[\]]+/g, '[path]')
+    // 拡張子付きの単独ファイル名（非ASCII先頭も検出、バージョン番号等は除外）
     .replace(
-      /\b[^\s/\\:'"`<>|]+\.(?:zip|mcpack|png|tga|ogg|fsb|wav|mp3|json|mcmeta|lang|properties|jem|jpm|fsh|vsh|glsl|txt|js|mjs|wasm|rar|7z|jar)\b/gi,
+      new RegExp(`(?<![a-zA-Z0-9_.-])[^\\s/\\\\:'"\`<>|()]+\\.(?:${KNOWN_FILE_EXT_PATTERN})(?![a-zA-Z0-9_])`, 'gi'),
       '[file]'
     )
     .replace(/\s+/g, ' ')

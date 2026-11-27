@@ -43,6 +43,12 @@ const zh: Translation = {
 	statusConverted: "已转换",
 	statusSkipped: "已跳过",
 	statusError: "错误",
+	statusWarning: "警告",
+	reportSearchPlaceholder: "按文件名或原因筛选...",
+	reportFilterAll: "全部",
+	reportNoMatches: "未找到匹配的文件",
+	reportPrev: "上一页",
+	reportNext: "下一页",
 
 	summaryTitle: "转换完成！",
 	countTotal: "总文件数",
@@ -74,15 +80,16 @@ const zh: Translation = {
 	error404Description: "抱歉，您访问的页面不存在或已被移动。",
 
 	// Terms of Use
-	termsLastUpdated: "2026年11月1日",
+	termsLastUpdatedLabel: "最后更新",
+	termsLastUpdated: "2026年11月27日",
 	termsSections: [
 		{
 			title: "1. 服务使用",
-			content: "本服务是用于在 Java 版和基岩版之间转换我的世界资源包与材质包的工具。所有处理均在浏览器中进行，文件不会上传。",
+			content: "本服务提供我的世界（Minecraft）资源包与材质包在 Java 版与基岩版之间的互转、同一版本体系内的版本迁移，以及实验性测试版功能（GUI 转换、FFmpeg 音频重编码、PBR 光影贴图转换、3D 自定义模型转换）。所有转换均在您的浏览器本地完成，资源包文件不会上传至外部服务器。转换后的元数据（manifest.json、pack.mcmeta、.jem）会附带 PackBridge 转换署名。",
 		},
 		{
-			title: "2. 免责声明 (责任自负)",
-			content: "使用本服务及其源代码的风险由您自行承担。开发者 (manpuc) 对由此产生的任何损害或问题不承担任何责任。",
+			title: "2. 免责声明与第三方权利 (责任自负)",
+			content: "使用本服务及其源代码的风险完全由您自行承担。本服务不保证所有文件（包括测试版功能）均能完美转换，转换后的数据可能存在显示异常或兼容性问题，开发者 (manpuc) 对由此产生的任何损失或问题概不负责。\n在转换、使用或重新分发第三方制作的资源包时，请务必自行确认并遵守原作者的许可协议与使用条款。\n本服务为非官方工具，并非官方 Minecraft 产品，未获得 Mojang AB 或 Microsoft 的批准或关联（NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.）。",
 		},
 		{
 			title: "3. 版权与许可",
@@ -90,7 +97,7 @@ const zh: Translation = {
 		},
 		{
 			title: "4. 禁止行为",
-			content: "禁止任何导致网络负荷过重、干扰运行或违反法律法规的行为。",
+			content: "禁止任何导致网络负荷过重、干扰网站运行、侵犯第三方知识产权或违反法律法规的行为。",
 		},
 		{
 			title: "5. 条款变更",
@@ -98,7 +105,7 @@ const zh: Translation = {
 		},
 		{
 			title: "6. 隐私政策",
-			content: "• 数据处理：通过本服务转换的所有数据均在用户的浏览器本地处理。文件内容绝不会发送到服务器或被服务器收集。\n• 网站分析：本网站使用 Umami 来了解使用情况。该工具仅收集统计数据，不会识别个人身份。\n• 本地存储：我们使用浏览器的 localStorage 来保存您的语言和主题（深色模式）首选项。",
+			content: "• 数据处理：通过本服务转换的所有资源包文件均在您的浏览器本地处理，压缩包及内部资产绝不会上传或被服务器收集。\n• 外部库与字体：启用“音频重新编码”测试功能并处理目标音频时，浏览器会从外部 CDN（unpkg.com / cdn.jsdelivr.net）加载经 SHA-256 校验的 FFmpeg 库；页面字体加载自 Google Fonts。您的资源包数据不会发送给上述服务商，但标准 HTTP 请求信息（如 IP 地址）将由对应 CDN 处理。\n• 网站分析：本网站使用无 Cookie 的 Umami 收集匿名统计数据，以及已脱敏处理（隐去文件名、路径、URL 和个人信息）的技术错误摘要，不会识别个人身份或收集包内容。\n• 浏览器存储（localStorage / sessionStorage）：用于保存语言、主题、界面状态与测试功能开关、不含 UUID 的匿名本地转换次数统计，以及用于问题反馈的临时日志和防刷冷却时间（重置或关闭标签页后清除）。\n• 问题报告：仅当您主动提交问题报告时，您填写的描述、可选回复邮箱（仅限 Formspree 直接提交且仅用于回复）、浏览器/系统信息以及您勾选附加的文件名与错误日志会发送至 Formspree（formspree.io）或公开的 GitHub Issues（github.com）。资源包文件本体绝不会上传。",
 		},
 	],
 	backToHome: "回到首页",
@@ -110,7 +117,7 @@ const zh: Translation = {
 	enableAudioReencode: '音频重新编码 (FFmpeg, ~10MB)',
 	enablePbrConversion: 'PBR / 光影贴图转换 (RTX ⇄ LabPBR)',
 	enableModelConversion: '3D 自定义模型转换 (Geo ⇄ JSON/CEM)',
-	betaWarningAudioReencode: '首次使用时将加载约 10MB 的 FFmpeg 库，大幅增加转换时间与 CPU 占用。',
+	betaWarningAudioReencode: '首次使用时加载约 10MB 的 FFmpeg 库，在保留单声道/立体声的同时将 .wav/.mp3 及非 44.1kHz/非 Vorbis 的 .ogg 重新编码（会增加转换时间与 CPU 占用）。',
 	betaWarningGuiConversion: '会动态裁剪 icons.png 和 widgets.png，高清包可能会消耗更多内存。此外由于 Java 版与基岩版 GUI 结构差异，部分物品栏或容器界面可能无法完全对齐。',
 	betaWarningPbrConversion: '在基岩版 RTX/Deferred PBR 贴图 (_mer/_normal) 与 Java 版 LabPBR 光影贴图 (_s/_n) 之间相互转换。逐像素重映射会增加处理时间，且 Java 版需配合 Iris/OptiFine 等光影模组使用。',
 	betaWarningModelConversion: '实验性转换 3D 方块/物品模型与实体几何 (.geo.json ⇄ .json / OptiFine CEM .jem)。复杂骨骼或动画可能会出现偏移。',

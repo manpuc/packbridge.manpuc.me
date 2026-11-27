@@ -271,6 +271,16 @@ describe('audio processor & fsb5', () => {
     expect(revokedUrls).toEqual(['blob:mock-1']);
   });
 
+  it('fails closed when globalThis.crypto.subtle is unavailable without loading FFmpeg', async () => {
+    vi.stubGlobal('crypto', {});
+
+    const res = await reencodeAudio(makeWav());
+    expect(res.status).toBe('failed');
+    expect(mocks.loadCount).toBe(0);
+    expect(mocks.execCalls).toHaveLength(0);
+    expect(revokedUrls).toEqual([]);
+  });
+
   it('integrates with convertBuffer: converts .wav/.mp3 to .ogg, skips duplicate .ogg, and surfaces failure warning', async () => {
     const manifest = strToU8(JSON.stringify({
       format_version: 2,

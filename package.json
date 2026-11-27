@@ -26,16 +26,13 @@
     "jszip": "^3.10.1",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "zod": "^4.6.7"
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@types/string-similarity": "^4.0.2",
     "minecraft-data": "^3.117.0",
-    "string-similarity": "^4.0.4",
     "typescript": "^6.0.3",
     "vitest": "^5.1.1"
   },

@@ -1690,14 +1690,19 @@ export async function convertBuffer(
           report.details.push({ filename: path, status: 'converted', outputPath: 'pack.mcmeta' });
         } else if (relativePath === 'pack_icon.png' || relativePath === 'pack.png' || relativePath.endsWith('/pack_icon.png') || relativePath.endsWith('/pack.png')) {
           const iconName = direction === 'java-to-bedrock' ? 'pack_icon.png' : 'pack.png';
-          const iconBytes = convertTgaToPng(content);
-          if (iconBytes) {
-            targetFiles[iconName] = [iconBytes, { level: getFileCompressionLevel(iconName) }];
-            report.convertedCount++;
-            report.details.push({ filename: path, status: 'converted', outputPath: iconName });
-          } else {
+          if (targetFiles[iconName]) {
             report.skippedCount++;
-            report.details.push({ filename: path, status: 'skipped', reason: 'Invalid pack icon format' });
+            report.details.push({ filename: path, status: 'skipped', reason: 'Pack icon already present' });
+          } else {
+            const iconBytes = convertTgaToPng(content);
+            if (iconBytes) {
+              targetFiles[iconName] = [iconBytes, { level: getFileCompressionLevel(iconName) }];
+              report.convertedCount++;
+              report.details.push({ filename: path, status: 'converted', outputPath: iconName });
+            } else {
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'Invalid pack icon format' });
+            }
           }
         } else {
           let reason = 'Unsupported or unmapped file';

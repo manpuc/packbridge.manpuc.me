@@ -55,17 +55,17 @@ export interface ConvertHubLocalizedCopy {
 const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   ja: {
     '26.3.0_to_1.26.60': [
-      'Java Edition 26.3（pack_format 95）と Bedrock Edition 26.6（内部 min_engine_version [1, 26, 60]）の新バージョニング体系に対応した最新世代ペアです。',
+      'Java Edition 26.3（pack_format 97）と Bedrock Edition 26.6（内部 min_engine_version [1, 26, 60]）の新バージョニング体系に対応した最新世代ペアです。',
       '1.21.4 以降で導入された items/ アイテムモデル定義および 1.20.2 以降の GUI スプライト分割構造を維持しつつ、pack.mcmeta / manifest.json を最新フォーマット番号で生成します。',
       '最新スナップショット・正式版で追加されたブロック・エンティティ・サウンドイベント定義の相互変換に対応しています。',
     ],
     '1.21.4_to_1.21.50': [
-      '「The Garden Awakens」アップデート世代である Java 1.21.4（pack_format 46）と Bedrock 1.21.5（min_engine_version [1, 21, 5]）のペアです。',
+      '「The Garden Awakens」アップデート世代である Java 1.21.4（pack_format 46）と Bedrock 1.21.5（min_engine_version [1, 21, 50]）のペアです。',
       'Java 1.21.4（pack_format 46）で刷新された assets/minecraft/items/ のアイテムモデル定義や、ペールガーデン（Pale Oak・Creaking・Resin 等）のテクスチャ・音源パスに対応しています。',
       '1.20.2+ 分割GUIスプライト変換により、textures/gui/sprites/hud/ の個別スプライトと統合版 textures/ui/ の相互変換も行えます。',
     ],
     '1.20.4_to_1.20.80': [
-      '配布リソースパックが非常に多い Java 1.20.3〜1.20.4（pack_format 22）と Bedrock 1.20.8（min_engine_version [1, 20, 8]）の安定版ペアです。',
+      '配布リソースパックが非常に多い Java 1.20.3〜1.20.4（pack_format 22）と Bedrock 1.20.8（min_engine_version [1, 20, 80]）の安定版ペアです。',
       'Java 1.20.2（pack_format 18）で GUI の icons.png / widgets.png が textures/gui/sprites/ に分割された直後の世代にあたるため、モダン GUI スプライト変換に標準対応しています。',
       '桜バイオーム・考古学・トライアルチャンバー先行要素を含む 1,600 件超のテクスチャと約 3,000 件の言語キーを変換します。',
     ],
@@ -77,17 +77,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   en: {
     '26.3.0_to_1.26.60': [
-      'Covers the latest Minecraft versioning era: Java Edition 26.3 (pack_format 95) and Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
-      'Generates valid pack.mcmeta (format 95) or manifest.json headers while preserving post-1.21.4 item model structures and split GUI sprites.',
+      'Covers the latest Minecraft versioning era: Java Edition 26.3 (pack_format 97) and Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
+      'Generates valid pack.mcmeta (format 97) or manifest.json headers while preserving post-1.21.4 item model structures and split GUI sprites.',
       'Includes full texture, sound event, and localization key mappings for the latest blocks and entities.',
     ],
     '1.21.4_to_1.21.50': [
-      'Designed for the "The Garden Awakens" release: Java 1.21.4 (pack_format 46) and Bedrock 1.21.5 (min_engine_version [1, 21, 5]).',
+      'Designed for the "The Garden Awakens" release: Java 1.21.4 (pack_format 46) and Bedrock 1.21.5 (min_engine_version [1, 21, 50]).',
       'Accounts for the new assets/minecraft/items/ item model definitions introduced in Java 1.21.4 (pack_format 46) as well as Pale Garden assets (Pale Oak, Creaking, Resin).',
       'Supports modern split HUD GUI sprites (textures/gui/sprites/hud/ ↔ textures/ui/) out of the box.',
     ],
     '1.20.4_to_1.20.80': [
-      'Pairs the widely used Java 1.20.3–1.20.4 (pack_format 22) release with Bedrock 1.20.8 (min_engine_version [1, 20, 8]).',
+      'Pairs the widely used Java 1.20.3–1.20.4 (pack_format 22) release with Bedrock 1.20.8 (min_engine_version [1, 20, 80]).',
       'Handles the post-1.20.2 GUI sprite sheet split (where icons.png and widgets.png moved to individual files under textures/gui/sprites/).',
       'Maps Cherry Grove, Archaeology, and 1.20 era textures, sounds, and language files directly in your browser.',
     ],
@@ -99,17 +99,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   zh: {
     '26.3.0_to_1.26.60': [
-      '面向最新版本号体系：Java 版 26.3（pack_format 95）与基岩版 26.6（内部 min_engine_version [1, 26, 60]）互转。',
-      '自动生成符合 pack_format 95 或 [1, 26, 60] 规范的元数据文件，兼容 1.21.4+ 的物品模型结构与新版拆分 GUI 精灵图。',
+      '面向最新版本号体系：Java 版 26.3（pack_format 97）与基岩版 26.6（内部 min_engine_version [1, 26, 60]）互转。',
+      '自动生成符合 pack_format 97 或 [1, 26, 60] 规范的元数据文件，兼容 1.21.4+ 的物品模型结构与新版拆分 GUI 精灵图。',
       '完整覆盖最新方块、实体纹理、音效事件与语言键映射。',
     ],
     '1.21.4_to_1.21.50': [
-      '对应“苍白之园（The Garden Awakens）”版本：Java 1.21.4（pack_format 46）与基岩版 1.21.5（min_engine_version [1, 21, 5]）。',
+      '对应“苍白之园（The Garden Awakens）”版本：Java 1.21.4（pack_format 46）与基岩版 1.21.5（min_engine_version [1, 21, 50]）。',
       '针对 Java 1.21.4（pack_format 46）引入的 assets/minecraft/items/ 新物品模型定义，以及苍白橡木、嘎枝（Creaking）、树脂等新增材质与音效进行精准映射。',
       '支持 1.20.2+ 拆分后的 GUI 精灵图目录（textures/gui/sprites/ ↔ textures/ui/）转换。',
     ],
     '1.20.4_to_1.20.80': [
-      '适配资源包存量极大的 Java 1.20.3–1.20.4（pack_format 22）与基岩版 1.20.8（min_engine_version [1, 20, 8]）。',
+      '适配资源包存量极大的 Java 1.20.3–1.20.4（pack_format 22）与基岩版 1.20.8（min_engine_version [1, 20, 80]）。',
       '处于 Java 1.20.2（pack_format 18）GUI 贴图拆分后的首个稳定世代，原生支持新版 GUI 精灵与传统路径转换。',
       '涵盖樱花树林、考古系统等 1.20 世代逾 1,600 项材质与约 3,000 条语言键值。',
     ],
@@ -121,17 +121,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   ko: {
     '26.3.0_to_1.26.60': [
-      '최신 버전 체계인 Java Edition 26.3(pack_format 95)과 Bedrock Edition 26.6(min_engine_version [1, 26, 60]) 간의 변환을 지원합니다.',
+      '최신 버전 체계인 Java Edition 26.3(pack_format 97)과 Bedrock Edition 26.6(min_engine_version [1, 26, 60]) 간의 변환을 지원합니다.',
       '1.21.4 이후의 아이템 모델 구조와 분할된 GUI 스프라이트를 유지하며 최신 pack.mcmeta 및 manifest.json을 생성합니다.',
       '최신 블록, 엔티티 텍스처, 사운드 이벤트 및 언어 키 매핑이 모두 포함되어 있습니다.',
     ],
     '1.21.4_to_1.21.50': [
-      'The Garden Awakens 업데이트 세대인 Java 1.21.4(pack_format 46)와 Bedrock 1.21.5(min_engine_version [1, 21, 5]) 전용 페어입니다.',
+      'The Garden Awakens 업데이트 세대인 Java 1.21.4(pack_format 46)와 Bedrock 1.21.5(min_engine_version [1, 21, 50]) 전용 페어입니다.',
       'Java 1.21.4(pack_format 46)에서 도입된 assets/minecraft/items/ 아이템 모델 정의와 창백한 정원(Pale Oak, Creaking, Resin) 에셋 경로를 정확히 매핑합니다.',
       '1.20.2+ 분할 GUI 스프라이트 변환을 통해 textures/gui/sprites/hud/와 베드락 textures/ui/ 간의 상호 변환을 처리합니다.',
     ],
     '1.20.4_to_1.20.80': [
-      '배포 리소스팩이 가장 많은 Java 1.20.3~1.20.4(pack_format 22)와 Bedrock 1.20.8(min_engine_version [1, 20, 8]) 안정화 버전 페어입니다.',
+      '배포 리소스팩이 가장 많은 Java 1.20.3~1.20.4(pack_format 22)와 Bedrock 1.20.8(min_engine_version [1, 20, 80]) 안정화 버전 페어입니다.',
       'Java 1.20.2(pack_format 18)의 GUI 스프라이트 분할 이후 구조를 지원하며 벚꽃 숲 및 고고학 업데이트 에셋을 매핑합니다.',
       '1,600개 이상의 텍스처와 약 3,000개의 언어 키를 브라우저 내에서 즉시 변환합니다.',
     ],
@@ -143,17 +143,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   tl: {
     '26.3.0_to_1.26.60': [
-      'Para sa pinakabagong sistema ng bersyon: Java Edition 26.3 (pack_format 95) at Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
-      'Gumagawa ng tamang pack.mcmeta (format 95) o manifest.json habang pinapanatili ang bagong item model structure at split GUI sprites.',
+      'Para sa pinakabagong sistema ng bersyon: Java Edition 26.3 (pack_format 97) at Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
+      'Gumagawa ng tamang pack.mcmeta (format 97) o manifest.json habang pinapanatili ang bagong item model structure at split GUI sprites.',
       'Kumpleto sa mapping ng mga pinakabagong texture, sound event, at language file.',
     ],
     '1.21.4_to_1.21.50': [
-      'Para sa "The Garden Awakens" update: Java 1.21.4 (pack_format 46) at Bedrock 1.21.5 (min_engine_version [1, 21, 5]).',
+      'Para sa "The Garden Awakens" update: Java 1.21.4 (pack_format 46) at Bedrock 1.21.5 (min_engine_version [1, 21, 50]).',
       'Sinusuportahan ang bagong assets/minecraft/items/ item model definition na ipinakilala sa Java 1.21.4 (pack_format 46) at mga asset ng Pale Garden.',
       'May suporta para sa split GUI sprites (textures/gui/sprites/ ↔ textures/ui/).',
     ],
     '1.20.4_to_1.20.80': [
-      'Para sa sikat na Java 1.20.3–1.20.4 (pack_format 22) at Bedrock 1.20.8 (min_engine_version [1, 20, 8]).',
+      'Para sa sikat na Java 1.20.3–1.20.4 (pack_format 22) at Bedrock 1.20.8 (min_engine_version [1, 20, 80]).',
       'Akma sa post-1.20.2 GUI sprite split at sumasaklaw sa Cherry Grove at Archaeology assets.',
       'Mahigit 1,600 textures at ~3,000 language keys ang nako-convert nang direkta sa browser.',
     ],
@@ -165,17 +165,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   es: {
     '26.3.0_to_1.26.60': [
-      'Compatible con la numeración más reciente: Java Edition 26.3 (pack_format 95) y Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
-      'Genera archivos pack.mcmeta (formato 95) o manifest.json válidos conservando los modelos de objetos modernos y sprites GUI divididos.',
+      'Compatible con la numeración más reciente: Java Edition 26.3 (pack_format 97) y Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
+      'Genera archivos pack.mcmeta (formato 97) o manifest.json válidos conservando los modelos de objetos modernos y sprites GUI divididos.',
       'Incluye asignaciones completas de texturas, sonidos e idiomas de la última versión.',
     ],
     '1.21.4_to_1.21.50': [
-      'Diseñado para la actualización "The Garden Awakens": Java 1.21.4 (pack_format 46) y Bedrock 1.21.5 (min_engine_version [1, 21, 5]).',
+      'Diseñado para la actualización "The Garden Awakens": Java 1.21.4 (pack_format 46) y Bedrock 1.21.5 (min_engine_version [1, 21, 50]).',
       'Contempla las nuevas definiciones de modelos de objetos en assets/minecraft/items/ introducidas en Java 1.21.4 (pack_format 46) y los recursos de Pale Garden.',
       'Admite conversión de sprites GUI modernos divididos (textures/gui/sprites/ ↔ textures/ui/).',
     ],
     '1.20.4_to_1.20.80': [
-      'Conecta la popular versión Java 1.20.3–1.20.4 (pack_format 22) con Bedrock 1.20.8 (min_engine_version [1, 20, 8]).',
+      'Conecta la popular versión Java 1.20.3–1.20.4 (pack_format 22) con Bedrock 1.20.8 (min_engine_version [1, 20, 80]).',
       'Compatible con la división de hojas de sprites GUI introducida en 1.20.2 (format 18).',
       'Convierte más de 1.600 texturas y cerca de 3.000 claves de idioma localmente en tu navegador.',
     ],
@@ -187,17 +187,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   fr: {
     '26.3.0_to_1.26.60': [
-      'Prend en charge la dernière génération : Java Edition 26.3 (pack_format 95) et Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
-      'Génère un pack.mcmeta (format 95) ou manifest.json conforme tout en préservant la structure des modèles 1.21.4+ et les sprites GUI découpés.',
+      'Prend en charge la dernière génération : Java Edition 26.3 (pack_format 97) et Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
+      'Génère un pack.mcmeta (format 97) ou manifest.json conforme tout en préservant la structure des modèles 1.21.4+ et les sprites GUI découpés.',
       'Couvre l’ensemble des textures, événements sonores et clés de langue récents.',
     ],
     '1.21.4_to_1.21.50': [
-      'Conçu pour la mise à jour « The Garden Awakens » : Java 1.21.4 (pack_format 46) et Bedrock 1.21.5 (min_engine_version [1, 21, 5]).',
+      'Conçu pour la mise à jour « The Garden Awakens » : Java 1.21.4 (pack_format 46) et Bedrock 1.21.5 (min_engine_version [1, 21, 50]).',
       'Prend en charge les nouvelles définitions de modèles d’objets dans assets/minecraft/items/ introduites en Java 1.21.4 (pack_format 46) ainsi que les ressources du Jardin pâle.',
       'Compatible avec la conversion des sprites GUI modernes (textures/gui/sprites/ ↔ textures/ui/).',
     ],
     '1.20.4_to_1.20.80': [
-      'Associe la très répandue version Java 1.20.3–1.20.4 (pack_format 22) à Bedrock 1.20.8 (min_engine_version [1, 20, 8]).',
+      'Associe la très répandue version Java 1.20.3–1.20.4 (pack_format 22) à Bedrock 1.20.8 (min_engine_version [1, 20, 80]).',
       'Gère la séparation des feuilles de sprites GUI introduite depuis la 1.20.2 (format 18).',
       'Convertit plus de 1 600 textures et environ 3 000 clés de traduction directement dans le navigateur.',
     ],
@@ -209,17 +209,17 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
   },
   de: {
     '26.3.0_to_1.26.60': [
-      'Unterstützt die neueste Versionsgeneration: Java Edition 26.3 (pack_format 95) und Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
-      'Erzeugt passende pack.mcmeta (Format 95) bzw. manifest.json-Dateien unter Beibehaltung moderner Item-Modelle und aufgeteilter GUI-Sprites.',
+      'Unterstützt die neueste Versionsgeneration: Java Edition 26.3 (pack_format 97) und Bedrock Edition 26.6 (min_engine_version [1, 26, 60]).',
+      'Erzeugt passende pack.mcmeta (Format 97) bzw. manifest.json-Dateien unter Beibehaltung moderner Item-Modelle und aufgeteilter GUI-Sprites.',
       'Umfasst sämtliche aktuellen Textur-, Sound- und Sprachschlüssel-Zuordnungen.',
     ],
     '1.21.4_to_1.21.50': [
-      'Abgestimmt auf das Update „The Garden Awakens“: Java 1.21.4 (pack_format 46) und Bedrock 1.21.5 (min_engine_version [1, 21, 5]).',
+      'Abgestimmt auf das Update „The Garden Awakens“: Java 1.21.4 (pack_format 46) und Bedrock 1.21.5 (min_engine_version [1, 21, 50]).',
       'Berücksichtigt die in Java 1.21.4 (pack_format 46) eingeführten Item-Modelldefinitionen unter assets/minecraft/items/ sowie alle Blassgarten-Assets.',
       'Unterstützt aufgeteilte GUI-Sprites (textures/gui/sprites/ ↔ textures/ui/).',
     ],
     '1.20.4_to_1.20.80': [
-      'Verbindet die weit verbreitete Version Java 1.20.3–1.20.4 (pack_format 22) mit Bedrock 1.20.8 (min_engine_version [1, 20, 8]).',
+      'Verbindet die weit verbreitete Version Java 1.20.3–1.20.4 (pack_format 22) mit Bedrock 1.20.8 (min_engine_version [1, 20, 80]).',
       'Kompatibel mit der seit Java 1.20.2 (Format 18) eingeführten Aufteilung der GUI-Sprite-Sheets.',
       'Konvertiert über 1.600 Texturen und rund 3.000 Sprachschlüssel lokal im Browser.',
     ],

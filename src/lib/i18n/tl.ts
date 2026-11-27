@@ -44,6 +44,12 @@ const tl: Translation = {
 	statusConverted: "Na-convert",
 	statusSkipped: "Nilaktawan",
 	statusError: "Error",
+	statusWarning: "Babala",
+	reportSearchPlaceholder: "I-filter ayon sa filename o dahilan...",
+	reportFilterAll: "Lahat",
+	reportNoMatches: "Walang nahanap na katugmang file",
+	reportPrev: "Nakaraan",
+	reportNext: "Susunod",
 
 	summaryTitle: "Kumpleto na ang Conversion!",
 	countTotal: "Kabuuang mga File",
@@ -75,15 +81,16 @@ const tl: Translation = {
 	error404Description: "Paumanhin, ang pahinang hinahanap mo ay hindi umiiral o nailipat na.",
 
 	// Terms of Use
-	termsLastUpdated: "Nobyembre 1, 2026",
+	termsLastUpdatedLabel: "Huling Na-update",
+	termsLastUpdated: "Nobyembre 27, 2026",
 	termsSections: [
 		{
 			title: "1. Paggamit ng Serbisyo",
-			content: "Ang serbisyong ito ay isang tool para sa conversion ng Minecraft resource packs at texture packs sa pagitan ng Java at Bedrock. Ang lahat ng processing ay ginagawa sa browser; walang files na ina-upload.",
+			content: "Ang serbisyong ito ay nagko-convert ng Minecraft resource packs at texture packs sa pagitan ng Java at Bedrock editions, nag-a-update ng bersyon sa loob ng parehong edisyon, at nag-aalok ng mga eksperimental na beta feature (GUI conversion, FFmpeg audio re-encoding, PBR shader maps, at 3D custom models). Ang lahat ng conversion ay ginagawa nang lokal sa browser; walang pack files na ina-upload sa server. Ang na-convert na metadata (manifest.json, pack.mcmeta, .jem) ay may kasamang PackBridge attribution credit.",
 		},
 		{
-			title: "2. Disclaimer (Sariling Pananagutan)",
-			content: "Ang paggamit ng serbisyong ito ay nasa sarili ninyong panganib. Ang developer (manpuc) ay hindi mananagot sa anumang pinsala o problema.",
+			title: "2. Disclaimer at Karapatan ng Third-Party",
+			content: "Ang paggamit ng serbisyong ito at ng source code nito ay nasa sarili ninyong panganib. Hindi garantisado ang perpektong conversion ng lahat ng file (kabilang ang mga beta feature), at maaaring magkaroon ng isyu sa na-convert na data. Ang developer (manpuc) ay hindi mananagot sa anumang pinsala o problema.\nKapag nagko-convert, gumagamit, o muling namamahagi ng third-party resource packs, ikaw lamang ang may responsibilidad na suriin at sundin ang lisensya at tuntunin ng orihinal na gumawa.\nHINDI ITO OPISYAL NA PRODUKTO NG MINECRAFT (NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.).",
 		},
 		{
 			title: "3. Copyright at Lisensya",
@@ -91,7 +98,7 @@ const tl: Translation = {
 		},
 		{
 			title: "4. Mga Pinagbabawal",
-			content: "Ipinagbabawal ang anumang gawain na makakasira sa operasyon ng site o labag sa batas.",
+			content: "Ipinagbabawal ang anumang gawain na nagdudulot ng labis na load sa network, nakakasira sa operasyon ng site, lumalabag sa intellectual property ng iba, o labag sa batas.",
 		},
 		{
 			title: "5. Mga Pagbabago sa Kasunduan",
@@ -99,7 +106,7 @@ const tl: Translation = {
 		},
 		{
 			title: "6. Privacy Policy",
-			content: "• Pagproseso ng Data: Ang lahat ng data na kino-convert gamit ang serbisyong ito ay pinoproseso nang lokal sa browser ng user. Ang mga content ay hindi kailanman ipinapadala o kinokolekta ng mga server.\n• Analytics: Ang site na ito ay gumagamit ng Umami upang maunawaan ang paggamit ng site. Ito ay nangongolekta ng statistical data at hindi tumutukoy sa mga indibidwal na user.\n• Local Storage: Ginagamit namin ang browser localStorage upang i-save ang iyong mga kagustuhan sa wika at theme (dark mode).",
+			content: "• Pagproseso ng Data: Ang lahat ng pack file na kino-convert ay pinoproseso nang lokal sa iyong browser at hindi kailanman ina-upload o kinokolekta ng mga server.\n• Mga External Library at Font: Kapag ginamit ang Audio Re-encode beta, kumukuha ito ng SHA-256-verified na FFmpeg libraries mula sa external CDNs (unpkg.com / cdn.jsdelivr.net), at gumagamit ng Google Fonts para sa display. Walang pack data na ipinapadala sa kanila, ngunit ang karaniwang HTTP request metadata (tulad ng IP address) ay pinoproseso ng kanilang CDN.\n• Analytics: Gumagamit ang site ng cookie-less Umami para sa anonymous na istatistika at na-mask na buod ng teknikal na error (walang filename, path, URL, o personal na impormasyon).\n• Browser Storage (localStorage / sessionStorage): Ginagamit upang i-save ang wika, theme, UI state, beta settings, anonymous na bilang ng conversion (walang UUID), at pansamantalang log/cooldown para sa bug report (binubura sa pag-reset o pagsara ng tab).\n• Pag-uulat ng Bug: Kapag kusang-loob kang nagpadala ng bug report, ang iyong isinulat, opsyonal na email para sa tugon (sa Formspree lang at para lamang sa pagsagot), impormasyon ng browser/OS, at piniling filename/log ay ipinapadala sa Formspree (formspree.io) o pampublikong GitHub Issues (github.com). Ang mismong pack file ay hindi kailanman ina-upload.",
 		},
 	],
 	backToHome: "Bumalik sa Home",
@@ -111,7 +118,7 @@ const tl: Translation = {
 	enableAudioReencode: 'I-re-encode ang Audio (FFmpeg, ~10MB)',
 	enablePbrConversion: 'PBR / Shader Map Conversion (RTX ⇄ LabPBR)',
 	enableModelConversion: '3D Custom Model Conversion (Geo ⇄ JSON/CEM)',
-	betaWarningAudioReencode: 'Magda-download ng ~10MB na FFmpeg library sa unang paggamit at magpapataas sa oras ng conversion at CPU load.',
+	betaWarningAudioReencode: 'Magda-download ng ~10MB na FFmpeg library sa unang paggamit at ire-re-encode ang .wav/.mp3 o non-44.1kHz/non-Vorbis .ogg habang pinapanatili ang mono/stereo channels (nagpapataas ng oras ng conversion at CPU load).',
 	betaWarningGuiConversion: 'Dinamikong pinuputol ang icons.png at widgets.png, na maaaring magpataas ng paggamit ng memory sa mga HD pack. Dahil sa pagkakaiba ng istraktura sa pagitan ng Java at Bedrock UI, maaaring hindi perpektong mag-align ang ilang screen.',
 	betaWarningPbrConversion: 'Kino-convert ang Bedrock RTX/Deferred PBR maps (_mer/_normal) at Java LabPBR shader maps (_s/_n). Maaaring magpatagal sa pagproseso at nangangailangan ng shader mod (Iris/OptiFine) sa Java.',
 	betaWarningModelConversion: 'Eksperimental na kino-convert ang mga 3D model at entity geometry (.geo.json ⇄ .json / OptiFine CEM .jem). Maaaring hindi perpektong mag-align ang ilang kumplikadong modelo.',

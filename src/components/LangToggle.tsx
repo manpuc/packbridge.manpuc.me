@@ -15,9 +15,6 @@ export default function LangToggle() {
     const detectedLang = SUPPORTED_LANGUAGES.includes(pathLang) ? pathLang : 'ja';
     setCurrentLang(detectedLang);
 
-    // Sync localStorage with current URL language
-    localStorage.setItem('lang', detectedLang);
-
     // Close dropdown on click outside
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -44,8 +41,10 @@ export default function LangToggle() {
     const newPath = `/${lang}${basePath}`;
 
     // Save choice, dismiss suggestion prompt, and redirect
-    localStorage.setItem('lang', lang);
-    localStorage.setItem('lang_suggestion_dismissed', 'true');
+    try {
+      localStorage.setItem('lang', lang);
+      localStorage.setItem('lang_suggestion_dismissed', 'true');
+    } catch { /* ignore */ }
     window.location.href = window.location.origin + newPath;
   };
 

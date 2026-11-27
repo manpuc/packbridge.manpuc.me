@@ -231,7 +231,7 @@ export function ConversionReport({
                         type="text"
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        placeholder="ファイル名・理由で絞り込み..."
+                        placeholder={t.reportSearchPlaceholder}
                         className="report-search-input"
                       />
                     </div>
@@ -243,7 +243,7 @@ export function ConversionReport({
                           className={`report-filter-btn ${filterType === 'all' ? 'active' : ''}`}
                           onClick={() => handleFilterChange('all')}
                         >
-                          すべて ({nonConvertedDetails.length})
+                          {t.reportFilterAll} ({nonConvertedDetails.length})
                         </button>
                         {report.errorCount > 0 && (
                           <button
@@ -251,7 +251,7 @@ export function ConversionReport({
                             className={`report-filter-btn ${filterType === 'error' ? 'active' : ''}`}
                             onClick={() => handleFilterChange('error')}
                           >
-                            エラー ({report.errorCount})
+                            {t.statusError} ({report.errorCount})
                           </button>
                         )}
                         {report.skippedCount > 0 && (
@@ -260,7 +260,7 @@ export function ConversionReport({
                             className={`report-filter-btn ${filterType === 'skipped' ? 'active' : ''}`}
                             onClick={() => handleFilterChange('skipped')}
                           >
-                            スキップ ({report.skippedCount})
+                            {t.statusSkipped} ({report.skippedCount})
                           </button>
                         )}
                         {warningCount > 0 && (
@@ -269,7 +269,7 @@ export function ConversionReport({
                             className={`report-filter-btn ${filterType === 'warning' ? 'active' : ''}`}
                             onClick={() => handleFilterChange('warning')}
                           >
-                            警告 ({warningCount})
+                            {t.statusWarning} ({warningCount})
                           </button>
                         )}
                       </div>
@@ -288,7 +288,7 @@ export function ConversionReport({
 
                   {filteredDetails.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-                      該当ファイルは見つかりませんでした
+                      {t.reportNoMatches}
                     </div>
                   ) : (
                     <div
@@ -324,7 +324,7 @@ export function ConversionReport({
                         disabled={currentPage <= 1}
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                       >
-                        <ChevronLeft size={14} /> 前へ
+                        <ChevronLeft size={14} /> {t.reportPrev}
                       </button>
                       <span>
                         {currentPage} / {totalPages}
@@ -335,7 +335,7 @@ export function ConversionReport({
                         disabled={currentPage >= totalPages}
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       >
-                        次へ <ChevronRight size={14} />
+                        {t.reportNext} <ChevronRight size={14} />
                       </button>
                     </div>
                   )}

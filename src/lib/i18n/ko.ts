@@ -44,6 +44,12 @@ const ko: Translation = {
 	statusConverted: "변환됨",
 	statusSkipped: "건너뜀",
 	statusError: "오류",
+	statusWarning: "경고",
+	reportSearchPlaceholder: "파일 이름 또는 사유로 검색...",
+	reportFilterAll: "전체",
+	reportNoMatches: "일치하는 파일이 없습니다",
+	reportPrev: "이전",
+	reportNext: "다음",
 
 	summaryTitle: "변환 완료!",
 	countTotal: "총 파일 수",
@@ -75,15 +81,16 @@ const ko: Translation = {
 	error404Description: "죄송합니다. 찾으시는 페이지가 존재하지 않거나 이동되었을 수 있습니다.",
 
 	// Terms of Use
-	termsLastUpdated: "2026년 11월 1일",
+	termsLastUpdatedLabel: "최종 업데이트",
+	termsLastUpdated: "2026년 11월 27일",
 	termsSections: [
 		{
 			title: "1. 서비스 이용",
-			content: "마인크래프트 리소스 팩 및 텍스처 팩을 자바 에디션과 베드락 에디션 간에 변환하는 도구입니다. 모든 처리는 브라우저 내에서 이루어지며 파일은 서버로 전송되지 않습니다.",
+			content: "본 서비스는 마인크래프트 리소스 팩 및 텍스처 팩을 자바 에디션과 베드락 에디션 간에 변환하고, 동일 에디션 내 버전 변환 및 실험적 베타 기능(GUI 변환, FFmpeg 오디오 재인코딩, PBR 셰이더 맵, 3D 커스텀 모델)을 제공합니다. 모든 변환 처리는 브라우저 내에서 이루어지며 팩 파일은 외부 서버로 전송되지 않습니다. 변환된 메타데이터(manifest.json, pack.mcmeta, .jem)에는 PackBridge 변환 크레딧이 표기됩니다.",
 		},
 		{
-			title: "2. 면책 사항 (자기 책임)",
-			content: "본 서비스 및 소스 코드 이용에 따른 모든 결과는 사용자 본인의 책임입니다. 개발자(manpuc)는 어떠한 손해나 문제에 대해서도 책임을 지지 않습니다.",
+			title: "2. 면책 사항 및 제3자 권리 (자기 책임)",
+			content: "본 서비스 및 소스 코드 이용에 따른 모든 결과는 사용자 본인의 책임입니다. 베타 기능을 포함해 모든 파일의 완벽한 변환을 보장하지 않으며, 변환된 데이터에 표시 오류나 문제가 발생할 수 있습니다. 개발자(manpuc)는 어떠한 손해나 문제에 대해서도 책임을 지지 않습니다.\n제3자가 제작한 리소스 팩을 변환·사용·재배포할 경우, 원작자의 라이선스 및 이용약관을 확인하고 준수할 책임은 전적으로 사용자에게 있습니다.\n본 서비스는 비공식 도구이며 Mojang AB 또는 Microsoft의 승인이나 제휴를 받은 공식 마인크래프트 제품이 아닙니다(NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.).",
 		},
 		{
 			title: "3. 저작권 및 라이선스",
@@ -91,7 +98,7 @@ const ko: Translation = {
 		},
 		{
 			title: "4. 금지 사항",
-			content: "네트워크 과부하 유발, 사이트 운영 방해 및 법령 위반 행위를 금지합니다.",
+			content: "네트워크 과부하 유발, 사이트 운영 방해, 제3자의 지식재산권 침해 및 법령 위반 행위를 금지합니다.",
 		},
 		{
 			title: "5. 약관의 변경",
@@ -99,7 +106,7 @@ const ko: Translation = {
 		},
 		{
 			title: "6. 개인정보 처리방침",
-			content: "• 데이터 처리: 이 서비스를 통해 변환되는 모든 데이터는 사용자의 브라우저 내에서 로컬로 처리됩니다. 파일 내용은 서버로 전송되거나 수집되지 않습니다。\n• 분석: 이 사이트는 이용 현황 파악을 위해 Umami를 사용합니다. 이는 통계적 정보를 수집하며 개인을 식별하는 정보는 수집하지 않습니다。\n• 로컬 스토리지: 언어 설정 및 테마(다크 모드) 저장을 위해 브라우저의 localStorage를 사용합니다.",
+			content: "• 데이터 처리: 본 서비스로 변환되는 모든 팩 파일은 사용자의 브라우저 내에서 로컬로 처리됩니다. 파일 본체나 내부 에셋은 외부 서버로 전송되거나 수집되지 않습니다.\n• 외부 라이브러리 및 글꼴: 베타 기능인 오디오 재인코딩 사용 시 외부 CDN(unpkg.com / cdn.jsdelivr.net)에서 SHA-256 무결성 검증을 거쳐 FFmpeg 라이브러리를 불러오며, 화면 표시를 위해 Google Fonts를 사용합니다. 이 과정에서 사용자의 팩 데이터는 전송되지 않으나 표준 HTTP 요청 정보(IP 주소 등)가 해당 제공자에게 전달됩니다.\n• 분석: 쿠키를 사용하지 않는 Umami를 통해 익명 통계 및 파일명·경로·URL·개인정보가 마스킹된 기술 오류 요약만을 수집하며 개인을 식별하지 않습니다.\n• 브라우저 스토리지(localStorage / sessionStorage): 언어·테마·UI 상태·베타 설정 저장, 개인 식별자 없는 익명 변환 횟수 카운트(통계용), 버그 신고 보조용 임시 로그 및 재전송 대기시간(초기화 또는 탭 종료 시 삭제) 저장에 사용됩니다.\n• 버그 신고: 사용자가 직접 버그 신고를 제출한 경우에만 입력 내용, 선택 입력한 회신용 이메일(Formspree 직접 전송 시에만 사용, 회신 목적 한정), 브라우저/OS 정보 및 사용자가 첨부 선택한 파일명·오류 로그가 Formspree(formspree.io) 또는 공개 GitHub Issues(github.com)로 전송됩니다. 팩 파일 본체는 업로드되지 않습니다.",
 		},
 	],
 	backToHome: "홈으로 돌아가기",
@@ -111,7 +118,7 @@ const ko: Translation = {
 	enableAudioReencode: '오디오 재인코딩 (FFmpeg, ~10MB)',
 	enablePbrConversion: 'PBR / 셰이더 맵 변환 (RTX ⇄ LabPBR)',
 	enableModelConversion: '3D 커스텀 모델 변환 (Geo ⇄ JSON/CEM)',
-	betaWarningAudioReencode: '최초 실행 시 약 10MB의 FFmpeg 라이브러리를 로드하여 변환 시간과 CPU 부하가 크게 증가합니다.',
+	betaWarningAudioReencode: '최초 실행 시 약 10MB의 FFmpeg 라이브러리를 로드하여 .wav/.mp3 및 비 44.1kHz/비 Vorbis .ogg를 모노/스테레오 채널을 유지한 채 재인코딩합니다(변환 시간과 CPU 부하 증가).',
 	betaWarningGuiConversion: 'icons.png와 widgets.png를 동적으로 잘라내므로 고해상도 팩에서 메모리 사용량이 늘어날 수 있습니다. 또한 Java와 Bedrock 간의 GUI 구조 차이로 인해 일부 보관함 또는 컨테이너 화면이 완벽하게 맞지 않을 수 있습니다.',
 	betaWarningPbrConversion: 'Bedrock RTX/Deferred PBR 맵(_mer/_normal)과 Java LabPBR 셰이더 맵(_s/_n)을 상호 변환합니다. 픽셀 단위 연산으로 처리 시간이 늘어나며 Java에서는 Iris/OptiFine 등의 모드가 필요합니다.',
 	betaWarningModelConversion: '3D 블록/아이템 모델 및 엔티티 지오메트리(.geo.json ⇄ .json / OptiFine CEM .jem)를 실험적으로 변환합니다. 복잡한 본 구조는 일부 어긋날 수 있습니다.',

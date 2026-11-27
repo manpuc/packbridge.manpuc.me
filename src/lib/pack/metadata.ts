@@ -53,11 +53,13 @@ export function generateManifestContent(
   capabilities?: string[]
 ): string {
   const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
-  const credit = "\nConverted by PackBridge (packbridge.manpuc.me)";
+  const finalDesc = cleanDesc.includes("packbridge.manpuc.me")
+    ? cleanDesc
+    : `${cleanDesc}\nConverted by PackBridge (packbridge.manpuc.me)`;
   const manifest = {
     format_version: 2,
     header: {
-      description: cleanDesc + credit,
+      description: finalDesc,
       name: String(name || "Pack"),
       uuid: headerUuid,
       version: [1, 0, 0],
@@ -65,7 +67,7 @@ export function generateManifestContent(
     },
     modules: [
       {
-        description: cleanDesc + credit,
+        description: finalDesc,
         type: "resources",
         uuid: moduleUuid,
         version: [1, 0, 0]
@@ -78,7 +80,9 @@ export function generateManifestContent(
 
 export function generateMcmetaContent(description: unknown, packFormat: number): string {
   const cleanDesc = normalizeDescriptionText(description) || "Converted by PackBridge";
-  const finalDescription = `${cleanDesc}\nConverted with PackBridge (packbridge.manpuc.me)`;
+  const finalDescription = cleanDesc.includes("packbridge.manpuc.me")
+    ? cleanDesc
+    : `${cleanDesc}\nConverted with PackBridge (packbridge.manpuc.me)`;
 
   const packObj: any = {
     pack_format: packFormat,
