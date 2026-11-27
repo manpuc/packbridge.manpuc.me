@@ -75,7 +75,6 @@ const ko: Translation = {
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "이용약관",
-	keywords: "마인크래프트, 리소스 팩, 텍스처 팩, 텍스처, 변환기, 리소스팩 변환, 텍스처팩 변환, 자바, 베드락, PackBridge, 포팅",
 	disclaimerPerfect: "*주의: 모든 파일의 완벽한 변환을 보장하지 않습니다. 변환 후 수동 수정이 필요할 수 있습니다.",
 	error404Title: "페이지를 찾을 수 없습니다",
 	error404Description: "죄송합니다. 찾으시는 페이지가 존재하지 않거나 이동되었을 수 있습니다.",

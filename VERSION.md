@@ -1,10 +1,16 @@
 # Version History
 
 ## v1.6.9
-* **4機能のベータ卒業とベータ設定の刷新**:
-  * **標準機能への昇格**: 完成度と安全性を監査のうえ、「TGA画像のPNG変換」「言語・翻訳ファイル変換」「アニメーション変換」「サウンド定義変換」をベータ欄から卒業させて常時有効化。不要になったオプションフラグ・UIトグル・無効化分岐・未使用 i18n キーおよびデッドコードを一括整理。
-  * **ベータ初期値と永続化の修正**: 残るベータ5機能の初期値を「1.20.2+ 分割GUIスプライト変換のみ初期ON、GUI変換 / 音声再エンコード / PBR / 3Dカスタムモデルは初期OFF」に整理。マウント時の `localStorage` 一括書き込みを廃止してトグル操作時のみ保存する方式へ変更し、キー接頭辞を `pb_beta_v2_` へ更新して既存ブラウザでの旧初期値固定を解消。
-  * **アナリティクスの整合性改善**: `conversion_start` から廃止済みの `opt_animation` を削除し、`analyzeReportSafety` の `has_animations` が `.mcmeta` / `flipbook_textures.json` を正しく検出するよう修正（`ANALYTICS.md` も同期更新）。
+* **5機能のベータ卒業とベータ設定の刷新**:
+  * **標準機能への昇格**: 完成度と安全性を監査のうえ、「TGA画像のPNG変換」「言語・翻訳ファイル変換」「アニメーション変換」「サウンド定義変換」「1.20.2+ 分割GUIスプライト変換」をベータ欄から卒業させて常時有効化。不要になったオプションフラグ・UIトグル・無効化分岐・未使用 i18n キーおよびデッドコードを一括整理。
+  * **ベータ初期値と永続化の修正**: 残るベータ4機能（GUI変換 / 音声再エンコード / PBR / 3Dカスタムモデル）をすべて初期OFFに整理。マウント時の `localStorage` 一括書き込みを廃止してトグル操作時のみ保存する方式へ変更し、キー接頭辞を `pb_beta_v2_` へ更新して既存ブラウザでの旧初期値固定を解消。
+  * **アナリティクスの整合性改善**: `conversion_start` から廃止済みの `opt_animation` を削除し、`analyzeReportSafety` の `has_animations` が `.mcmeta` / `flipbook_textures.json` を正しく検出するよう修正（`ANALYTICS.md` も同期更新）。変換完了時のみローカル変換回数を加算し、`sanitizeErrorMessage` のファイル名・パス・非ASCIIマスクを強化。
+* **音声再エンコード・PBR・3Dカスタムモデルの強化と安全性改善**:
+  * **FFmpeg 音声再エンコードの刷新**: CDN 取得時の SHA-256 整合性検証（`crypto.subtle` 不在時は事前フェイルクローズ）、`.wav` / `.mp3` / `.ogg`（Opus 含む）対応、モノラル/ステレオ維持、クラッシュ上限ガードを追加し、変換レポートの警告フィルタに対応。
+  * **PBR（RTX/Deferred ⇄ LabPBR）と 3Dモデルの刷新**: `texture_set.json`（別名 `color`・均一値・MERS サブサーフェス・高さマップ Sobel 法線変換）と、Java Block/Item JSON・OptiFine CEM（`.jem`/`.jpm`）⇄ Bedrock `.geo.json` の双方向変換（90°回転ベイク含む）を強化。
+* **利用規約・SEO・安定性の整備**:
+  * **利用規約・プライバシーポリシーの更新**: 外部 CDN・Google Fonts・`localStorage`/`sessionStorage`・マスク済みエラー計測・Formspree 送信の記載を最新仕様へ同期。
+  * **SEO メタデータの整合**: `1.16.5 ⇄ 1.16.2` ページの `min_engine_version` 表記を実出力 `[1, 16, 0]` に統一し、サブページの `hreflang="x-default"` を英語版同ページへ修正。
 * **アニメーション・ダイヤルアイテム変換の強化**:
   * **フリップブック / `.mcmeta` の高精度変換**: `blend_frames`、可変フレーム時間の GCD 展開、配列型 `atlas_tile`（`respawn_anchor` / `sculk` / `firefly_bush` 等）、流水・溶岩の `replicate: 2`、コンジット風の `height` 指定、8×256 ストリップ補正、非ブロック `.mcmeta` 除外、Java 1.8 `fire_layer_0` に対応。
   * **コンパス・時計の双方向変換**: コンパス・ロードストーンコンパス・リカバリーコンパス・時計の個別フレーム ⇄ アトラス（`compass_atlas` / `watch_atlas` 等）の双方向変換および Java 1.8 ⇄ 1.9+ 移行を追加。

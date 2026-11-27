@@ -74,7 +74,6 @@ const zh: Translation = {
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "服务条款",
-	keywords: "我的世界, 资源包, 材质包, 材质包转换, 资源包转换, 转换器, Java, 基岩版, PackBridge, 移植",
 	disclaimerPerfect: "*注意：不保证所有文件的完美转换识别。转换后可能需要手动调整。",
 	error404Title: "未找到页面",
 	error404Description: "抱歉，您访问的页面不存在或已被移动。",

@@ -215,6 +215,38 @@ describe('PBR / Shader Map Conversion (RTX <-> LabPBR)', () => {
     expect(Array.from(ironSpec.rgba.slice(0, 4))).toEqual([215, 255, 0, 255]);
   });
 
+  it('preserves vanilla block textures when another texture_set.json references them as color', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'SharedColor', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+    const stone16 = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(150));
+
+    const res = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/stone.png': stone16,
+        'textures/blocks/cobblestone.texture_set.json': strToU8(JSON.stringify({
+          format_version: '1.16.100',
+          'minecraft:texture_set': { color: 'stone', metalness_emissive_roughness: [0, 0, 200] },
+        })),
+        'textures/blocks/custom_unmapped_foo.texture_set.json': strToU8(JSON.stringify({
+          format_version: '1.16.100',
+          'minecraft:texture_set': { color: 'stone', metalness_emissive_roughness: [0, 0, 200] },
+        })),
+      })),
+      'shared-color.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java' }
+    );
+
+    const out = unzipSync(res.buffer);
+    expect(out['assets/minecraft/textures/block/stone.png']).toBeDefined();
+    expect(out['assets/minecraft/textures/block/cobblestone.png']).toBeDefined();
+    expect(out['assets/minecraft/textures/block/cobblestone_s.png']).toBeDefined();
+    expect(res.report.details.some((d) => d.filename === 'textures/blocks/stone.png' && d.status === 'skipped')).toBe(false);
+  });
+
   it('protects vanilla *_normal diffuse textures and UI textures from PBR misclassification', async () => {
     const manifest = strToU8(JSON.stringify({
       format_version: 2,

@@ -76,7 +76,6 @@ const ja: Translation = {
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "利用規約",
-	keywords: "Minecraft, リソースパック, テクスチャパック, テクスチャ, 変換, リソースパック 変換, テクスチャパック 変換, テクスチャ 変換, Java, Bedrock, 統合版, PackBridge, マイクラ, 変換シミュレーター, ポルティング",
 	disclaimerPerfect: "※すべてのファイルの完全な変換を保証するものではありません。変換後に手動での修正が必要になる場合があります。",
 	error404Title: "ページが見つかりません",
 	error404Description: "申し訳ありません。お探しのページは存在しないか、移動した可能性があります。",

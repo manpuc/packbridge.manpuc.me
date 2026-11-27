@@ -59,9 +59,6 @@ async function fetchVerifiedBlobURL(
         throw new Error(`HTTP ${res.status} fetching ${fileName}`);
       }
       const buf = await res.arrayBuffer();
-      if (!globalThis.crypto?.subtle) {
-        throw new Error('WebCrypto subtle is required for FFmpeg integrity check');
-      }
       const hash = await sha256Hex(buf);
       if (hash !== FFMPEG_CORE_SHA256[fileName]) {
         throw new Error(`FFmpeg integrity check failed for ${fileName}`);
@@ -170,6 +167,9 @@ export async function initFFmpeg(): Promise<void> {
   }
 
   ffmpegInitAttempts++;
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('WebCrypto subtle is required for FFmpeg integrity check');
+  }
   const instance = new FFmpeg();
 
   ffmpegLoadingPromise = (async () => {
@@ -210,7 +210,7 @@ export async function initFFmpeg(): Promise<void> {
 
 export async function reencodeAudio(
   inputBuffer: Uint8Array,
-  options?: { inputExt?: string; forceReencode?: boolean }
+  options?: { forceReencode?: boolean }
 ): Promise<AudioReencodeResult> {
   if (!inputBuffer || inputBuffer.byteLength < 4) {
     return { status: 'passthrough' };

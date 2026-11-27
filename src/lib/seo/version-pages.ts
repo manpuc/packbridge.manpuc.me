@@ -90,7 +90,7 @@ const BASE_PAIRS: BasePairConfig[] = [
     javaVersionId: '1.16.2',
     bedrockVersionId: '1.16.0',
     javaPackFormat: 6,
-    bedrockMinEngineVersion: [1, 16, 2],
+    bedrockMinEngineVersion: [1, 16, 0],
   },
 ];
 

@@ -79,7 +79,6 @@ export interface Translation {
 
 	footer: string;
 	terms: string;
-	keywords: string;
 	disclaimerPerfect: string;
 
 	error404Title: string;

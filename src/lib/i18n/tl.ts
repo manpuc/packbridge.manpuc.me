@@ -75,7 +75,6 @@ const tl: Translation = {
 
 	footer: "PackBridge | Minecraft Resource Pack & Texture Pack Converter",
 	terms: "Kasunduan sa Serbisyo",
-	keywords: "Minecraft, Resource Pack, Texture Pack, Converter, Texture Pack Converter, Java to Bedrock, Bedrock to Java, PackBridge",
 	disclaimerPerfect: "*Tandaan: Hindi garantisado ang perpektong conversion ng lahat ng file. Maaaring kailanganin ang manual na pagsasaayos pagkatapos ng conversion.",
 	error404Title: "Hindi Nahanap ang Pahina",
 	error404Description: "Paumanhin, ang pahinang hinahanap mo ay hindi umiiral o nailipat na.",

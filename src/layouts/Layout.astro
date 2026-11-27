@@ -7,7 +7,6 @@ import LanguageSuggestionBanner from "@/components/LanguageSuggestionBanner";
 interface Props {
 	title: string;
 	description: string;
-	keywords?: string;
 	lang?: Language;
 	faqItems?: { question: string; answer: string }[];
 	breadcrumbs?: { name: string; path: string }[];
@@ -209,7 +208,7 @@ const webSiteStructuredData = {
 		<link
 			rel="alternate"
 			hreflang="x-default"
-			href={siteUrl + "/en"}
+			href={pathname === "/404" ? `${siteUrl}/en` : new URL(`/en${currentPath}`, siteUrl).href}
 		/>
 
 		<title>{title}</title>
@@ -299,15 +298,13 @@ const webSiteStructuredData = {
 	<body>
 		<slot />
 		<LanguageSuggestionBanner client:load />
-<script is:inline define:vars={{ supportedLangs: SUPPORTED_LANGUAGES }}>
+<script is:inline>
 	// Theme handling
 	const getTheme = () => {
-		if (
-			typeof localStorage !== "undefined" &&
-			localStorage.getItem("theme")
-		) {
-			return localStorage.getItem("theme");
-		}
+		try {
+			const saved = typeof localStorage !== "undefined" ? localStorage.getItem("theme") : null;
+			if (saved) return saved;
+		} catch (e) {}
 		return window.matchMedia("(prefers-color-scheme: dark)").matches
 			? "dark"
 			: "light";

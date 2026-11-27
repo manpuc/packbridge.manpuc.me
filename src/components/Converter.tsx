@@ -115,6 +115,7 @@ export default function Converter({
     fileBufferRef.current = null;
     autoSwitchedFileRef.current = null;
     setNotice(null);
+    try { sessionStorage.removeItem(LAST_CONVERSION_KEY); } catch { /* ignore */ }
     const lowerName = selectedFile.name.toLowerCase();
 
     if (lowerName.endsWith('.zip') || lowerName.endsWith('.mcpack')) {
@@ -568,7 +569,9 @@ export default function Converter({
       console.error(err);
       const isNotFound = err instanceof Error && (err.name === 'NotFoundError' || /could not be found/i.test(err.message));
       setError(isNotFound ? (t.errorFileExpired || t.errorConversion) : t.errorConversion);
-      saveContext(`[fatal] ${err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err)}`);
+      if (!isNotFound) {
+        saveContext(`[fatal] ${err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err)}`);
+      }
 
       trackEvent('conversion_failed', {
         direction,
@@ -682,9 +685,7 @@ export default function Converter({
         selectedBedrockVersion={selectedBedrockVersion}
         setSelectedBedrockVersion={setSelectedBedrockVersion}
         sourceJavaVersion={sourceJavaVersion}
-        setSourceJavaVersion={setSourceJavaVersion}
         sourceBedrockVersion={sourceBedrockVersion}
-        setSourceBedrockVersion={setSourceBedrockVersion}
         isAutoDetected={isAutoDetected}
         hasFile={!!file}
         enableGuiConversion={enableGuiConversion}

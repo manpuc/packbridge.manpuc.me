@@ -276,6 +276,7 @@ describe('audio processor & fsb5', () => {
 
     const res = await reencodeAudio(makeWav());
     expect(res.status).toBe('failed');
+    expect(globalThis.fetch).not.toHaveBeenCalled();
     expect(mocks.loadCount).toBe(0);
     expect(mocks.execCalls).toHaveLength(0);
     expect(revokedUrls).toEqual([]);

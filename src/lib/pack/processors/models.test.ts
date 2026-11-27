@@ -184,6 +184,54 @@ describe('3D Custom Model Converter (Geo <-> JSON/CEM)', () => {
       expect(javaModel.elements[0].to[0]).toBe(16);
     });
 
+    it('bakes Bedrock Z-axis 90-degree rotation with matching face permutation (up -> west)', () => {
+      const bedrockGeo = {
+        format_version: '1.12.0',
+        'minecraft:geometry': [
+          {
+            description: { identifier: 'geometry.block_ztest', texture_width: 16, texture_height: 16 },
+            bones: [
+              {
+                name: 'root',
+                pivot: [0, 8, 0],
+                rotation: [0, 0, 90],
+                cubes: [
+                  {
+                    origin: [-2, 12, -2],
+                    size: [4, 4, 4],
+                    uv: {
+                      up: { uv: [0, 0], uv_size: [4, 4] },
+                      east: { uv: [4, 0], uv_size: [4, 4] },
+                      west: { uv: [8, 0], uv_size: [4, 4] },
+                      down: { uv: [12, 0], uv_size: [4, 4] },
+                      north: { uv: [0, 4], uv_size: [4, 4] },
+                      south: { uv: [4, 4], uv_size: [4, 4] },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const outputs = bedrockToJavaModels(JSON.stringify(bedrockGeo), 'models/blocks/ztest.geo.json', {
+        targetPackFormat: 46,
+      });
+      expect(outputs).toHaveLength(1);
+      const el = JSON.parse(outputs[0].content).elements[0];
+      expect(el.rotation).toBeUndefined();
+      expect(el.from).toEqual([0, 6, 6]);
+      expect(el.to).toEqual([4, 10, 10]);
+      // Z +90deg CCW: up -> west, west -> down, down -> east, east -> up
+      expect(el.faces.west.uv).toEqual([4, 4, 0, 0]);
+      expect(el.faces.down.uv).toEqual([8, 0, 12, 4]);
+      expect(el.faces.east.uv).toEqual([16, 4, 12, 0]);
+      expect(el.faces.up.uv).toEqual([4, 0, 8, 4]);
+      expect(el.faces.north.uv).toEqual([0, 4, 4, 8]);
+      expect(el.faces.south.uv).toEqual([4, 4, 8, 8]);
+    });
+
     it('unwraps Bedrock Box UV (including mirror: true) to Java per-face UVs', () => {
       const bedrockGeo = {
         format_version: '1.12.0',

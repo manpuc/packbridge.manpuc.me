@@ -72,9 +72,7 @@ interface DirectionSettingsProps {
   selectedBedrockVersion: string;
   setSelectedBedrockVersion: (v: string) => void;
   sourceJavaVersion?: string;
-  setSourceJavaVersion?: (v: string) => void;
   sourceBedrockVersion?: string;
-  setSourceBedrockVersion?: (v: string) => void;
   isAutoDetected?: boolean;
   hasFile?: boolean;
   enableGuiConversion: boolean;
@@ -136,9 +134,7 @@ export function DirectionSettings({
   selectedBedrockVersion,
   setSelectedBedrockVersion,
   sourceJavaVersion,
-  setSourceJavaVersion,
   sourceBedrockVersion,
-  setSourceBedrockVersion,
   isAutoDetected,
   hasFile,
   enableGuiConversion,

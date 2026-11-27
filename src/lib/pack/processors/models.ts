@@ -900,10 +900,10 @@ const FACE_PERM_Y_90: Record<FaceName, FaceName> = {
 };
 
 const FACE_PERM_Z_90: Record<FaceName, FaceName> = {
-  up: 'east',
-  east: 'down',
-  down: 'west',
-  west: 'up',
+  up: 'west',
+  west: 'down',
+  down: 'east',
+  east: 'up',
   north: 'north',
   south: 'south',
 };

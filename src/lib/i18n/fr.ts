@@ -75,7 +75,6 @@ const fr: Translation = {
 
 	footer: "PackBridge | Convertisseur de packs de ressources et de textures Minecraft",
 	terms: "Conditions d'utilisation",
-	keywords: "Minecraft, Pack de ressources, Pack de textures, Texture, Convertisseur, Java vers Bedrock, Bedrock vers Java, PackBridge, Portrage",
 	disclaimerPerfect: "*Note : La conversion parfaite de tous les fichiers n'est pas garantie. Des ajustements manuels peuvent être nécessaires après conversion.",
 	error404Title: "Page non trouvée",
 	error404Description: "Désolé, la page que vous recherchez n'existe pas ou a été déplacée.",

@@ -1,6 +1,6 @@
 import { unzipSync, zipSync, strToU8, strFromU8, type Zippable } from 'fflate';
 import type { PackReport, ConversionOptions } from './types';
-import { getTargetContext, loadMappings } from './rules';
+import { getActiveMappings, getFallbackMappings, getTargetContext, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import {
   formatLocaleCode,
@@ -337,6 +337,7 @@ export async function convertBuffer(
     textureSetSourcePath?: string;
     parsedTs?: ParsedTextureSet;
     colorAliasFile?: { sourcePath: string; relPath: string; bytes: Uint8Array };
+    colorAliasOwned?: boolean;
     colorUniform?: [number, number, number, number];
     merFile?: { sourcePath: string; bytes: Uint8Array; isTga: boolean; priority: number; hasSubsurface: boolean };
     merUniform?: { values: [number, number, number, number]; hasSubsurface: boolean };
@@ -392,7 +393,19 @@ export async function convertBuffer(
           const colorHit = resolveBedrockTextureRef(tsDir, parsedTs.color);
           if (colorHit && !hasDirectColor && colorHit.relPath.replace(/\.(png|tga)$/i, '').toLowerCase() !== baseStem) {
             group.colorAliasFile = { sourcePath: colorHit.sourcePath, relPath: colorHit.relPath, bytes: colorHit.bytes };
-            claimedBedrockColorAliases.add(colorHit.relPath.toLowerCase());
+            const activeB2J = getActiveMappings().bedrock_to_java;
+            const fallbackB2J = getFallbackMappings().bedrock_to_java;
+            const colorNormPng = colorHit.relPath.replace(/\.tga$/i, '.png').toLowerCase();
+            const colorStem = colorNormPng.replace(/\.png$/i, '');
+            const isVanillaOrOwnSet =
+              Object.hasOwn(activeB2J, colorNormPng) ||
+              Object.hasOwn(fallbackB2J, colorNormPng) ||
+              bedrockActiveFiles.has(`${colorStem}.texture_set.json`) ||
+              bedrockActiveFiles.has(`${colorStem}.texture_set.json.json`);
+            if (!isVanillaOrOwnSet) {
+              group.colorAliasOwned = true;
+              claimedBedrockColorAliases.add(colorHit.relPath.toLowerCase());
+            }
           }
         } else if (parsedTs.colorUniform) {
           group.colorUniform = parsedTs.colorUniform;
@@ -2319,7 +2332,7 @@ export async function convertBuffer(
       try {
         const baseJava = getTargetContext(group.baseBedrockTexturePath, 'bedrock-to-java');
         if (!baseJava) {
-          for (const src of [group.textureSetSourcePath, group.colorAliasFile?.sourcePath, group.merFile?.sourcePath, group.normalFile?.sourcePath, group.heightmapFile?.sourcePath]) {
+          for (const src of [group.textureSetSourcePath, group.colorAliasOwned ? group.colorAliasFile?.sourcePath : undefined, group.merFile?.sourcePath, group.normalFile?.sourcePath, group.heightmapFile?.sourcePath]) {
             if (src) {
               report.skippedCount++;
               report.details.push({ filename: src, status: 'skipped', reason: 'Base texture for PBR map is unmapped' });
@@ -2343,7 +2356,7 @@ export async function convertBuffer(
               report.convertedCount++;
               report.details.push({ filename: group.colorAliasFile.sourcePath, status: 'converted', outputPath: formattedBase });
               producedAny = true;
-            } else {
+            } else if (group.colorAliasOwned) {
               report.skippedCount++;
               report.details.push({ filename: group.colorAliasFile.sourcePath, status: 'skipped', reason: 'Failed to decode Bedrock PBR color texture' });
             }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { convertBuffer } from './convert-core';
 import { convertPackWithWorker } from './worker-client';
-import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, convertTgaToPng, getPngDimensions } from './processors/tga';
+import { encodeRgbaToPngSync, encodeRgbaToTgaSync, decodeTgaToRgba, convertTgaToPng, getPngDimensions, normalizeJavaBlockAtlasPng } from './processors/tga';
 import { decodePngToRgbaSync, convertBedrockMerToLabPbrSpec } from './processors/pbr';
 import { processGuiSpriteSheet, BUTTON_WIDGET_METADATA } from './processors/gui';
 import { zlibSync } from 'fflate';
@@ -2733,5 +2733,15 @@ describe('convertBuffer', () => {
       { ...baseOptions, direction: 'java-to-bedrock' }
     );
     expect(unzipSync(fallbackRes.buffer)['pack_icon.png']).toEqual(nestedIcon);
+  });
+
+  it('returns null from normalizeJavaBlockAtlasPng when upscaled animated strip exceeds MAX_TGA_PIXELS', () => {
+    const hdr = new Uint8Array(33);
+    hdr.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    const dv = new DataView(hdr.buffer);
+    dv.setUint32(16, 2362, false);
+    dv.setUint32(20, 7086, false);
+    const stubDecode = () => ({ width: 2362, height: 7086, rgba: new Uint8Array(0) });
+    expect(normalizeJavaBlockAtlasPng('assets/minecraft/textures/block/water_still.png', hdr, stubDecode)).toBeNull();
   });
 });

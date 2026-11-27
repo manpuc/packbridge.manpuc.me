@@ -412,8 +412,8 @@ export function normalizeJavaBlockAtlasPng(
     const frameCount = decoded.height / decoded.width;
     const targetFrame = Math.max(16, Math.round(decoded.width / 16) * 16);
     const targetH = targetFrame * frameCount;
-    if (targetFrame > MAX_TGA_DIMENSION || targetH > MAX_TGA_DIMENSION) {
-      return pngBytes;
+    if (targetFrame > MAX_TGA_DIMENSION || targetH > MAX_TGA_DIMENSION || targetFrame * targetH > MAX_TGA_PIXELS) {
+      return null;
     }
     const outRgba = new Uint8Array(targetFrame * targetH * 4);
     for (let f = 0; f < frameCount; f++) {

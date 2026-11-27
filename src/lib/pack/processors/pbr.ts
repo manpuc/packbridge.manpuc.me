@@ -155,7 +155,7 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
 
   if (rawScanlines.length < expectedLen) return null;
 
-  const unfilterPass = (srcOffset: number, pw: number, ph: number, stride: number): Uint8Array | null => {
+  const unfilterPass = (srcOffset: number, ph: number, stride: number): Uint8Array | null => {
     const unfiltered = new Uint8Array(stride * ph);
     for (let y = 0; y < ph; y++) {
       const srcRow = srcOffset + y * (stride + 1);
@@ -313,7 +313,7 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
 
   if (!isInterlaced) {
     const spec = passSpecs[0];
-    const unfiltered = unfilterPass(0, spec.pw, spec.ph, spec.stride);
+    const unfiltered = unfilterPass(0, spec.ph, spec.stride);
     if (!unfiltered) return null;
     return { width, height, rgba: passToRgba(unfiltered, spec.pw, spec.ph, spec.stride) };
   }
@@ -321,7 +321,7 @@ export function decodePngToRgbaSync(data: Uint8Array): DecodedRgbaImage | null {
   const outRgba = new Uint8Array(width * height * 4);
   let srcOffset = 0;
   for (const spec of passSpecs) {
-    const unfiltered = unfilterPass(srcOffset, spec.pw, spec.ph, spec.stride);
+    const unfiltered = unfilterPass(srcOffset, spec.ph, spec.stride);
     if (!unfiltered) return null;
     srcOffset += (spec.stride + 1) * spec.ph;
     const passRgba = passToRgba(unfiltered, spec.pw, spec.ph, spec.stride);

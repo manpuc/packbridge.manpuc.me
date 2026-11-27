@@ -4,7 +4,6 @@ import type { BasePairKey, MappingCounts, VersionPageSpec } from './version-page
 export interface VersionPageLocalizedCopy {
   title: string;
   metaDescription: string;
-  keywords: string;
   h1: string;
   lead: string;
   breadcrumbHome: string;
@@ -70,7 +69,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       '桜バイオーム・考古学・トライアルチャンバー先行要素を含む 1,600 件超のテクスチャと約 3,000 件の言語キーを変換します。',
     ],
     '1.16.5_to_1.16.200': [
-      'PvP テクスチャや大型配布マップで今なお根強い人気を持つ Java 1.16.2〜1.16.5（pack_format 6）と Bedrock 1.16.2（min_engine_version [1, 16, 2]）のペアです。',
+      'PvP テクスチャや大型配布マップで今なお根強い人気を持つ Java 1.16.2〜1.16.5（pack_format 6）と Bedrock 1.16.2（min_engine_version [1, 16, 0]）のペアです。',
       'GUI が単一シート（icons.png / widgets.png）の旧構造世代であり、ネザーアップデートまでのブロック・アイテム名と統合版レガシー命名（stone_andesite 等）を正確に対応づけます。',
       '旧世代パックのファイル構造を保ったまま、目的のエディションで警告なく読み込めるメタデータを出力します。',
     ],
@@ -92,9 +91,9 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       'Maps Cherry Grove, Archaeology, and 1.20 era textures, sounds, and language files directly in your browser.',
     ],
     '1.16.5_to_1.16.200': [
-      'Built for classic Nether Update & PvP packs: Java 1.16.2–1.16.5 (pack_format 6) and Bedrock 1.16.2 (min_engine_version [1, 16, 2]).',
+      'Built for classic Nether Update & PvP packs: Java 1.16.2–1.16.5 (pack_format 6) and Bedrock 1.16.2 (min_engine_version [1, 16, 0]).',
       'Uses pre-1.20.2 monolithic GUI sprite sheets (icons.png / widgets.png) and bridges flattened Java 1.13+ block names with legacy Bedrock texture names.',
-      'Outputs clean pack_format 6 or [1, 16, 2] metadata so older packs load without version warnings.',
+      'Outputs clean pack_format 6 or [1, 16, 0] metadata so older packs load without version warnings.',
     ],
   },
   zh: {
@@ -114,7 +113,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       '涵盖樱花树林、考古系统等 1.20 世代逾 1,600 项材质与约 3,000 条语言键值。',
     ],
     '1.16.5_to_1.16.200': [
-      '专为经典下界更新及 PvP 材质包打造：Java 1.16.2–1.16.5（pack_format 6）与基岩版 1.16.2（min_engine_version [1, 16, 2]）。',
+      '专为经典下界更新及 PvP 材质包打造：Java 1.16.2–1.16.5（pack_format 6）与基岩版 1.16.2（min_engine_version [1, 16, 0]）。',
       '采用旧版单张 GUI 贴图结构（icons.png / widgets.png），准确映射 1.16 方块物品名称与基岩版传统命名（如 stone_andesite）。',
       '转换后自动写入对应的旧版版本号，避免在游戏内出现版本不兼容警告。',
     ],
@@ -136,7 +135,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       '1,600개 이상의 텍스처와 약 3,000개의 언어 키를 브라우저 내에서 즉시 변환합니다.',
     ],
     '1.16.5_to_1.16.200': [
-      'PvP 텍스처팩과 클래식 맵에서 인기가 높은 Java 1.16.2~1.16.5(pack_format 6)와 Bedrock 1.16.2(min_engine_version [1, 16, 2]) 페어입니다.',
+      'PvP 텍스처팩과 클래식 맵에서 인기가 높은 Java 1.16.2~1.16.5(pack_format 6)와 Bedrock 1.16.2(min_engine_version [1, 16, 0]) 페어입니다.',
       '단일 시트 GUI(icons.png / widgets.png) 구조와 네더 업데이트 시절의 블록/아이템 명명 규칙을 베드락 레거시 경로와 매핑합니다.',
       '버전 경고 없이 바로 적용할 수 있도록 정확한 구버전 메타데이터를 생성합니다.',
     ],
@@ -158,7 +157,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       'Mahigit 1,600 textures at ~3,000 language keys ang nako-convert nang direkta sa browser.',
     ],
     '1.16.5_to_1.16.200': [
-      'Para sa classic Nether Update at PvP packs: Java 1.16.2–1.16.5 (pack_format 6) at Bedrock 1.16.2 (min_engine_version [1, 16, 2]).',
+      'Para sa classic Nether Update at PvP packs: Java 1.16.2–1.16.5 (pack_format 6) at Bedrock 1.16.2 (min_engine_version [1, 16, 0]).',
       'Gumagamit ng dating single-sheet GUI (icons.png / widgets.png) at nagtutugma ng legacy Bedrock texture names.',
       'Naglalabas ng tamang metadata upang walang version warning sa laro.',
     ],
@@ -180,7 +179,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       'Convierte más de 1.600 texturas y cerca de 3.000 claves de idioma localmente en tu navegador.',
     ],
     '1.16.5_to_1.16.200': [
-      'Ideal para paquetes clásicos de PvP y Nether Update: Java 1.16.2–1.16.5 (pack_format 6) y Bedrock 1.16.2 (min_engine_version [1, 16, 2]).',
+      'Ideal para paquetes clásicos de PvP y Nether Update: Java 1.16.2–1.16.5 (pack_format 6) y Bedrock 1.16.2 (min_engine_version [1, 16, 0]).',
       'Respeta las hojas GUI clásicas (icons.png / widgets.png) y traduce nombres de bloques entre Java 1.16 y Bedrock.',
       'Genera metadatos exactos para cargar el paquete sin advertencias de incompatibilidad.',
     ],
@@ -202,7 +201,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       'Convertit plus de 1 600 textures et environ 3 000 clés de traduction directement dans le navigateur.',
     ],
     '1.16.5_to_1.16.200': [
-      'Idéal pour les packs PvP et Nether Update : Java 1.16.2–1.16.5 (pack_format 6) et Bedrock 1.16.2 (min_engine_version [1, 16, 2]).',
+      'Idéal pour les packs PvP et Nether Update : Java 1.16.2–1.16.5 (pack_format 6) et Bedrock 1.16.2 (min_engine_version [1, 16, 0]).',
       'Utilise la structure GUI classique (icons.png / widgets.png) et fait correspondre la nomenclature Java 1.16 aux chemins Bedrock.',
       'Produit des métadonnées adaptées pour éviter tout avertissement de version en jeu.',
     ],
@@ -224,7 +223,7 @@ const PAIR_NOTES: Record<Language, Record<BasePairKey, string[]>> = {
       'Konvertiert über 1.600 Texturen und rund 3.000 Sprachschlüssel lokal im Browser.',
     ],
     '1.16.5_to_1.16.200': [
-      'Optimal für klassische Nether-Update- und PvP-Packs: Java 1.16.2–1.16.5 (pack_format 6) und Bedrock 1.16.2 (min_engine_version [1, 16, 2]).',
+      'Optimal für klassische Nether-Update- und PvP-Packs: Java 1.16.2–1.16.5 (pack_format 6) und Bedrock 1.16.2 (min_engine_version [1, 16, 0]).',
       'Verarbeitet klassische Einzelblatt-GUIs (icons.png / widgets.png) und ordnet Java-1.16-Blocknamen den Bedrock-Pfaden zu.',
       'Erstellt präzise Metadaten für das Laden ohne Versionswarnung.',
     ],
@@ -259,7 +258,6 @@ export function getVersionPageCopy(
           ? `Java ${jVer} リソースパックを統合版 ${bVer} に変換 | PackBridge`
           : `統合版(Bedrock) ${bVer} リソースパックを Java ${jVer} に変換 | PackBridge`,
         metaDescription: `${fromName} のマイクラ リソースパック・テクスチャパックを ${toName} へブラウザ内で即座に変換。アップロード不要・最大 ${totalCount} 件のテクスチャ/サウンド/言語マッピングに対応。`,
-        keywords: `マイクラ, リソースパック 変換, テクスチャ 変換, ${fromVer}, ${toVer}, Java ${jVer}, Bedrock ${bVer}, 統合版, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Java ${jVer} リソースパックを統合版 ${bVer} に変換`
           : `統合版 ${bVer} リソースパックを Java ${jVer} に変換`,
@@ -310,7 +308,6 @@ export function getVersionPageCopy(
           ? `Java ${jVer} 材质包转基岩版 ${bVer} | PackBridge`
           : `基岩版 ${bVer} 材质包转 Java ${jVer} | PackBridge`,
         metaDescription: `在浏览器内将 Minecraft ${fromName} 资源包/材质包一键转换为 ${toName}。无需上传服务器，内置 ${totalCount} 项纹理、音效与语言键精准映射。`,
-        keywords: `我的世界, 材质包转换器, 资源包转换, ${fromVer}, ${toVer}, Java ${jVer}, 基岩版 ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Java ${jVer} 材质包转基岩版 ${bVer}`
           : `基岩版 ${bVer} 材质包转 Java ${jVer}`,
@@ -361,7 +358,6 @@ export function getVersionPageCopy(
           ? `Java ${jVer} 리소스팩을 베드락 ${bVer}으로 변환 | PackBridge`
           : `베드락 ${bVer} 리소스팩을 Java ${jVer}로 변환 | PackBridge`,
         metaDescription: `마인크래프트 ${fromName} 리소스팩·텍스처팩을 ${toName} 버전으로 브라우저에서 즉시 변환하세요. 서버 업로드 없이 총 ${totalCount}개의 에셋 매핑을 지원합니다.`,
-        keywords: `마인크래프트, 리소스팩 변환, 텍스처팩 변환, ${fromVer}, ${toVer}, Java ${jVer}, Bedrock ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Java ${jVer} 리소스팩을 베드락 ${bVer}으로 변환`
           : `베드락 ${bVer} 리소스팩을 Java ${jVer}로 변환`,
@@ -412,7 +408,6 @@ export function getVersionPageCopy(
           ? `I-convert ang Java ${jVer} Resource Pack sa Bedrock ${bVer} | PackBridge`
           : `I-convert ang Bedrock ${bVer} Resource Pack sa Java ${jVer} | PackBridge`,
         metaDescription: `I-convert ang Minecraft ${fromName} resource at texture pack papuntang ${toName} nang direkta sa iyong browser. Walang upload sa server, may ${totalCount} asset mappings.`,
-        keywords: `Minecraft, resource pack converter, texture pack converter, ${fromVer}, ${toVer}, Java ${jVer}, Bedrock ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `I-convert ang Java ${jVer} Resource Pack sa Bedrock ${bVer}`
           : `I-convert ang Bedrock ${bVer} Resource Pack sa Java ${jVer}`,
@@ -459,7 +454,6 @@ export function getVersionPageCopy(
           ? `Convertir Resource Pack de Java ${jVer} a Bedrock ${bVer} | PackBridge`
           : `Convertir Resource Pack de Bedrock ${bVer} a Java ${jVer} | PackBridge`,
         metaDescription: `Convierte paquetes de recursos y texturas de Minecraft ${fromName} a ${toName} directamente en tu navegador. Sin subir archivos al servidor y con ${totalCount} asignaciones.`,
-        keywords: `Minecraft, convertir resource pack, texture pack, ${fromVer}, ${toVer}, Java ${jVer}, Bedrock ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Convertir Resource Pack de Java ${jVer} a Bedrock ${bVer}`
           : `Convertir Resource Pack de Bedrock ${bVer} a Java ${jVer}`,
@@ -506,7 +500,6 @@ export function getVersionPageCopy(
           ? `Convertir un Resource Pack Java ${jVer} vers Bedrock ${bVer} | PackBridge`
           : `Convertir un Resource Pack Bedrock ${bVer} vers Java ${jVer} | PackBridge`,
         metaDescription: `Convertissez vos packs de ressources et textures Minecraft de ${fromName} vers ${toName} directement dans le navigateur. Sans envoi sur serveur, avec ${totalCount} correspondances.`,
-        keywords: `Minecraft, convertisseur resource pack, texture pack, ${fromVer}, ${toVer}, Java ${jVer}, Bedrock ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Convertir un Resource Pack Java ${jVer} vers Bedrock ${bVer}`
           : `Convertir un Resource Pack Bedrock ${bVer} vers Java ${jVer}`,
@@ -553,7 +546,6 @@ export function getVersionPageCopy(
           ? `Java ${jVer} Resource Pack in Bedrock ${bVer} umwandeln | PackBridge`
           : `Bedrock ${bVer} Resource Pack in Java ${jVer} umwandeln | PackBridge`,
         metaDescription: `Konvertiere Minecraft ${fromName} Resource- und Texture-Packs direkt im Browser zu ${toName}. Kein Server-Upload, mit ${totalCount} Asset-Zuordnungen.`,
-        keywords: `Minecraft, Resource Pack Konverter, Texture Pack umwandeln, ${fromVer}, ${toVer}, Java ${jVer}, Bedrock ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Java ${jVer} Resource Pack in Bedrock ${bVer} umwandeln`
           : `Bedrock ${bVer} Resource Pack in Java ${jVer} umwandeln`,
@@ -601,7 +593,6 @@ export function getVersionPageCopy(
           ? `Convert Java ${jVer} Resource Pack to Bedrock ${bVer} | PackBridge`
           : `Convert Bedrock ${bVer} Resource Pack to Java ${jVer} | PackBridge`,
         metaDescription: `Convert Minecraft ${fromName} resource packs and texture packs to ${toName} directly in your browser. No server upload required, with ${totalCount} mapped assets.`,
-        keywords: `Minecraft, convert resource pack, texture pack converter, ${fromVer} to ${toVer}, Java ${jVer}, Bedrock ${bVer}, pack_format ${pf}, PackBridge`,
         h1: isJ2B
           ? `Convert Java ${jVer} Resource Pack to Bedrock ${bVer}`
           : `Convert Bedrock ${bVer} Resource Pack to Java ${jVer}`,
