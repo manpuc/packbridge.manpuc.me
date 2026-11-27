@@ -3,8 +3,6 @@ import { isUnsafeObjectKey } from '../security';
 import { parseJsonc } from '../metadata';
 import { compareBedrockVersion, type BedrockSemver } from './gui';
 
-export { parseJsonc };
-
 const EXTRA_JAVA_TO_BEDROCK_EVENTS: Record<string, string> = {
   'entity.fishing_bobber.retrieve': 'random.bowhit',
 };

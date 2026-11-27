@@ -235,6 +235,33 @@ describe('audio processor & fsb5', () => {
     expect(detectAudioFormat(makeMp3())).toBe('mp3');
   });
 
+  it('downmixes >2ch WAV and Ogg Opus while preserving mono/stereo WAV', async () => {
+    const makeWavWithChannels = (channels: number): Uint8Array => {
+      const buf = new Uint8Array(44);
+      buf.set([0x52, 0x49, 0x46, 0x46], 0); // 'RIFF'
+      buf.set([0x57, 0x41, 0x56, 0x45], 8); // 'WAVE'
+      buf.set([0x66, 0x6d, 0x74, 0x20], 12); // 'fmt '
+      const dv = new DataView(buf.buffer);
+      dv.setUint32(16, 16, true);
+      dv.setUint16(20, 1, true);
+      dv.setUint16(22, channels, true);
+      return buf;
+    };
+
+    await reencodeAudio(makeWavWithChannels(6));
+    expect(mocks.execCalls[0]).toContain('-ac');
+    expect(mocks.execCalls[0]).toContain('2');
+
+    await reencodeAudio(makeWavWithChannels(2));
+    expect(mocks.execCalls[1]).not.toContain('-ac');
+
+    const opus6 = makeOggOpus();
+    opus6[28 + 9] = 6;
+    await reencodeAudio(opus6);
+    expect(mocks.execCalls[2]).toContain('-ac');
+    expect(mocks.execCalls[2]).toContain('2');
+  });
+
   it('does not detach inputBuffer on failure and recovers/caps WASM crashes', async () => {
     mocks.detachWriteBuffer = true;
     mocks.nextExecCode = 1;

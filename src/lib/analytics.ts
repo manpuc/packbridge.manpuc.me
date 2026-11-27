@@ -283,12 +283,19 @@ export function analyzeReportSafety(report: PackReport) {
   let noMappingCount = 0;
   let unsupportedFormatCount = 0;
 
+  const isAnimMcmeta = (p: string) =>
+    p.endsWith('.png.mcmeta') &&
+    !p.includes('/gui/') &&
+    !p.includes('/misc/') &&
+    !p.includes('/villager/');
+
   for (const item of report.details) {
     const fn = (item.filename || '').toLowerCase();
+    const out = (item.outputPath || '').toLowerCase();
     if (fn.endsWith('.ogg') || fn.endsWith('.fsb') || fn.endsWith('.wav') || fn.endsWith('.mp3') || fn.includes('sound')) {
       hasAudio = true;
     }
-    if (fn.endsWith('.mcmeta') || fn.includes('flipbook_textures.json') || fn.includes('animation') || fn.includes('anim_')) {
+    if (isAnimMcmeta(fn) || isAnimMcmeta(out) || fn.includes('flipbook_textures.json') || fn.includes('animation') || fn.includes('anim_')) {
       hasAnimations = true;
     }
 

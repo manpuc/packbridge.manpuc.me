@@ -5,7 +5,7 @@
  * - Bedrock Edition Geometry (`models/entity/*.geo.json`, `models/blocks/*.geo.json`, `models/*.json` across format_version 1.8.0 - 1.21.0+)
  */
 
-import { parseJsonc } from './sounds';
+import { parseJsonc } from '../metadata';
 import { isUnsafeObjectKey } from '../security';
 import { compareBedrockVersion, type BedrockSemver } from './gui';
 
@@ -66,6 +66,8 @@ export interface ExtractedBedrockGeometry {
   parentIdentifier?: string;
   textureWidth: number;
   textureHeight: number;
+  explicitTextureWidth?: number;
+  explicitTextureHeight?: number;
   bones: any[];
   versionRank: number;
 }
@@ -780,17 +782,21 @@ export function extractBedrockGeometriesFromJson(geoJsonStr: string): ExtractedB
   }
   if (!rawData || typeof rawData !== 'object') return results;
 
-  const pushGeo = (rawId: string, texW: number, texH: number, bones: any[]) => {
+  const pushGeo = (rawId: string, rawTexW: unknown, rawTexH: unknown, bones: any[]) => {
     if (results.length >= MAX_GEOMETRIES_PER_FILE) return;
     const colonIdx = rawId.indexOf(':');
     const baseIdentifier = colonIdx !== -1 ? rawId.slice(0, colonIdx) : rawId;
     const parentIdentifier = colonIdx !== -1 ? rawId.slice(colonIdx + 1) : undefined;
+    const expW = rawTexW !== undefined && rawTexW !== null ? toFinite(rawTexW, 0) : 0;
+    const expH = rawTexH !== undefined && rawTexH !== null ? toFinite(rawTexH, 0) : 0;
     results.push({
       identifier: rawId,
       baseIdentifier,
       ...(parentIdentifier ? { parentIdentifier } : {}),
-      textureWidth: Math.max(1, texW),
-      textureHeight: Math.max(1, texH),
+      textureWidth: Math.max(1, expW > 0 ? expW : 64),
+      textureHeight: Math.max(1, expH > 0 ? expH : 64),
+      ...(expW > 0 ? { explicitTextureWidth: expW } : {}),
+      ...(expH > 0 ? { explicitTextureHeight: expH } : {}),
       bones,
       versionRank: parseVersionRank(baseIdentifier),
     });
@@ -802,8 +808,8 @@ export function extractBedrockGeometriesFromJson(geoJsonStr: string): ExtractedB
       const desc = geo.description || {};
       pushGeo(
         String(desc.identifier || 'geometry.custom'),
-        toFinite(desc.texture_width, 64),
-        toFinite(desc.texture_height, 64),
+        desc.texture_width,
+        desc.texture_height,
         geo.bones
       );
     }
@@ -815,8 +821,8 @@ export function extractBedrockGeometriesFromJson(geoJsonStr: string): ExtractedB
       const g = val as any;
       pushGeo(
         key,
-        toFinite(g.texturewidth ?? g.texture_width, 64),
-        toFinite(g.textureheight ?? g.texture_height, 64),
+        g.texturewidth ?? g.texture_width,
+        g.textureheight ?? g.texture_height,
         g.bones
       );
     }
@@ -870,11 +876,14 @@ function resolveBedrockGeoParent(
     }
   }
 
-  const root = chain[chain.length - 1];
+  const inheritedW = chain.find((c) => c.explicitTextureWidth !== undefined)?.explicitTextureWidth;
+  const inheritedH = chain.find((c) => c.explicitTextureHeight !== undefined)?.explicitTextureHeight;
   return {
     ...geo,
-    textureWidth: geo.textureWidth || root.textureWidth,
-    textureHeight: geo.textureHeight || root.textureHeight,
+    textureWidth: inheritedW ?? 64,
+    textureHeight: inheritedH ?? 64,
+    ...(inheritedW !== undefined ? { explicitTextureWidth: inheritedW } : {}),
+    ...(inheritedH !== undefined ? { explicitTextureHeight: inheritedH } : {}),
     bones: mergedBones,
   };
 }
@@ -963,7 +972,27 @@ function bakeSingle90Rotation(
   let nextRes = residualRot;
   if (residualRot) {
     const newOrigin = rotatePointAround90(residualRot.origin, pivot, axis, steps);
-    nextRes = { ...residualRot, origin: newOrigin };
+    const axisVec: Vec3 =
+      residualRot.axis === 'x' ? [1, 0, 0] : residualRot.axis === 'y' ? [0, 1, 0] : [0, 0, 1];
+    const rotVec = rotatePointAround90(axisVec, [0, 0, 0], axis, steps);
+    let newAxis: 'x' | 'y' | 'z' = residualRot.axis;
+    let sign = 1;
+    if (rotVec[0] !== 0) {
+      newAxis = 'x';
+      sign = rotVec[0];
+    } else if (rotVec[1] !== 0) {
+      newAxis = 'y';
+      sign = rotVec[1];
+    } else {
+      newAxis = 'z';
+      sign = rotVec[2];
+    }
+    nextRes = {
+      ...residualRot,
+      origin: newOrigin,
+      axis: newAxis,
+      angle: round4(residualRot.angle * sign),
+    };
   }
 
   return { from: newFrom, to: newTo, faces: newFaces, residualRot: nextRes };

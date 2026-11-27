@@ -10,7 +10,7 @@ import {
   serializeLangEntries,
   serializeJsonLangEntries,
 } from './processors/lang';
-import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds, parseJsonc } from './processors/sounds';
+import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds } from './processors/sounds';
 import {
   generateTerrainTexture,
   getBedrockLeafSpec,
@@ -35,7 +35,7 @@ import {
 } from './processors/animation';
 import { JAVA_VERSIONS, BEDROCK_VERSIONS, extractPackFormat, extractMinPackFormat } from './versions';
 import { normalizeLegacyPath, downgradeLegacyPath, migrateJavaPath } from './legacy';
-import { generateUUID, generateManifestContent, generateMcmetaContent } from './metadata';
+import { generateUUID, generateManifestContent, generateMcmetaContent, parseJsonc } from './metadata';
 import {
   processGuiSpriteSheet,
   WIDGETS_MAPPINGS,
@@ -2152,15 +2152,7 @@ export async function convertBuffer(
           for (const [idx, f] of framesMap.entries()) rawFrames.set(idx, f.bytes);
           result = stitchDialAtlas(rawFrames, spec);
         } else if (strip) {
-          let sliced: ReturnType<typeof sliceDialAtlas> = null;
-        try {
-          sliced = sliceDialAtlas(strip.bytes, spec);
-        } catch (e) {
-          console.warn(`Failed to slice Java dial strip ${spec.kind}:`, e);
-          report.errorCount++;
-          report.details.push({ filename: strip.sourcePath, status: 'error', reason: 'Dial texture processing failed' });
-          continue;
-        }
+          const sliced = sliceDialAtlas(strip.bytes, spec);
           if (sliced) {
             result = { atlasPng: sliced.stripPng, iconPng: sliced.iconPng };
           }
@@ -2371,6 +2363,13 @@ export async function convertBuffer(
               producedAny = true;
             }
           }
+        } else if (group.colorAliasOwned && group.colorAliasFile) {
+          report.skippedCount++;
+          report.details.push({
+            filename: group.colorAliasFile.sourcePath,
+            status: 'skipped',
+            reason: 'Target base texture already present',
+          });
         }
 
         const specPath = formattedBase.replace(/\.png$/i, '_s.png');
@@ -2452,14 +2451,20 @@ export async function convertBuffer(
         }
 
         if (group.textureSetSourcePath) {
-          report.skippedCount++;
-          report.details.push({
-            filename: group.textureSetSourcePath,
-            status: 'skipped',
-            reason: group.parsedTs && producedAny
-              ? 'PBR texture_set metadata applied to _s/_n maps'
-              : 'Unmapped PBR texture_set reference'
-          });
+          if (group.parsedTs && producedAny) {
+            report.details.push({
+              filename: group.textureSetSourcePath,
+              status: 'converted',
+              reason: 'PBR texture_set metadata applied to _s/_n maps',
+            });
+          } else {
+            report.skippedCount++;
+            report.details.push({
+              filename: group.textureSetSourcePath,
+              status: 'skipped',
+              reason: 'Unmapped PBR texture_set reference',
+            });
+          }
         }
       } catch (e) {
         console.warn(`Failed to process PBR group ${primaryGroupSrc}:`, e);

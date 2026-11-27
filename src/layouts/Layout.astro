@@ -26,18 +26,21 @@ const ogImageUrl = `${siteUrl}/og-image-${lang}.png?v=2`;
 
 // Handle canonical and alternate links
 const pathname = Astro.url.pathname.replace(/\/$/, "");
+const is404 = pathname === "/404";
 const canonicalURL = new URL(pathname || "/", siteUrl);
 
 const langPrefixes = SUPPORTED_LANGUAGES.join("|");
 const langRegex = new RegExp(`^/(${langPrefixes})(/|$)`);
 const currentPath = pathname.replace(langRegex, "/").replace(/\/+$/, "") || "";
 
-const alternateLinks = SUPPORTED_LANGUAGES.map((l) => {
-	return {
-		href: new URL(`/${l}${currentPath}`, siteUrl).href,
-		lang: l,
-	};
-});
+const alternateLinks = is404
+	? []
+	: SUPPORTED_LANGUAGES.map((l) => {
+			return {
+				href: new URL(`/${l}${currentPath}`, siteUrl).href,
+				lang: l,
+			};
+		});
 
 // Locale mapping for OGP
 const localeMap: Record<string, string> = {
@@ -205,11 +208,15 @@ const webSiteStructuredData = {
 				<link rel="alternate" hreflang={lang} href={href} />
 			))
 		}
-		<link
-			rel="alternate"
-			hreflang="x-default"
-			href={pathname === "/404" ? `${siteUrl}/en` : new URL(`/en${currentPath}`, siteUrl).href}
-		/>
+		{
+			!is404 && (
+				<link
+					rel="alternate"
+					hreflang="x-default"
+					href={new URL(`/en${currentPath}`, siteUrl).href}
+				/>
+			)
+		}
 
 		<title>{title}</title>
 		<meta name="description" content={description} />

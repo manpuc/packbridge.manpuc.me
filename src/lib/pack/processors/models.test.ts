@@ -232,6 +232,44 @@ describe('3D Custom Model Converter (Geo <-> JSON/CEM)', () => {
       expect(el.faces.south.uv).toEqual([4, 4, 8, 8]);
     });
 
+    it('rotates residual cube rotation axis and angle sign when baking parent 90-degree rotation', () => {
+      const bedrockGeo = {
+        format_version: '1.12.0',
+        'minecraft:geometry': [
+          {
+            description: { identifier: 'geometry.block_resrot', texture_width: 16, texture_height: 16 },
+            bones: [
+              {
+                name: 'root',
+                pivot: [0, 0, 0],
+                rotation: [0, -90, 0],
+                cubes: [
+                  {
+                    origin: [-2, 0, -2],
+                    size: [4, 4, 4],
+                    pivot: [0, 2, 0],
+                    rotation: [-22.5, 0, 0],
+                    uv: { north: { uv: [0, 0], uv_size: [4, 4] } },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const outputs = bedrockToJavaModels(JSON.stringify(bedrockGeo), 'models/blocks/resrot.geo.json', {
+        targetPackFormat: 46,
+      });
+      expect(outputs).toHaveLength(1);
+      const el = JSON.parse(outputs[0].content).elements[0];
+      expect(el.rotation).toEqual({
+        origin: [8, 2, 8],
+        axis: 'z',
+        angle: -22.5,
+      });
+    });
+
     it('unwraps Bedrock Box UV (including mirror: true) to Java per-face UVs', () => {
       const bedrockGeo = {
         format_version: '1.12.0',
@@ -361,7 +399,7 @@ describe('3D Custom Model Converter (Geo <-> JSON/CEM)', () => {
         format_version: '1.8.0',
         'geometry.humanoid': {
           texturewidth: 64,
-          textureheight: 64,
+          textureheight: 32,
           bones: [{ name: 'head', pivot: [0, 24, 0], cubes: [{ origin: [-4, 24, -4], size: [8, 8, 8], uv: [0, 0] }] }],
         },
         'geometry.zombie:geometry.humanoid': {
@@ -381,8 +419,10 @@ describe('3D Custom Model Converter (Geo <-> JSON/CEM)', () => {
       const paths = outputs.map((o) => o.outputPath);
       expect(paths).toContain('assets/minecraft/optifine/cem/zombie.jem');
       expect(paths).toContain('assets/minecraft/optifine/cem/iron_golem.jem');
-      // Deduplicated zombie.jem
+      // Deduplicated zombie.jem and inherited textureSize [64, 32] from geometry.humanoid
       expect(paths.filter((p) => p === 'assets/minecraft/optifine/cem/zombie.jem')).toHaveLength(1);
+      const zombieJem = JSON.parse(outputs.find((o) => o.outputPath === 'assets/minecraft/optifine/cem/zombie.jem')!.content);
+      expect(zombieJem.textureSize).toEqual([64, 32]);
     });
   });
 

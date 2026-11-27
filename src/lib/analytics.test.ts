@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeErrorMessage } from './analytics';
+import { analyzeReportSafety, sanitizeErrorMessage } from './analytics';
 
 describe('sanitizeErrorMessage', () => {
   it('masks exact sensitiveFileName, quoted filenames with spaces, Unicode paths, and Unicode filenames', () => {
@@ -37,5 +37,45 @@ describe('sanitizeErrorMessage', () => {
 
     const longMsg = `Error: ${'x'.repeat(260)}`;
     expect(sanitizeErrorMessage(longMsg).length).toBe(200);
+  });
+});
+
+describe('analyzeReportSafety', () => {
+  it('detects animation .png.mcmeta and flipbook_textures.json without false positives on pack.mcmeta or GUI/misc/villager', () => {
+    expect(analyzeReportSafety({
+      totalFiles: 2, convertedCount: 2, skippedCount: 0, errorCount: 0,
+      details: [
+        { filename: 'pack.mcmeta', status: 'converted', outputPath: 'manifest.json' },
+        { filename: 'assets/minecraft/textures/block/stone.png', status: 'converted' },
+      ],
+    }).hasAnimations).toBe(false);
+
+    expect(analyzeReportSafety({
+      totalFiles: 3, convertedCount: 3, skippedCount: 0, errorCount: 0,
+      details: [
+        { filename: 'assets/minecraft/textures/gui/sprites/widget/button.png.mcmeta', status: 'converted' },
+        { filename: 'assets/minecraft/textures/misc/pumpkinblur.png.mcmeta', status: 'converted' },
+        { filename: 'assets/minecraft/textures/entity/villager/type/plains.png.mcmeta', status: 'converted' },
+      ],
+    }).hasAnimations).toBe(false);
+
+    expect(analyzeReportSafety({
+      totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0,
+      details: [{ filename: 'assets/minecraft/textures/block/lava_still.png.mcmeta', status: 'converted' }],
+    }).hasAnimations).toBe(true);
+
+    expect(analyzeReportSafety({
+      totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0,
+      details: [{ filename: 'textures/flipbook_textures.json', status: 'converted' }],
+    }).hasAnimations).toBe(true);
+
+    expect(analyzeReportSafety({
+      totalFiles: 1, convertedCount: 1, skippedCount: 0, errorCount: 0,
+      details: [{
+        filename: 'assets/minecraft/textures/block/water_still.png',
+        status: 'converted',
+        outputPath: 'assets/minecraft/textures/block/water_still.png.mcmeta',
+      }],
+    }).hasAnimations).toBe(true);
   });
 });

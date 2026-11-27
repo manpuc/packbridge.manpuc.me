@@ -197,6 +197,8 @@ describe('PBR / Shader Map Conversion (RTX <-> LabPBR)', () => {
     );
 
     expect(b2j.report.errorCount).toBe(0);
+    expect(b2j.report.skippedCount).toBe(0);
+    expect(b2j.report.details.some((d) => d.filename === 'textures/blocks/stone.texture_set.json' && d.status === 'converted')).toBe(true);
     const out = unzipSync(b2j.buffer);
     expect(out['assets/minecraft/textures/block/stone.png']).toBeDefined();
     expect(out['assets/minecraft/textures/block/stone_s.png']).toBeDefined();
@@ -245,6 +247,35 @@ describe('PBR / Shader Map Conversion (RTX <-> LabPBR)', () => {
     expect(out['assets/minecraft/textures/block/cobblestone.png']).toBeDefined();
     expect(out['assets/minecraft/textures/block/cobblestone_s.png']).toBeDefined();
     expect(res.report.details.some((d) => d.filename === 'textures/blocks/stone.png' && d.status === 'skipped')).toBe(false);
+  });
+
+  it('reports owned colorAliasFile as skipped when target base texture is already present', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'ConflictColor', description: 'B', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+    const stone16 = encodeRgbaToPngSync(16, 16, new Uint8Array(16 * 16 * 4).fill(150));
+
+    const res = await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/block/stone.png': stone16,
+        'textures/blocks/stone_custom_alt.png': stone16,
+        'textures/blocks/stone.texture_set.json': strToU8(JSON.stringify({
+          format_version: '1.16.100',
+          'minecraft:texture_set': { color: 'stone_custom_alt', metalness_emissive_roughness: [0, 0, 200] },
+        })),
+      })),
+      'conflict-color.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java' }
+    );
+
+    expect(res.report.details.some((d) =>
+      d.filename === 'textures/blocks/stone_custom_alt.png' &&
+      d.status === 'skipped' &&
+      d.reason === 'Target base texture already present'
+    )).toBe(true);
   });
 
   it('protects vanilla *_normal diffuse textures and UI textures from PBR misclassification', async () => {

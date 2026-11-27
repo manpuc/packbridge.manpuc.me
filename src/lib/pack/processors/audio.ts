@@ -159,6 +159,44 @@ export function inspectOggVorbisHeader(buf: Uint8Array): { channels: number; sam
   return { channels, sampleRate };
 }
 
+export function inspectWavChannels(buf: Uint8Array): number | null {
+  if (buf.byteLength < 36) return null;
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let offset = 12;
+  while (offset + 8 <= buf.byteLength) {
+    const chunkSize = view.getUint32(offset + 4, true);
+    if (
+      buf[offset] === 0x66 && buf[offset + 1] === 0x6d &&
+      buf[offset + 2] === 0x74 && buf[offset + 3] === 0x20 // 'fmt '
+    ) {
+      if (chunkSize < 16 || offset + 12 > buf.byteLength) return null;
+      const channels = view.getUint16(offset + 10, true);
+      return channels >= 1 ? channels : null;
+    }
+    const step = 8 + chunkSize + (chunkSize & 1);
+    if (step <= 8) break;
+    offset += step;
+  }
+  return null;
+}
+
+export function inspectOggOpusChannels(buf: Uint8Array): number | null {
+  if (buf.byteLength < 28 || !hasOggCapturePattern(buf)) return null;
+  if (buf[4] !== 0 || (buf[5] & 0x02) === 0 || (buf[5] & 0x01) !== 0) return null;
+  const pageSegments = buf[26];
+  if (pageSegments < 1 || buf.byteLength < 27 + pageSegments) return null;
+  const p = 27 + pageSegments;
+  if (p + 10 > buf.byteLength) return null;
+  if (
+    buf[p] !== 0x4f || buf[p + 1] !== 0x70 || buf[p + 2] !== 0x75 || buf[p + 3] !== 0x73 || // 'Opus'
+    buf[p + 4] !== 0x48 || buf[p + 5] !== 0x65 || buf[p + 6] !== 0x61 || buf[p + 7] !== 0x64   // 'Head'
+  ) {
+    return null;
+  }
+  const channels = buf[p + 9];
+  return channels >= 1 ? channels : null;
+}
+
 export async function initFFmpeg(): Promise<void> {
   if (ffmpeg && ffmpeg.loaded) return;
   if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
@@ -233,7 +271,14 @@ export async function reencodeAudio(
     return { status: 'passthrough' };
   }
 
-  const downmixArgs = vorbis && vorbis.channels > 2 ? ['-ac', '2'] : [];
+  const detectedChannels =
+    vorbis?.channels ??
+    (detected === 'wav'
+      ? inspectWavChannels(inputBuffer)
+      : detected === 'ogg'
+      ? inspectOggOpusChannels(inputBuffer)
+      : null);
+  const downmixArgs = detectedChannels !== null && detectedChannels > 2 ? ['-ac', '2'] : [];
   let inputName = '';
   let outputName = '';
   let loadedBeforeExec = false;

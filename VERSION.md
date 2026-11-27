@@ -21,7 +21,7 @@
 * **サウンド定義変換の全面強化**:
   * **高精度イベントマッピングと形式移行**: GeyserMC サウンド逆引きの代表イベント選定を改善し、`sounds.json` ⇄ `sound_definitions.json` および Java 1.8 ⇄ 1.12 ⇄ 1.13+ 移行に対応。`type: "event"` 再帰展開（循環参照およびダイヤモンド DAG 上限ガード付き）、カテゴリ推論、`max_distance` ⇄ `attenuation_distance`、Bedrock 1.14 未満のフラット形式をサポート。
 * **TGA・ブロックアトラス補正の安全性改善**:
-  * **OOM 防御と 8×8 拡大補正**: `decodeTgaToRgba` でピクセル配列確保前の非RLEバッファ長検証と総ピクセル上限（`4096×4096`）を追加。`normalizeJavaBlockAtlasPng` で 8×8 等の非16倍数静止画ブロックを端引き伸ばしではなく最近傍補間で拡大するよう修正し、`grass_side.tga` の冗長な PNG 再エンコードを省略（単体テストを 33 件へ拡充）。
+  * **OOM 防御と 8×8 拡大補正**: `decodeTgaToRgba` でピクセル配列確保前の非RLEバッファ長検証と総ピクセル上限（`4096×4096`）を追加。`normalizeJavaBlockAtlasPng` で 8×8 等の非16倍数静止画ブロックを端引き伸ばしではなく最近傍補間で拡大するよう修正し、`grass_side.tga` の冗長な PNG 再エンコードを省略（単体テストを拡充）。
 
 ## v1.6.8
 * **アナリティクス・入力安定性・UX の改善**:
