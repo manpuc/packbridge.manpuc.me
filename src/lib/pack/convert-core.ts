@@ -1,16 +1,17 @@
 import { unzipSync, zipSync, strToU8, strFromU8, type Zippable } from 'fflate';
 import type { PackReport, ConversionOptions } from './types';
-import { getActiveMappings, getFallbackMappings, getTargetContext, loadMappings } from './rules';
+import { getActiveMappings, getFallbackMappings, getTargetContext, loadLegacyJavaMappings, loadMappings } from './rules';
 import { extractFsb5 } from './fsb';
 import {
   formatLocaleCode,
   parseLangEntries,
   parseJsonLangEntries,
   mapLangEntries,
+  mapJavaLangEntries,
   serializeLangEntries,
   serializeJsonLangEntries,
 } from './processors/lang';
-import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds } from './processors/sounds';
+import { javaToBedrockSounds, bedrockToJavaSounds, migrateJavaSounds, isPre116ModernJavaSounds } from './processors/sounds';
 import {
   generateTerrainTexture,
   getBedrockLeafSpec,
@@ -96,6 +97,7 @@ import {
 import {
   EFFECT_BG_MODERN_MCMETA,
   cropInset1pxIfLegacySlotSprite,
+  padInset1pxIfLegacySlotSprite,
   isJavaContainerSheetPath,
   isSharedBedrockThemeContainer,
   isBedrockContainerThemeOrPartPath,
@@ -134,8 +136,11 @@ export async function convertBuffer(
     resetAudioReencodeSession();
   }
 
+  const targetJavaVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
+  const targetBedrockVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+
   // Load mappings
-  await loadMappings(options.javaVersionId, options.bedrockVersionId);
+  await loadMappings(targetJavaVersion.id, targetBedrockVersion.id, direction);
 
   const tracker: ZipSafetyTracker = { totalUncompressedBytes: 0, fileCount: 0 };
   let sourceFiles: Record<string, Uint8Array>;
@@ -173,6 +178,7 @@ export async function convertBuffer(
   const allTargetTextures = new Set<string>();
   const supportedLanguages = new Set<string>();
   const mergedLangs = new Map<string, Map<string, string>>();
+  const mergedLangPrimaryKeys = new Map<string, Set<string>>();
   const pendingBedrockFlipbooks: Array<{ sourcePath: string; entry: FlipbookEntry }> = [];
   const extraItemTextureEntries: Record<string, string> = Object.create(null);
 
@@ -246,9 +252,7 @@ export async function convertBuffer(
     }
   }
 
-  // Determine target and source pack formats for Java migrations
-  const targetJavaVersion = JAVA_VERSIONS.find(v => v.id === options.javaVersionId) || JAVA_VERSIONS[0];
-  const targetBedrockVersion = BEDROCK_VERSIONS.find(v => v.id === options.bedrockVersionId) || BEDROCK_VERSIONS[0];
+  // Determine source pack formats for Java migrations
   const sourceJavaVersion = options.sourceJavaVersionId
     ? JAVA_VERSIONS.find(v => v.id === options.sourceJavaVersionId)
     : (detectedSourcePackFormat !== null ? JAVA_VERSIONS.find(v => v.packFormat === detectedSourcePackFormat) : null);
@@ -258,6 +262,14 @@ export async function convertBuffer(
     : null;
   const sourceBedrockMinEngine: BedrockSemver =
     detectedSourceBedrockMinEngine ?? sourceBedrockVersion?.minEngineVersion ?? targetBedrockVersion.minEngineVersion;
+
+  const needsLegacyLangMap =
+    (direction === 'bedrock-to-java' && targetJavaVersion.packFormat < 4) ||
+    (direction === 'java-to-java' && (sourcePackFormat < 4 || targetJavaVersion.packFormat < 4 || filePaths.some((p) => p.toLowerCase().endsWith('.lang')))) ||
+    (direction === 'java-to-bedrock' && (sourcePackFormat < 4 || filePaths.some((p) => p.toLowerCase().endsWith('.lang'))));
+  if (needsLegacyLangMap) {
+    await loadLegacyJavaMappings();
+  }
 
   const hasModernSpritesInSource =
     direction === 'java-to-java' &&
@@ -512,7 +524,11 @@ export async function convertBuffer(
         const formattedJp = formatTargetJavaPath(jp);
         const replacingTga = !isTga && tgaWrittenTargets.has(formattedJp);
         if (isSafePath(formattedJp) && isValidJavaAssetPath(formattedJp) && (!targetFiles[formattedJp] || replacingTga)) {
-          targetFiles[formattedJp] = [pngBytes, { level: getFileCompressionLevel(formattedJp) }];
+          const outBytes =
+            targetJavaVersion.packFormat >= 18 && targetJavaVersion.packFormat < 46
+              ? padInset1pxIfLegacySlotSprite(formattedJp, pngBytes)
+              : pngBytes;
+          targetFiles[formattedJp] = [outBytes, { level: getFileCompressionLevel(formattedJp) }];
           allTargetTextures.add(formattedJp);
           if (isTga) tgaWrittenTargets.add(formattedJp);
           else tgaWrittenTargets.delete(formattedJp);
@@ -1227,7 +1243,9 @@ export async function convertBuffer(
           } else if (
             /^assets\/minecraft\/sounds\.json$/i.test(relativePath) &&
             ((sourcePackFormat === 1) !== (targetJavaVersion.packFormat === 1) ||
-              (sourcePackFormat <= 3) !== (targetJavaVersion.packFormat <= 3))
+              (sourcePackFormat <= 3) !== (targetJavaVersion.packFormat <= 3) ||
+              isPre116ModernJavaSounds(sourcePackFormat, sourceJavaVersion?.id) !==
+                isPre116ModernJavaSounds(targetJavaVersion.packFormat, targetJavaVersion.id))
           ) {
             needsProcessing = true;
           }
@@ -1254,7 +1272,9 @@ export async function convertBuffer(
               const rawCode = targetPath.split('/').pop()?.replace(/\.lang$/i, '') || '';
               const bedrockCode = formatLocaleCode(rawCode, 'll_CC');
               const normalizedTarget = `texts/${bedrockCode}.lang`;
-              const parsed = relativePath.toLowerCase().endsWith('.json')
+              const srcIsJson = relativePath.toLowerCase().endsWith('.json');
+              const isPrimaryLangFormat = srcIsJson === (sourcePackFormat >= 4);
+              const parsed = srcIsJson
                 ? parseJsonLangEntries(strFromU8(content))
                 : parseLangEntries(strFromU8(content), false);
               if (!parsed) {
@@ -1262,14 +1282,24 @@ export async function convertBuffer(
                 report.details.push({ filename: path, status: 'skipped', reason: 'Invalid language JSON format' });
                 continue;
               }
-              const mapped = mapLangEntries(parsed, 'java-to-bedrock');
+              const mapped = mapLangEntries(parsed, 'java-to-bedrock', { legacyJava: !srcIsJson });
               let langMap = mergedLangs.get(normalizedTarget);
               if (!langMap) {
                 langMap = new Map<string, string>();
                 mergedLangs.set(normalizedTarget, langMap);
               }
+              let primarySet = mergedLangPrimaryKeys.get(normalizedTarget);
+              if (!primarySet) {
+                primarySet = new Set<string>();
+                mergedLangPrimaryKeys.set(normalizedTarget, primarySet);
+              }
               for (const [k, v] of mapped) {
-                langMap.set(k, v);
+                if (isPrimaryLangFormat) {
+                  langMap.set(k, v);
+                  primarySet.add(k);
+                } else if (!primarySet.has(k)) {
+                  langMap.set(k, v);
+                }
               }
               if (bedrockCode) supportedLanguages.add(bedrockCode);
 
@@ -1335,7 +1365,9 @@ export async function convertBuffer(
                 finalBytes = strToU8(serializeJsonLangEntries(entries));
                 targetPath = `assets/minecraft/lang/${formatLocaleCode(rawCode, 'll_cc')}.json`;
               } else {
-                const entries = mapLangEntries(parseLangEntries(strFromU8(content), false), 'bedrock-to-java');
+                const entries = mapLangEntries(parseLangEntries(strFromU8(content), false), 'bedrock-to-java', {
+                  allowModernFallback: false,
+                });
                 finalBytes = strToU8(serializeLangEntries(entries));
                 const style = targetJavaVersion.packFormat <= 2 ? 'll_CC' : 'll_cc';
                 targetPath = `assets/minecraft/lang/${formatLocaleCode(rawCode, style)}.lang`;
@@ -1351,7 +1383,7 @@ export async function convertBuffer(
                 }
                 for (const entry of flipbooks) {
                   if (!entry || typeof entry.flipbook_texture !== 'string') continue;
-                  let rawTex = entry.flipbook_texture.trim().replace(/\\/g, '/').replace(/^\.?\//, '');
+                  let rawTex = entry.flipbook_texture.trim().replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
                   rawTex = rawTex.replace(/\.(png|tga)$/i, '') + '.png';
                   const bPath = rawTex.startsWith('textures/') ? rawTex : 'textures/' + rawTex;
                   const jPath = getTargetContext(bPath, 'bedrock-to-java');
@@ -1374,6 +1406,7 @@ export async function convertBuffer(
             } else if (/^sounds\/sound_definitions\.json$/i.test(relativePath)) {
               const converted = bedrockToJavaSounds(strFromU8(content), {
                 targetPackFormat: targetJavaVersion.packFormat,
+                targetVersionId: targetJavaVersion.id,
               });
               if (converted === null) {
                 report.skippedCount++;
@@ -1418,14 +1451,17 @@ export async function convertBuffer(
                     report.details.push({ filename: path, status: 'skipped', reason: 'Invalid language JSON format' });
                     continue;
                   }
-                  finalBytes = strToU8(serializeLangEntries(mapLangEntries(parsed, 'java-to-bedrock')));
+                  finalBytes = strToU8(serializeLangEntries(mapJavaLangEntries(parsed, '1.13-to-1.12')));
                 } else {
                   const parsed = parseLangEntries(strFromU8(content), true);
-                  finalBytes = strToU8(serializeJsonLangEntries(mapLangEntries(parsed, 'bedrock-to-java')));
+                  finalBytes = strToU8(serializeJsonLangEntries(mapJavaLangEntries(parsed, '1.12-to-1.13')));
                 }
               }
             } else if (/^assets\/minecraft\/sounds\.json$/i.test(relativePath)) {
-              const migrated = migrateJavaSounds(strFromU8(content), sourcePackFormat, targetJavaVersion.packFormat);
+              const migrated = migrateJavaSounds(strFromU8(content), sourcePackFormat, targetJavaVersion.packFormat, {
+                sourceVersionId: sourceJavaVersion?.id,
+                targetVersionId: targetJavaVersion.id,
+              });
               if (migrated === null) {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'Invalid sounds.json format' });
@@ -1538,21 +1574,16 @@ export async function convertBuffer(
               if (pngBytes) {
                 finalBytes = pngBytes;
                 targetPath = pngTarget;
-              } else if (targetPath.endsWith('.png')) {
+              } else {
                 report.skippedCount++;
                 report.details.push({ filename: path, status: 'skipped', reason: 'TGA decode failed' });
                 continue;
-              } else {
-                note = 'TGA decode failed, keeping raw bytes';
-                isWarning = true;
               }
             } catch (e) {
               console.warn("TGA to PNG conversion failed:", e);
-              if (targetPath.endsWith('.png')) {
-                report.skippedCount++;
-                report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion failed' });
-                continue;
-              }
+              report.skippedCount++;
+              report.details.push({ filename: path, status: 'skipped', reason: 'TGA conversion failed' });
+              continue;
             }
           }
         }
@@ -1594,6 +1625,13 @@ export async function convertBuffer(
           (direction === 'java-to-java' && targetJavaVersion.packFormat >= 46 && targetPath !== relativePath)
         ) {
           finalBytes = cropInset1pxIfLegacySlotSprite(relativePath, finalBytes);
+        } else if (
+          direction === 'java-to-java' &&
+          targetJavaVersion.packFormat >= 18 &&
+          targetJavaVersion.packFormat < 46 &&
+          targetPath !== relativePath
+        ) {
+          finalBytes = padInset1pxIfLegacySlotSprite(targetPath, finalBytes);
         }
 
         if (direction === 'bedrock-to-java' && targetPath.endsWith('.png')) {

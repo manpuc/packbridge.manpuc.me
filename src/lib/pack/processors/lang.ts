@@ -1,4 +1,4 @@
-import { getActiveMappings, getFallbackMappings } from '../rules';
+import { getActiveMappings, getFallbackMappings, getLegacyJavaMappings } from '../rules';
 import { isUnsafeObjectKey } from '../security';
 import { parseJsonc } from '../metadata';
 
@@ -57,23 +57,120 @@ export function parseJsonLangEntries(jsonContent: string): Map<string, string> |
   }
 }
 
+export interface MapLangOptions {
+  legacyJava?: boolean;
+  allowModernFallback?: boolean;
+}
+
+const LEGACY_JAVA_TO_MODERN_OVERRIDES: Record<string, string> = {
+  'tile.wood.oak.name': 'block.minecraft.oak_planks',
+  'tile.wood.spruce.name': 'block.minecraft.spruce_planks',
+  'tile.wood.birch.name': 'block.minecraft.birch_planks',
+  'tile.wood.jungle.name': 'block.minecraft.jungle_planks',
+  'tile.wood.acacia.name': 'block.minecraft.acacia_planks',
+  'tile.grass.name': 'block.minecraft.grass_block',
+};
+
+const MODERN_TO_LEGACY_JAVA_OVERRIDES: Record<string, string> = {
+  'block.minecraft.oak_planks': 'tile.wood.oak.name',
+  'block.minecraft.spruce_planks': 'tile.wood.spruce.name',
+  'block.minecraft.birch_planks': 'tile.wood.birch.name',
+  'block.minecraft.jungle_planks': 'tile.wood.jungle.name',
+  'block.minecraft.acacia_planks': 'tile.wood.acacia.name',
+  'block.minecraft.grass_block': 'tile.grass.name',
+};
+
 export function mapLangEntries(
   entries: Map<string, string>,
-  direction: 'java-to-bedrock' | 'bedrock-to-java' | 'identity'
+  direction: 'java-to-bedrock' | 'bedrock-to-java' | 'identity',
+  options?: MapLangOptions
 ): Map<string, string> {
   if (direction === 'identity') return new Map(entries);
 
   const active = getActiveMappings();
   const fallback = getFallbackMappings();
-  const activeMap = direction === 'java-to-bedrock' ? active.lang_java_to_bedrock : active.lang_bedrock_to_java;
-  const fallbackMap = direction === 'java-to-bedrock' ? fallback.lang_java_to_bedrock : fallback.lang_bedrock_to_java;
+  const legacy = getLegacyJavaMappings();
 
   const mapped = new Map<string, string>();
   for (const [key, value] of entries) {
-    const mappedKey =
-      (activeMap && Object.hasOwn(activeMap, key) ? activeMap[key] : undefined) ||
-      (fallbackMap && Object.hasOwn(fallbackMap, key) ? fallbackMap[key] : undefined) ||
-      key;
+    let mappedKey = key;
+    if (direction === 'java-to-bedrock') {
+      if (options?.legacyJava) {
+        mappedKey =
+          (legacy?.lang_java_to_bedrock && Object.hasOwn(legacy.lang_java_to_bedrock, key)
+            ? legacy.lang_java_to_bedrock[key]
+            : undefined) ||
+          (active.lang_java_to_bedrock && Object.hasOwn(active.lang_java_to_bedrock, key)
+            ? active.lang_java_to_bedrock[key]
+            : undefined) ||
+          key;
+      } else {
+        mappedKey =
+          (active.lang_java_to_bedrock && Object.hasOwn(active.lang_java_to_bedrock, key)
+            ? active.lang_java_to_bedrock[key]
+            : undefined) ||
+          (fallback.lang_java_to_bedrock && Object.hasOwn(fallback.lang_java_to_bedrock, key)
+            ? fallback.lang_java_to_bedrock[key]
+            : undefined) ||
+          key;
+      }
+    } else {
+      const allowModern = options?.allowModernFallback !== false;
+      const activeMap = !allowModern && active === fallback ? undefined : active.lang_bedrock_to_java;
+      const secondaryMap = allowModern ? fallback.lang_bedrock_to_java : legacy?.lang_bedrock_to_java;
+      mappedKey =
+        (activeMap && Object.hasOwn(activeMap, key) ? activeMap[key] : undefined) ||
+        (secondaryMap && Object.hasOwn(secondaryMap, key) ? secondaryMap[key] : undefined) ||
+        key;
+    }
+    if (isUnsafeObjectKey(mappedKey)) continue;
+    mapped.set(mappedKey, value);
+  }
+  return mapped;
+}
+
+export function mapJavaLangEntries(
+  entries: Map<string, string>,
+  direction: '1.12-to-1.13' | '1.13-to-1.12'
+): Map<string, string> {
+  const legacy = getLegacyJavaMappings();
+  const modern = getFallbackMappings();
+  const mapped = new Map<string, string>();
+
+  for (const [key, value] of entries) {
+    let mappedKey = key;
+    if (direction === '1.13-to-1.12') {
+      if (Object.hasOwn(MODERN_TO_LEGACY_JAVA_OVERRIDES, key)) {
+        mappedKey = MODERN_TO_LEGACY_JAVA_OVERRIDES[key];
+      } else if (legacy?.lang_java_to_bedrock && Object.hasOwn(legacy.lang_java_to_bedrock, key)) {
+        mappedKey = key;
+      } else {
+        const bKey = modern.lang_java_to_bedrock && Object.hasOwn(modern.lang_java_to_bedrock, key)
+          ? modern.lang_java_to_bedrock[key]
+          : undefined;
+        if (bKey) {
+          mappedKey =
+            legacy?.lang_bedrock_to_java && Object.hasOwn(legacy.lang_bedrock_to_java, bKey)
+              ? legacy.lang_bedrock_to_java[bKey]
+              : bKey;
+        }
+      }
+    } else {
+      if (Object.hasOwn(LEGACY_JAVA_TO_MODERN_OVERRIDES, key)) {
+        mappedKey = LEGACY_JAVA_TO_MODERN_OVERRIDES[key];
+      } else if (modern.lang_java_to_bedrock && Object.hasOwn(modern.lang_java_to_bedrock, key)) {
+        mappedKey = key;
+      } else {
+        const bKey =
+          legacy?.lang_java_to_bedrock && Object.hasOwn(legacy.lang_java_to_bedrock, key)
+            ? legacy.lang_java_to_bedrock[key]
+            : key;
+        mappedKey =
+          modern.lang_bedrock_to_java && Object.hasOwn(modern.lang_bedrock_to_java, bKey)
+            ? modern.lang_bedrock_to_java[bKey]
+            : key;
+      }
+    }
     if (isUnsafeObjectKey(mappedKey)) continue;
     mapped.set(mappedKey, value);
   }

@@ -447,6 +447,29 @@ export function cropInset1pxIfLegacySlotSprite(javaRelPath: string, pngBytes: Ui
   return encodeRgbaToPngSync(cropped.width, cropped.height, cropped.rgba);
 }
 
+export function padInset1pxIfLegacySlotSprite(javaTargetPath: string, pngBytes: Uint8Array): Uint8Array {
+  if (!javaTargetPath.startsWith(SPRITE_CONTAINER_PREFIX)) return pngBytes;
+  const rel = javaTargetPath.slice(SPRITE_CONTAINER_PREFIX.length);
+  const needsInset = CONTAINER_SLOT_SPECS.some((s) => s.inset1px && s.legacySprite === rel);
+  if (!needsInset) return pngBytes;
+  const decoded = decodePngToRgbaSync(pngBytes);
+  if (!decoded || decoded.width !== decoded.height || decoded.width < 16 || decoded.width % 16 !== 0) {
+    return pngBytes;
+  }
+  const scale = decoded.width / 16;
+  const outDim = 18 * scale;
+  if (outDim > MAX_CONTAINER_DIMENSION || outDim * outDim > MAX_GUI_PIXELS) {
+    return pngBytes;
+  }
+  const out = new Uint8Array(outDim * outDim * 4);
+  for (let y = 0; y < decoded.height; y++) {
+    const srcStart = y * decoded.width * 4;
+    const dstStart = ((y + scale) * outDim + scale) * 4;
+    out.set(decoded.rgba.subarray(srcStart, srcStart + decoded.width * 4), dstStart);
+  }
+  return encodeRgbaToPngSync(outDim, outDim, out);
+}
+
 export function migrateJavaContainerSlotPath(path: string, targetJavaFormat: number): string {
   if (targetJavaFormat >= 75 && path === `${SPRITE_CONTAINER_PREFIX}inventory/effect_background_large.png`) {
     return `${SPRITE_CONTAINER_PREFIX}inventory/effect_background.png`;

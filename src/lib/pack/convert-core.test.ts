@@ -2744,4 +2744,227 @@ describe('convertBuffer', () => {
     const stubDecode = () => ({ width: 2362, height: 7086, rgba: new Uint8Array(0) });
     expect(normalizeJavaBlockAtlasPng('assets/minecraft/textures/block/water_still.png', hdr, stubDecode)).toBeNull();
   });
+
+  it('fixes lang key mapping (#1, #2, #5), uppercase flipbook (#4), 18x18 slot padding (#6), and 1.13-1.15 pigman sounds (#7)', async () => {
+    const manifest = strToU8(JSON.stringify({
+      format_version: 2,
+      header: { name: 'ReviewFixes', description: 'R', uuid: '11111111-1111-4111-8111-111111111111', version: [1, 0, 0], min_engine_version: [1, 21, 50] },
+      modules: [{ type: 'resources', uuid: '22222222-2222-4222-8222-222222222222', version: [1, 0, 0] }],
+    }));
+
+    // #1: Bedrock -> Java 1.12.2 / 1.8.0 with modern bedrockVersionId must not leak 1.13+ keys
+    const bLang = strToU8(
+      'item.apple.name=Crisp Apple\n' +
+      'item.diamond_sword.name=Diamond Sword\n' +
+      'tile.crafting_table.name=Table\n' +
+      'tile.amethyst_block.name=Amethyst\n'
+    );
+    for (const [javaVer, outPath] of [
+      ['1.12.2', 'assets/minecraft/lang/en_us.lang'],
+      ['1.8.0', 'assets/minecraft/lang/en_US.lang'],
+    ] as const) {
+      for (const bedrockVer of ['1.21.50', '1.26.60'] as const) {
+        const res = unzipSync((await convertBuffer(
+          toArrayBuffer(zipSync({ 'manifest.json': manifest, 'texts/en_US.lang': bLang })),
+          `b2j-${javaVer}-${bedrockVer}.mcpack`,
+          { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: javaVer, bedrockVersionId: bedrockVer }
+        )).buffer);
+        const text = strFromU8(res[outPath]);
+        expect(text).toContain('item.apple.name=Crisp Apple');
+        expect(text).toContain('item.swordDiamond.name=Diamond Sword');
+        expect(text).toContain('tile.workbench.name=Table');
+        expect(text).not.toContain('item.minecraft.');
+        expect(text).not.toContain('block.minecraft.');
+      }
+    }
+
+    // #1 (reverse): Java 1.12 (.lang) -> Bedrock 1.21.50
+    const j112ToB = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 3, description: '1.12' } })),
+        'assets/minecraft/lang/en_us.lang': strToU8('item.swordDiamond.name=Diamond Sword\ntile.workbench.name=Table\n'),
+      })),
+      'j112-b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock', bedrockVersionId: '1.21.50' }
+    )).buffer);
+    const bFrom112 = strFromU8(j112ToB['texts/en_US.lang']);
+    expect(bFrom112).toContain('item.diamond_sword.name=Diamond Sword');
+    expect(bFrom112).toContain('tile.crafting_table.name=Table');
+
+    // #2: Java 1.21 <-> Java 1.12.2 / 1.8.0 2-hop lang mapping
+    const j21Lang = strToU8(JSON.stringify({
+      'item.minecraft.diamond_sword': 'Diamond Sword',
+      'block.minecraft.crafting_table': 'Table',
+      'block.minecraft.oak_planks': 'Oak Planks',
+      'block.minecraft.grass_block': 'Grass Block',
+      'gui.toTitle': 'Back to Title',
+      'options.clouds.fancy': 'Fancy',
+    }));
+    const j21To12 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: '1.21' } })),
+        'assets/minecraft/lang/en_us.json': j21Lang,
+      })),
+      'j21-112.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2' }
+    )).buffer);
+    const l12 = strFromU8(j21To12['assets/minecraft/lang/en_us.lang']);
+    expect(l12).toContain('item.swordDiamond.name=Diamond Sword');
+    expect(l12).toContain('tile.workbench.name=Table');
+    expect(l12).toContain('tile.wood.oak.name=Oak Planks');
+    expect(l12).toContain('tile.grass.name=Grass Block');
+    expect(l12).toContain('gui.toTitle=Back to Title');
+    expect(l12).toContain('options.clouds.fancy=Fancy');
+
+    const j12Back21 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 3, description: '1.12' } })),
+        'assets/minecraft/lang/en_us.lang': j21To12['assets/minecraft/lang/en_us.lang'],
+      })),
+      'j12-21.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
+    )).buffer);
+    const l21 = JSON.parse(strFromU8(j12Back21['assets/minecraft/lang/en_us.json']));
+    expect(l21['item.minecraft.diamond_sword']).toBe('Diamond Sword');
+    expect(l21['block.minecraft.crafting_table']).toBe('Table');
+    expect(l21['block.minecraft.oak_planks']).toBe('Oak Planks');
+    expect(l21['block.minecraft.grass_block']).toBe('Grass Block');
+    expect(l21['gui.toTitle']).toBe('Back to Title');
+    expect(l21['options.clouds.fancy']).toBe('Fancy');
+
+    // #4: Bedrock -> Java uppercase flipbook_texture & texture path
+    const strip16x32 = encodeRgbaToPngSync(16, 32, new Uint8Array(16 * 32 * 4).fill(200));
+    const flipRes = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/blocks/Water_Still_Grey.png': strip16x32,
+        'textures/blocks/campfire.png': strip16x32,
+        'textures/flipbook_textures.json': strToU8(JSON.stringify([
+          { flipbook_texture: 'textures/blocks/Water_Still_Grey', atlas_tile: 'still_water_grey', ticks_per_frame: 5 },
+          { flipbook_texture: 'textures/blocks/Campfire', atlas_tile: 'campfire_fire', ticks_per_frame: 7 },
+        ])),
+      })),
+      'upper-flip.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.21.4' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(flipRes['assets/minecraft/textures/block/water_still.png.mcmeta'])).animation.frametime).toBe(5);
+    expect(JSON.parse(strFromU8(flipRes['assets/minecraft/textures/block/campfire_fire.png.mcmeta'])).animation.frametime).toBe(7);
+
+    // #5: Java -> Bedrock multi-version .json + .lang priority independent of ZIP order
+    const modernJson = strToU8(JSON.stringify({ 'block.minecraft.stone': 'Modern' }));
+    const legacyLang = strToU8('tile.stone.stone.name=Legacy\ncustom.legacy_only=Keep\n');
+    for (const files of [
+      {
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'MV' } })),
+        'assets/minecraft/lang/en_us.json': modernJson,
+        'assets/minecraft/lang/en_us.lang': legacyLang,
+      },
+      {
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: 'MV' } })),
+        'assets/minecraft/lang/en_us.lang': legacyLang,
+        'assets/minecraft/lang/en_us.json': modernJson,
+      },
+    ]) {
+      const mvOut = unzipSync((await convertBuffer(
+        toArrayBuffer(zipSync(files)),
+        'mv-lang.zip',
+        { ...baseOptions, direction: 'java-to-bedrock' }
+      )).buffer);
+      const outLang = strFromU8(mvOut['texts/en_US.lang']);
+      expect(outLang).toContain('tile.stone.stone.name=Modern\n');
+      expect(outLang).toContain('custom.legacy_only=Keep\n');
+    }
+
+    // #6: 16x16 -> 18x18 transparent 1px padding for inset1px horse slot sprites targeting Java 1.20.2-1.21.3
+    const slot16Rgba = new Uint8Array(16 * 16 * 4);
+    slot16Rgba[0] = 42; slot16Rgba[1] = 84; slot16Rgba[2] = 126; slot16Rgba[3] = 255;
+    const slot16Png = encodeRgbaToPngSync(16, 16, slot16Rgba);
+    const j2jPad = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 46, description: '1.21.4' } })),
+        'assets/minecraft/textures/gui/sprites/container/slot/horse_armor.png': slot16Png,
+      })),
+      'horse-pad.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.20.3' }
+    )).buffer);
+    const paddedJ = decodePngToRgbaSync(j2jPad['assets/minecraft/textures/gui/sprites/container/horse/armor_slot.png'])!;
+    expect({ width: paddedJ.width, height: paddedJ.height }).toEqual({ width: 18, height: 18 });
+    expect(paddedJ.rgba[3]).toBe(0);
+    expect(Array.from(paddedJ.rgba.slice((1 * 18 + 1) * 4, (1 * 18 + 1) * 4 + 4))).toEqual([42, 84, 126, 255]);
+
+    const b2jPad = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'textures/ui/empty_horse_slot_armor.png': slot16Png,
+      })),
+      'b-horse-pad.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.20.3' }
+    )).buffer);
+    const paddedB = decodePngToRgbaSync(b2jPad['assets/minecraft/textures/gui/sprites/container/horse/armor_slot.png'])!;
+    expect({ width: paddedB.width, height: paddedB.height }).toEqual({ width: 18, height: 18 });
+    expect(paddedB.rgba[3]).toBe(0);
+    expect(Array.from(paddedB.rgba.slice((1 * 18 + 1) * 4, (1 * 18 + 1) * 4 + 4))).toEqual([42, 84, 126, 255]);
+
+    // #7: entity.zombie_pigman.* for Java 1.13-1.15
+    const s112 = strToU8(JSON.stringify({ 'entity.zombie_pig.ambient': { sounds: ['mob/zombiepig/zpig1'] } }));
+    const s114 = strToU8(JSON.stringify({ 'entity.zombie_pigman.ambient': { sounds: ['mob/zombiepig/zpig1'] } }));
+    for (const [ver, expectedKey] of [
+      ['1.14.0', 'entity.zombie_pigman.ambient'],
+      ['1.15.0', 'entity.zombie_pigman.ambient'],
+      ['1.16.0', 'entity.zombified_piglin.ambient'],
+    ] as const) {
+      const out = unzipSync((await convertBuffer(
+        toArrayBuffer(zipSync({
+          'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 3, description: '1.12' } })),
+          'assets/minecraft/sounds.json': s112,
+        })),
+        `s112-${ver}.zip`,
+        { ...baseOptions, direction: 'java-to-java', javaVersionId: ver }
+      )).buffer);
+      expect(JSON.parse(strFromU8(out['assets/minecraft/sounds.json']))[expectedKey]).toBeDefined();
+    }
+
+    const s14To12 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 4, description: '1.14' } })),
+        'assets/minecraft/sounds.json': s114,
+      })),
+      's14-12.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.12.2' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(s14To12['assets/minecraft/sounds.json']))['entity.zombie_pig.ambient']).toBeDefined();
+
+    const s14To21 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 4, description: '1.14' } })),
+        'assets/minecraft/sounds.json': s114,
+      })),
+      's14-21.zip',
+      { ...baseOptions, direction: 'java-to-java', javaVersionId: '1.21.4' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(s14To21['assets/minecraft/sounds.json']))['entity.zombified_piglin.ambient']).toBeDefined();
+
+    const s14ToB = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'pack.mcmeta': strToU8(JSON.stringify({ pack: { pack_format: 4, description: '1.14' } })),
+        'assets/minecraft/sounds.json': s114,
+      })),
+      's14-b.zip',
+      { ...baseOptions, direction: 'java-to-bedrock' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(s14ToB['sounds/sound_definitions.json'])).sound_definitions['mob.zombiepig.zpig']).toBeDefined();
+
+    const bToS14 = unzipSync((await convertBuffer(
+      toArrayBuffer(zipSync({
+        'manifest.json': manifest,
+        'sounds/sound_definitions.json': strToU8(JSON.stringify({
+          format_version: '1.14.0',
+          sound_definitions: { 'mob.zombiepig.zpig': { category: 'hostile', sounds: ['sounds/mob/zombiepig/zpig1'] } },
+        })),
+      })),
+      'b-s14.mcpack',
+      { ...baseOptions, direction: 'bedrock-to-java', javaVersionId: '1.14.0' }
+    )).buffer);
+    expect(JSON.parse(strFromU8(bToS14['assets/minecraft/sounds.json']))['entity.zombie_pigman.ambient']).toBeDefined();
+  });
 });

@@ -108,7 +108,11 @@ function versionDistance(a: [number, number, number], b: [number, number, number
   return Math.abs(a[0] - b[0]) * 1000000 + Math.abs(a[1] - b[1]) * 1000 + Math.abs(a[2] - b[2]);
 }
 
-function resolveBestMappingLoader(javaVersionId: string, bedrockVersionId: string) {
+function isPre113Semver(v: [number, number, number]): boolean {
+  return v[0] === 1 && v[1] < 13;
+}
+
+function resolveBestMappingLoader(javaVersionId: string, bedrockVersionId: string, direction?: ConversionDirection) {
   const exactKey = `./mappings/${javaVersionId}_to_${bedrockVersionId}.json`;
   if (Object.hasOwn(mappingModules, exactKey)) {
     return mappingModules[exactKey];
@@ -124,7 +128,17 @@ function resolveBestMappingLoader(javaVersionId: string, bedrockVersionId: strin
     if (!m) continue;
     const candJ = parseSemver(m[1]);
     const candB = parseSemver(m[2]);
-    const score = versionDistance(targetJ, candJ) + versionDistance(targetB, candB);
+    const dj = versionDistance(targetJ, candJ);
+    const db = versionDistance(targetB, candB);
+    let score: number;
+    if (direction === 'bedrock-to-java' || direction === 'java-to-java') {
+      const epochPenalty = isPre113Semver(targetJ) !== isPre113Semver(candJ) ? 1e9 : 0;
+      score = epochPenalty + dj * 10 + db;
+    } else if (direction === 'java-to-bedrock') {
+      score = db * 10 + dj;
+    } else {
+      score = dj + db;
+    }
     if (score < bestScore) {
       bestScore = score;
       bestKey = key;
@@ -132,6 +146,25 @@ function resolveBestMappingLoader(javaVersionId: string, bedrockVersionId: strin
   }
 
   return bestKey ? mappingModules[bestKey] : null;
+}
+
+let legacyJavaMappings: MappingsData | null = null;
+
+export async function loadLegacyJavaMappings(): Promise<MappingsData | null> {
+  if (legacyJavaMappings) return legacyJavaMappings;
+  const loader = mappingModules['./mappings/1.12.2_to_1.12.0.json'];
+  if (!loader) return null;
+  try {
+    const mod = await loader();
+    legacyJavaMappings = mod.default;
+    return legacyJavaMappings;
+  } catch {
+    return null;
+  }
+}
+
+export function getLegacyJavaMappings(): MappingsData | null {
+  return legacyJavaMappings;
 }
 
 export function getActiveMappings(): MappingsData {
@@ -142,14 +175,14 @@ export function getFallbackMappings(): MappingsData {
   return fallbackMappings;
 }
 
-export async function loadMappings(javaVersionId?: string, bedrockVersionId?: string) {
+export async function loadMappings(javaVersionId?: string, bedrockVersionId?: string, direction?: ConversionDirection) {
   if (!javaVersionId || !bedrockVersionId) {
     activeMappings = fallbackMappings;
     return;
   }
 
   try {
-    const loader = resolveBestMappingLoader(javaVersionId, bedrockVersionId);
+    const loader = resolveBestMappingLoader(javaVersionId, bedrockVersionId, direction);
     if (loader) {
       const mapModule = await loader();
       activeMappings = mapModule.default;
@@ -193,7 +226,7 @@ export function getTargetContext(path: string, direction: ConversionDirection): 
       }
     }
   } else if (direction === 'bedrock-to-java') {
-    const normalizedLookup = path.replace(/\.tga$/i, '.png');
+    const normalizedLookup = path.toLowerCase().replace(/\.tga$/i, '.png');
     // Active version mapping returns full Java path ('assets/minecraft/...')
     if (Object.hasOwn(activeMappings.bedrock_to_java, path)) {
       return activeMappings.bedrock_to_java[path];

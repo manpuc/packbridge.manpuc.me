@@ -130,13 +130,17 @@ function upgradeJava18EventToBedrock(ev: string): string {
   return ev;
 }
 
-function upgradeJava112EventTo113(ev: string): string {
+export function isPre116ModernJavaSounds(packFormat?: number, versionId?: string): boolean {
+  return packFormat === 4 || (packFormat === 5 && typeof versionId === 'string' && /^1\.15(?:\.|$)/.test(versionId));
+}
+
+function upgradeJava112EventTo113(ev: string, usePigman = false): string {
   if (ev.startsWith('record.')) return `music_disc.${ev.slice('record.'.length)}`;
   if (ev.startsWith('block.note.')) return `block.note_block.${ev.slice('block.note.'.length)}`;
   if (ev.startsWith('entity.bobber.')) return `entity.fishing_bobber.${ev.slice('entity.bobber.'.length)}`;
   if (ev.startsWith('entity.enderdragon.')) return `entity.ender_dragon.${ev.slice('entity.enderdragon.'.length)}`;
   if (ev.startsWith('entity.endermen.')) return `entity.enderman.${ev.slice('entity.endermen.'.length)}`;
-  if (ev.startsWith('entity.zombie_pig.')) return `entity.zombified_piglin.${ev.slice('entity.zombie_pig.'.length)}`;
+  if (ev.startsWith('entity.zombie_pig.')) return `${usePigman ? 'entity.zombie_pigman.' : 'entity.zombified_piglin.'}${ev.slice('entity.zombie_pig.'.length)}`;
   return ev;
 }
 
@@ -147,6 +151,7 @@ function downgradeJava113EventTo112(ev: string): string {
   if (ev.startsWith('entity.ender_dragon.')) return `entity.enderdragon.${ev.slice('entity.ender_dragon.'.length)}`;
   if (ev.startsWith('entity.enderman.')) return `entity.endermen.${ev.slice('entity.enderman.'.length)}`;
   if (ev.startsWith('entity.zombified_piglin.')) return `entity.zombie_pig.${ev.slice('entity.zombified_piglin.'.length)}`;
+  if (ev.startsWith('entity.zombie_pigman.')) return `entity.zombie_pig.${ev.slice('entity.zombie_pigman.'.length)}`;
   return ev;
 }
 
@@ -392,6 +397,8 @@ export function javaToBedrockSounds(
     } else {
       if (sourcePackFormat !== undefined && sourcePackFormat <= 3) {
         lookupKey = upgradeJava112EventTo113(normalizedKey);
+      } else if (lookupKey.startsWith('entity.zombie_pigman.')) {
+        lookupKey = `entity.zombified_piglin.${lookupKey.slice('entity.zombie_pigman.'.length)}`;
       }
       mappedEvent = lookupJavaToBedrockEvent(lookupKey) || lookupKey;
     }
@@ -438,7 +445,7 @@ export function javaToBedrockSounds(
  */
 export function bedrockToJavaSounds(
   jsonContent: string,
-  options?: { targetPackFormat?: number }
+  options?: { targetPackFormat?: number; targetVersionId?: string }
 ): string | null {
   let bedrockData: unknown;
   try {
@@ -507,9 +514,16 @@ export function bedrockToJavaSounds(
       mappedEvent = bedrockEventToJava18(normBedrock);
     } else {
       modernJava = (lookupBedrockToJavaEvent(normBedrock) || normBedrock).toLowerCase();
-      mappedEvent = targetPackFormat !== undefined && targetPackFormat <= 3
-        ? downgradeJava113EventTo112(modernJava)
-        : modernJava;
+      if (targetPackFormat !== undefined && targetPackFormat <= 3) {
+        mappedEvent = downgradeJava113EventTo112(modernJava);
+      } else if (
+        isPre116ModernJavaSounds(targetPackFormat, options?.targetVersionId) &&
+        modernJava.startsWith('entity.zombified_piglin.')
+      ) {
+        mappedEvent = `entity.zombie_pigman.${modernJava.slice('entity.zombified_piglin.'.length)}`;
+      } else {
+        mappedEvent = modernJava;
+      }
     }
 
     if (!isValidJavaEventKey(mappedEvent)) continue;
@@ -544,7 +558,8 @@ export function bedrockToJavaSounds(
 export function migrateJavaSounds(
   jsonContent: string,
   sourcePackFormat: number,
-  targetPackFormat: number
+  targetPackFormat: number,
+  options?: { sourceVersionId?: string; targetVersionId?: string }
 ): string | null {
   let parsed: unknown;
   try {
@@ -562,6 +577,8 @@ export function migrateJavaSounds(
       modernKey = lookupBedrockToJavaEvent(b) || b;
     } else if (sourcePackFormat <= 3) {
       modernKey = upgradeJava112EventTo113(k);
+    } else if (k.startsWith('entity.zombie_pigman.')) {
+      modernKey = `entity.zombified_piglin.${k.slice('entity.zombie_pigman.'.length)}`;
     } else {
       modernKey = k;
     }
@@ -576,6 +593,11 @@ export function migrateJavaSounds(
       }
     } else if (targetPackFormat <= 3) {
       targetKey = downgradeJava113EventTo112(modernKey);
+    } else if (
+      isPre116ModernJavaSounds(targetPackFormat, options?.targetVersionId) &&
+      modernKey.startsWith('entity.zombified_piglin.')
+    ) {
+      targetKey = `entity.zombie_pigman.${modernKey.slice('entity.zombified_piglin.'.length)}`;
     } else {
       targetKey = modernKey;
     }
